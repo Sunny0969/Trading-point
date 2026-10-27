@@ -126,7 +126,7 @@ def get_cached_candles(interval="15m", limit=500):
     # Tier 2: Try Coinbase PAXG-USD (Fully Permitted on US & Vercel Datacenter IPs)
     try:
         cb_granularity_map = {
-            "1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 21600, "1d": 86400
+            "1m": 60, "3m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 21600, "1d": 86400
         }
         granularity = cb_granularity_map.get(interval, 900)
         r = requests.get(
@@ -165,7 +165,7 @@ def get_cached_candles(interval="15m", limit=500):
         pass
 
     # Tier 3: High-fidelity Authentic Synthetic Candle Generator (Zero-fail guarantee)
-    step_map = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}
+    step_map = {"1m": 60, "3m": 180, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}
     step = step_map.get(interval, 900)
     now_ts = int(time.time() // step * step)
     candles = []

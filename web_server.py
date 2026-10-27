@@ -174,7 +174,7 @@ def get_cached_candles(interval="15m", limit=500):
         pass
 
     # Tier 3: Synthetic fallback generator
-    step_map = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}
+    step_map = {"1m": 60, "3m": 180, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}
     step = step_map.get(interval, 900)
     now_ts = int(time.time() // step * step)
     candles = []
