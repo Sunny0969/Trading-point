@@ -1149,6 +1149,52 @@
     }
     .clean-signal-note.gold { border-left-color: #d29922; }
     #demoLotInfoBar { display: none !important; }
+    .signal-tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #8b949e;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      letter-spacing: 0.3px;
+      text-align: center;
+    }
+    .signal-tab-btn:hover {
+      color: #f0f6fc;
+    }
+    .signal-tab-btn.active {
+      background: #1f242c;
+      color: #ffd700;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    .exec-dir-pill {
+      font-size: 10.5px;
+      font-weight: 900;
+      letter-spacing: 0.8px;
+      padding: 2px 9px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      font-family: 'Space Grotesk', monospace;
+    }
+    .exec-dir-pill.buy {
+      background: rgba(46, 160, 67, 0.2);
+      color: #3fb950;
+      border: 1px solid rgba(46, 160, 67, 0.4);
+      box-shadow: 0 0 8px rgba(46, 160, 67, 0.25);
+    }
+    .exec-dir-pill.sell {
+      background: rgba(248, 81, 73, 0.2);
+      color: #f85149;
+      border: 1px solid rgba(248, 81, 73, 0.4);
+      box-shadow: 0 0 8px rgba(248, 81, 73, 0.25);
+    }
+
     .clean-signal-history {
       display: flex;
       flex-direction: column;
@@ -2694,141 +2740,94 @@
           </div>
         </div>
 
-        <!-- CANDLE PATTERN RADAR -->
-        <div class="terminal-card clean-signal-card" id="candlePatternRadarCard" style="border: 1px solid rgba(255, 215, 0, 0.3); background: linear-gradient(180deg, #161b22 0%, #0d1117 100%);">
-          <div class="terminal-card-title">
+                <!-- UNIFIED BENTO CARD: EXECUTION SIGNALS -->
+        <div class="terminal-card clean-signal-card" id="executionSignalsCard" style="border: 1px solid rgba(255, 215, 0, 0.25); background: linear-gradient(180deg, #161b22 0%, #0d1117 100%);">
+          <div class="terminal-card-title" style="margin-bottom: 8px;">
             <span style="display: flex; align-items: center; gap: 6px;">
-              <span style="font-size: 13px;">🕯️</span>
-              <strong style="color: #ffd700; letter-spacing: 0.5px; font-size: 11.5px;">CANDLE PATTERN RADAR</strong>
+              <span style="font-size: 13px;">⚡</span>
+              <strong style="color: #f0f6fc; letter-spacing: 0.5px; font-size: 11.5px;">EXECUTION SIGNALS</strong>
             </span>
-            <span id="cpConfidenceBadge" class="tag-badge" style="background: rgba(46,160,67,0.18); color: #3fb950; border: 1px solid rgba(46,160,67,0.3); font-size: 9.5px; font-weight: 700;">HIGH CONVICTION</span>
+            <span id="stLockTimer" class="tag-badge" style="background: rgba(46,160,67,0.15); color: #3fb950; border: 1px solid rgba(46,160,67,0.3); font-size: 10px; font-weight: 700;">🔒 LOCKED: 14m 59s</span>
           </div>
 
-          <!-- Identified Pattern Banner -->
-          <div id="cpPatternBanner" class="clean-signal-banner buy" style="padding: 9px 11px; margin-bottom: 7px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-              <div>
-                <div id="cpPatternName" style="font-size: 12.5px; font-weight: 800; color: #f0f6fc; display: flex; align-items: center; gap: 6px;">
-                  <span>🟢 Bullish Marubozu</span>
-                </div>
-                <div id="cpProjectionText" style="font-size: 10px; color: #3fb950; font-weight: 600; margin-top: 2px;">
-                  🚀 Momentum Expansion (+1.8x ATR Target)
-                </div>
+          <!-- Bento Navigation Tabs -->
+          <div class="signal-tab-nav" style="display: flex; gap: 4px; margin-bottom: 9px; background: #0d1117; padding: 3px; border-radius: 8px; border: 1px solid #21262d;">
+            <button type="button" id="tabBtnIntraday" class="signal-tab-btn active" onclick="switchSignalTab('intraday')">
+              ⚡ INTRADAY / SCALP (15M)
+            </button>
+            <button type="button" id="tabBtnSwing" class="signal-tab-btn" onclick="switchSignalTab('swing')">
+              🏛️ SWING / TREND (1H - 4H)
+            </button>
+          </div>
+
+          <!-- TAB 1: INTRADAY / SCALP (15M) -->
+          <div id="tabContentIntraday" class="signal-tab-pane">
+            <!-- Direction Header Pill -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: rgba(22, 27, 34, 0.7); border: 1px solid #21262d; border-radius: 6px; padding: 6px 10px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 9px; color: #8b949e; font-weight: 700; letter-spacing: 0.5px;">DIRECTION</span>
+                <span id="stDirectionPill" class="exec-dir-pill buy">BUY</span>
               </div>
-              <span id="cpBiasTag" class="tag-badge" style="background: rgba(46,160,67,0.2); color: #3fb950; font-size: 9.5px; font-weight: 800; padding: 2px 7px;">BUY BIAS</span>
+              <span id="stConfidencePill" style="font-size: 10px; font-weight: 700; color: #3fb950;">91% High Confluence</span>
+            </div>
+
+            <!-- 3 Clean Metrics: ENTRY | STOP LOSS | TARGET -->
+            <div class="clean-metrics-grid" style="grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 8px;">
+              <div class="clean-metric-box" style="padding: 7px 4px; text-align: center;">
+                <label style="font-size: 8px; letter-spacing: 0.3px;">ENTRY</label>
+                <div id="stEntryVal" class="val-txt" style="font-size: 11.5px; font-weight: 800; color: #f0f6fc;">$4,012.50</div>
+              </div>
+              <div class="clean-metric-box" style="padding: 7px 4px; text-align: center;">
+                <label style="font-size: 8px; letter-spacing: 0.3px; color: #f85149;">STOP LOSS (SL)</label>
+                <div id="stSlVal" class="val-txt red" style="font-size: 11.5px; font-weight: 800;">$4,004.50</div>
+              </div>
+              <div class="clean-metric-box" style="padding: 7px 4px; text-align: center;">
+                <label style="font-size: 8px; letter-spacing: 0.3px; color: #3fb950;">TARGET (TP)</label>
+                <div id="stTpVal" class="val-txt green" style="font-size: 11.5px; font-weight: 800;">$4,028.50</div>
+              </div>
+            </div>
+
+            <!-- Single Crisp 1-Line Reason -->
+            <div id="stNoteVal" class="clean-signal-note" style="font-size: 10.5px; padding: 6px 9px;">
+              Safe-haven capital flow breaking through local supply.
             </div>
           </div>
 
-          <!-- Exact Candle Dimensions Grid -->
-          <div class="clean-metrics-grid" style="grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 7px;">
-            <div class="clean-metric-box" style="padding: 5px 3px; text-align: center;">
-              <label style="font-size: 8px;">TOTAL RANGE</label>
-              <div id="cpRangeVal" class="val-txt gold" style="font-size: 10.5px;">$4.20 (42 Pips)</div>
+          <!-- TAB 2: SWING / TREND (1H - 4H) -->
+          <div id="tabContentSwing" class="signal-tab-pane" style="display: none;">
+            <!-- Bias Header Pill -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: rgba(22, 27, 34, 0.7); border: 1px solid #21262d; border-radius: 6px; padding: 6px 10px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 9px; color: #8b949e; font-weight: 700; letter-spacing: 0.5px;">STRUCTURAL BIAS</span>
+                <span id="ltDirectionPill" class="exec-dir-pill buy">BULLISH</span>
+              </div>
+              <span id="ltConfidencePill" style="font-size: 10px; font-weight: 700; color: #a371f7;">Institutional Swing</span>
             </div>
-            <div class="clean-metric-box" style="padding: 5px 3px; text-align: center;">
-              <label style="font-size: 8px;">BODY RATIO</label>
-              <div id="cpBodyVal" class="val-txt" style="font-size: 10.5px; color: #58a6ff;">88%</div>
-            </div>
-            <div class="clean-metric-box" style="padding: 5px 3px; text-align: center;">
-              <label style="font-size: 8px;">UPPER WICK</label>
-              <div id="cpUpperWickVal" class="val-txt" style="font-size: 10.5px; color: #8b949e;">6%</div>
-            </div>
-            <div class="clean-metric-box" style="padding: 5px 3px; text-align: center;">
-              <label style="font-size: 8px;">LOWER WICK</label>
-              <div id="cpLowerWickVal" class="val-txt" style="font-size: 10.5px; color: #8b949e;">6%</div>
-            </div>
-          </div>
 
-          <!-- Volume Confluence Meter -->
-          <div style="background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 6px 8px; font-size: 9.5px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #8b949e;">Volume vs 20-Avg:</span>
-            <span id="cpVolConfluence" style="font-weight: 700; color: #ffd700;">1.42x Avg (Surge Confirmed)</span>
-          </div>
-        </div>
+            <!-- 3 Clean Metrics: MACRO BIAS | INVALIDATION | MACRO TARGET -->
+            <div class="clean-metrics-grid" style="grid-template-columns: repeat(3, 1fr); gap: 5px; margin-bottom: 8px;">
+              <div class="clean-metric-box" style="padding: 7px 4px; text-align: center;">
+                <label style="font-size: 8px; letter-spacing: 0.3px;">MACRO BIAS</label>
+                <div id="ltBiasVal" class="val-txt green" style="font-size: 11.5px; font-weight: 800;">BULLISH</div>
+              </div>
+              <div class="clean-metric-box" style="padding: 7px 4px; text-align: center;">
+                <label style="font-size: 8px; letter-spacing: 0.3px; color: #f85149;">INVALIDATION (SL)</label>
+                <div id="ltInvalVal" class="val-txt red" style="font-size: 11.5px; font-weight: 800;">$3,940.00</div>
+              </div>
+              <div class="clean-metric-box" style="padding: 7px 4px; text-align: center;">
+                <label style="font-size: 8px; letter-spacing: 0.3px; color: #ffd700;">MACRO TARGET</label>
+                <div id="ltTargetVal" class="val-txt gold" style="font-size: 11.5px; font-weight: 800;">$4,085.00</div>
+              </div>
+            </div>
 
-        <!-- 1. SHORT-TERM SIGNAL -->
-        <div class="terminal-card clean-signal-card">
-          <div class="terminal-card-title">
-            <span>⚡ SHORT-TERM SIGNAL</span>
-            <div style="display: flex; gap: 6px; align-items: center;">
-              <span id="stLockTimer" class="tag-badge" style="background: rgba(46,160,67,0.15); color: #3fb950; border: 1px solid rgba(46,160,67,0.3); font-size: 10px; font-weight: 700; letter-spacing: 0.3px;">🔒 LOCKED: 14m 59s</span>
-              <span class="tag-badge" style="background: rgba(88,166,255,0.15); color: #58a6ff; border: 1px solid rgba(88,166,255,0.3);">15M - 1H SCALP</span>
+            <!-- Single Crisp 1-Line Reason -->
+            <div id="ltNoteVal" class="clean-signal-note gold" style="font-size: 10.5px; padding: 6px 9px;">
+              Central bank accumulation & macro uptrend continuation.
             </div>
-          </div>
-
-          <div id="stSignalBanner" class="clean-signal-banner buy">
-            <span class="cs-action">
-              <span id="stSignalAction">BUY / LONG</span>
-            </span>
-            <span id="stSignalConf" class="cs-sub">88% Confluence</span>
-          </div>
-
-          <div class="clean-metrics-grid">
-            <div class="clean-metric-box">
-              <label>ENTRY ZONE</label>
-              <div id="stEntryVal" class="val-txt">$4,002.50 - $4,004.50</div>
-            </div>
-            <div class="clean-metric-box">
-              <label>TARGET (TP1)</label>
-              <div id="stTpVal" class="val-txt green">$4,018.00</div>
-            </div>
-            <div class="clean-metric-box">
-              <label>STOP LOSS (SL)</label>
-              <div id="stSlVal" class="val-txt red">$3,995.00</div>
-            </div>
-            <div class="clean-metric-box">
-              <label>RISK / REWARD</label>
-              <div id="stRrVal" class="val-txt gold">1 : 2.5 (+15.5 pts)</div>
-            </div>
-          </div>
-
-          <div id="stNoteVal" class="clean-signal-note">
-            Safe-haven capital flow breaking through local supply.
           </div>
         </div>
 
-        <!-- 2. LONG-TERM SIGNAL -->
-        <div class="terminal-card clean-signal-card">
-          <div class="terminal-card-title">
-            <span>🏛️ LONG-TERM SIGNAL</span>
-            <div style="display: flex; gap: 6px; align-items: center;">
-              <span id="ltLockTimer" class="tag-badge" style="background: rgba(163,113,247,0.15); color: #a371f7; border: 1px solid rgba(163,113,247,0.3); font-size: 10px; font-weight: 700;">🏛️ SWING ACTIVE</span>
-              <span class="tag-badge" style="background: rgba(163,113,247,0.15); color: #a371f7; border: 1px solid rgba(163,113,247,0.3);">4H - 1D SWING</span>
-            </div>
-          </div>
-
-          <div id="ltSignalBanner" class="clean-signal-banner buy">
-            <span class="cs-action">
-              <span id="ltSignalAction">BULLISH ACCUMULATION</span>
-            </span>
-            <span id="ltSignalConf" class="cs-sub">Institutional Bias</span>
-          </div>
-
-          <div class="clean-metrics-grid">
-            <div class="clean-metric-box">
-              <label>MACRO BIAS</label>
-              <div id="ltBiasVal" class="val-txt green">BULLISH (Uptrend)</div>
-            </div>
-            <div class="clean-metric-box">
-              <label>EXPANSION TARGET</label>
-              <div id="ltTargetVal" class="val-txt gold">$4,085.00</div>
-            </div>
-            <div class="clean-metric-box">
-              <label>INVALIDATION (SL)</label>
-              <div id="ltInvalVal" class="val-txt red">$3,940.00</div>
-            </div>
-            <div class="clean-metric-box">
-              <label>TIME HORIZON</label>
-              <div id="ltHorizonVal" class="val-txt blue">3 - 7 Days</div>
-            </div>
-          </div>
-
-          <div id="ltNoteVal" class="clean-signal-note gold">
-            Central bank accumulation & macro uptrend continuation.
-          </div>
-        </div>
-
-                <!-- Module 3: Active Price Alerts -->
+        <!-- Module 3: Active Price Alerts -->
         <div class="terminal-card clean-signal-card" id="priceAlertsCard">
           <div class="terminal-card-title">
             <span style="display: flex; align-items: center; gap: 6px;">
@@ -3191,12 +3190,12 @@
       }
     }
 
-    // ========================================================
+        // ========================================================
     // QUANTITATIVE CANDLESTICK PATTERN RECOGNITION ENGINE
     // ========================================================
     let currentCandlePattern = null;
 
-    function analyzeCandlePattern(lastClosed, prevCandle, avgVolume) {
+    function analyzeCandlePattern(lastClosed, prevCandle, avgVolume, recentCandles) {
       if (!lastClosed) return null;
 
       const o = Number(lastClosed.open);
@@ -3204,80 +3203,96 @@
       const l = Number(lastClosed.low);
       const c = Number(lastClosed.close);
 
-      const totalRange = Math.max(0.01, h - l);
+      const totalRange = Math.max(0.001, h - l);
       const bodySize = Math.abs(c - o);
       const upperWick = Math.max(0, h - Math.max(o, c));
       const lowerWick = Math.max(0, Math.min(o, c) - l);
-      const bodyRatio = bodySize / totalRange;
+      const bodyRatio = bodySize / (totalRange + 0.0001);
+      const upperWickRatio = upperWick / totalRange;
+      const lowerWickRatio = lowerWick / totalRange;
 
       const isGreen = c >= o;
-      let pattern = isGreen ? "🟢 Bullish Momentum Bar" : "🔴 Bearish Retracement Bar";
+      let pattern = isGreen ? "🟢 Bullish Consolidation Bar" : "🔴 Bearish Consolidation Bar";
       let bias = isGreen ? "BULLISH_LEAN" : "BEARISH_LEAN";
       let confidence = "Moderate";
-      let projection = isGreen ? "🟢 Mild Upside Continuation Expected" : "🔴 Downside Retracement Expected";
-      let netTargetPush = isGreen ? 4.0 : -4.0;
+      let projection = isGreen ? "🟢 Mild Bullish Continuation Expected" : "🔴 Mild Bearish Retracement Expected";
+      let netTargetPush = isGreen ? 6.0 : -6.0;
 
-      // Volume Confluence Comparison
+      // Volume Confluence Comparison (vs 20-period average)
       const vol = (typeof lastClosed.volume === 'number' && lastClosed.volume > 0) ? lastClosed.volume : 120;
       const volRatio = (avgVolume && avgVolume > 0) ? (vol / avgVolume) : 1.15;
       const hasVolSurge = volRatio >= 1.30;
 
-      // 1. Marubozu Check (body_ratio >= 0.85)
+      // Determine prior trend using prevCandle and recent candle history
+      let isPriorDowntrend = false;
+      let isPriorUptrend = false;
+      if (recentCandles && recentCandles.length >= 2) {
+        const redCount = recentCandles.filter(k => k.close < k.open).length;
+        const greenCount = recentCandles.filter(k => k.close > k.open).length;
+        isPriorDowntrend = (redCount >= recentCandles.length / 2) || (prevCandle && prevCandle.close < prevCandle.open);
+        isPriorUptrend = (greenCount >= recentCandles.length / 2) || (prevCandle && prevCandle.close > prevCandle.open);
+      } else if (prevCandle) {
+        isPriorDowntrend = prevCandle.close < prevCandle.open;
+        isPriorUptrend = prevCandle.close > prevCandle.open;
+      }
+
+      // 1. Marubozu Check (body_ratio >= 0.85) - Almost zero wicks
       if (bodyRatio >= 0.85) {
         pattern = isGreen ? "🟢 Bullish Marubozu" : "🔴 Bearish Marubozu";
         bias = isGreen ? "BULLISH_CONTINUATION" : "BEARISH_CONTINUATION";
         confidence = hasVolSurge ? "High Conviction (Volume Surge)" : "High";
-        projection = isGreen ? "🚀 Bullish Momentum Expansion (+1.8x ATR Target)" : "🔻 Bearish Momentum Expansion (-1.8x ATR Target)";
-        netTargetPush = isGreen ? 15.0 : -15.0;
+        projection = isGreen 
+          ? "🟢 Strong Continuation: Bullish Expansion Expected (+2.0x ATR)" 
+          : "🔴 Strong Continuation: Bearish Momentum Expansion (-2.0x ATR)";
+        netTargetPush = isGreen ? 16.0 : -16.0;
       }
-      // 2. Dragonfly Doji (lower_wick >= 0.70 * totalRange, body <= 0.10)
-      else if (bodyRatio <= 0.10 && lowerWick >= 0.70 * totalRange) {
-        pattern = "⚡ Dragonfly Doji (Bottom Absorption)";
+      // 2. Dragonfly Doji (body_ratio <= 0.10 and lower_wick >= 0.70 * totalRange)
+      else if (bodyRatio <= 0.10 && lowerWickRatio >= 0.70) {
+        pattern = "⚡ Dragonfly Doji (Strong Reversal)";
         bias = "BULLISH_REVERSAL";
-        confidence = hasVolSurge ? "High Conviction (Institutional Buy Sweep)" : "High";
-        projection = "🟢 Strong Bullish Reversal: Bottom Wick Absorbed";
+        confidence = hasVolSurge ? "High Conviction (Volume Surge)" : "High";
+        projection = "🟢 Strong Bullish Reversal: Bottom Wick Absorbed (+1.8x ATR)";
         netTargetPush = 14.0;
       }
-      // 3. Gravestone Doji (upper_wick >= 0.70 * totalRange, body <= 0.10)
-      else if (bodyRatio <= 0.10 && upperWick >= 0.70 * totalRange) {
-        pattern = "⚠️ Gravestone Doji (Top Supply Rejection)";
+      // 3. Gravestone Doji (body_ratio <= 0.10 and upper_wick >= 0.70 * totalRange)
+      else if (bodyRatio <= 0.10 && upperWickRatio >= 0.70) {
+        pattern = "⚠️ Gravestone Doji (Top Rejection)";
         bias = "BEARISH_REVERSAL";
-        confidence = hasVolSurge ? "High Conviction (Institutional Dump)" : "High";
-        projection = "🔴 Strong Bearish Reversal: Top Supply Rejected";
+        confidence = hasVolSurge ? "High Conviction (Volume Surge)" : "High";
+        projection = "🔴 Strong Bearish Reversal: Top Supply Rejected (-1.8x ATR)";
         netTargetPush = -14.0;
       }
-      // 4. Regular Doji (body <= 0.08, wicks > 0.25)
+      // 4. Regular Doji (body_ratio <= 0.08)
       else if (bodyRatio <= 0.08) {
         pattern = "⚖️ Standard Doji (Indecision)";
         bias = "NEUTRAL_WAIT";
         confidence = "Neutral";
-        projection = "⏳ Market Indecision: Awaiting Breakout Confirmation";
+        projection = "⏳ Market Indecision: Awaiting Breakout Direction";
         netTargetPush = 0.0;
       }
-      // 5. Hammer vs Hanging Man (lowerWick >= 1.8 * bodySize and upperWick <= 0.18 * totalRange)
-      else if (lowerWick >= 1.8 * bodySize && upperWick <= 0.18 * totalRange) {
-        const isPrevRed = prevCandle && prevCandle.close < prevCandle.open;
-        if (isPrevRed) {
+      // 5. Hammer vs Hanging Man (lower_wick >= 1.8 * body_size and upper_wick <= 0.18 * totalRange)
+      else if (lowerWick >= 1.8 * bodySize && upperWickRatio <= 0.18) {
+        if (isPriorDowntrend) {
           pattern = "🔨 Bullish Hammer (Demand Sweep)";
           bias = "BULLISH_REVERSAL";
           confidence = hasVolSurge ? "High Conviction (Volume Confirmed)" : "High";
-          projection = "🟢 Bullish Reversal: Price Action Follow-Through";
-          netTargetPush = 12.0;
+          projection = "🟢 Bullish Reversal: Upside Wick Rejection Follow-Through";
+          netTargetPush = 14.0;
         } else {
-          pattern = "🪓 Hanging Man (Top Exhaustion)";
+          pattern = "🪓 Hanging Man (Bearish Warning)";
           bias = "BEARISH_PULLBACK";
           confidence = "Moderate";
           projection = "⚠️ Buyers Exhausted: Pullback Towards EMA 20 Expected";
-          netTargetPush = -8.0;
+          netTargetPush = -10.0;
         }
       }
-      // 6. Shooting Star (upperWick >= 1.8 * bodySize and lowerWick <= 0.18 * totalRange)
-      else if (upperWick >= 1.8 * bodySize && lowerWick <= 0.18 * totalRange) {
+      // 6. Shooting Star (upper_wick >= 1.8 * body_size and lower_wick <= 0.18 * totalRange)
+      else if (upperWick >= 1.8 * bodySize && lowerWickRatio <= 0.18) {
         pattern = "🌠 Shooting Star (Supply Rejection)";
         bias = "BEARISH_REVERSAL";
         confidence = hasVolSurge ? "High Conviction (Volume Rejection)" : "High";
-        projection = "🔴 Bearish Reversal: Supply Rejected, Dump Expected";
-        netTargetPush = -12.0;
+        projection = "🔴 Bearish Reversal: Price Rejected at Highs, Dump Expected";
+        netTargetPush = -14.0;
       }
 
       return {
@@ -3291,53 +3306,46 @@
         rangeUSD: totalRange.toFixed(2),
         pips: Math.round(totalRange * 10),
         bodyPct: Math.round(bodyRatio * 100),
-        wickUpperPct: Math.round((upperWick / totalRange) * 100),
-        wickLowerPct: Math.round((lowerWick / totalRange) * 100)
+        wickUpperPct: Math.round(upperWickRatio * 100),
+        wickLowerPct: Math.round(lowerWickRatio * 100)
       };
+    }
+
+        // --- TAB SWITCHER FOR EXECUTION SIGNALS BENTO ---
+    function switchSignalTab(tab) {
+      const btnIntra = document.getElementById('tabBtnIntraday');
+      const btnSwing = document.getElementById('tabBtnSwing');
+      const paneIntra = document.getElementById('tabContentIntraday');
+      const paneSwing = document.getElementById('tabContentSwing');
+
+      if (tab === 'intraday') {
+        if (btnIntra) btnIntra.classList.add('active');
+        if (btnSwing) btnSwing.classList.remove('active');
+        if (paneIntra) paneIntra.style.display = 'block';
+        if (paneSwing) paneSwing.style.display = 'none';
+      } else {
+        if (btnIntra) btnIntra.classList.remove('active');
+        if (btnSwing) btnSwing.classList.add('active');
+        if (paneIntra) paneIntra.style.display = 'none';
+        if (paneSwing) paneSwing.style.display = 'block';
+      }
     }
 
     function updateCandlePatternUI(res) {
       if (!res) return;
       currentCandlePattern = res;
 
-      const pName = document.getElementById("cpPatternName");
-      const pBadge = document.getElementById("cpConfidenceBadge");
-      const pProj = document.getElementById("cpProjectionText");
-      const pBias = document.getElementById("cpBiasTag");
-      const pBanner = document.getElementById("cpPatternBanner");
-      const rVal = document.getElementById("cpRangeVal");
-      const bVal = document.getElementById("cpBodyVal");
-      const uwVal = document.getElementById("cpUpperWickVal");
-      const lwVal = document.getElementById("cpLowerWickVal");
-      const vConf = document.getElementById("cpVolConfluence");
-
-      if (pName) pName.innerHTML = `<span>${res.pattern}</span>`;
-      if (pBadge) {
-        pBadge.innerText = res.confidence.toUpperCase();
-        pBadge.style.color = res.confidence.includes('High') ? '#3fb950' : (res.confidence.includes('Neutral') ? '#8b949e' : '#ffd700');
-        pBadge.style.background = res.confidence.includes('High') ? 'rgba(46,160,67,0.18)' : 'rgba(255,215,0,0.12)';
-      }
-      if (pProj) {
-        pProj.innerText = res.projection;
-        pProj.style.color = res.netTargetPush > 0 ? '#3fb950' : (res.netTargetPush < 0 ? '#f85149' : '#8b949e');
-      }
-      if (pBias) {
-        const isBuy = res.bias.includes('BULLISH');
-        const isSell = res.bias.includes('BEARISH');
-        pBias.innerText = isBuy ? 'BUY BIAS' : (isSell ? 'SELL BIAS' : 'NEUTRAL');
-        pBias.style.background = isBuy ? 'rgba(46,160,67,0.2)' : (isSell ? 'rgba(248,81,73,0.2)' : 'rgba(88,166,255,0.15)');
-        pBias.style.color = isBuy ? '#3fb950' : (isSell ? '#f85149' : '#58a6ff');
-      }
-      if (pBanner) {
-        pBanner.className = 'clean-signal-banner ' + (res.netTargetPush > 0 ? 'buy' : (res.netTargetPush < 0 ? 'sell' : 'neutral'));
-      }
-      if (rVal) rVal.innerText = `$${res.rangeUSD} (${res.pips} Pips)`;
-      if (bVal) bVal.innerText = `${res.bodyPct}%`;
-      if (uwVal) uwVal.innerText = `${res.wickUpperPct}%`;
-      if (lwVal) lwVal.innerText = `${res.wickLowerPct}%`;
-      if (vConf) {
-        vConf.innerText = `${res.volRatio}x Avg (${res.hasVolSurge ? 'Surge Confirmed' : 'Normal Flow'})`;
-        vConf.style.color = res.hasVolSurge ? '#ffd700' : '#8b949e';
+      // Silent Background Processing: no bulky UI widgets or numbers clutter
+      // Feeds high probability confirmation directly into the crisp 1-line reason
+      const stNote = document.getElementById("stNoteVal");
+      if (stNote && (!shortTermSignalLock || shortTermSignalLock.status === 'ACTIVE_HOLD')) {
+        if (res.hasVolSurge && res.pattern.includes('Hammer')) {
+          stNote.innerText = 'Confirmed by Institutional Demand Sweep & Volume Expansion.';
+        } else if (res.hasVolSurge && res.pattern.includes('Marubozu')) {
+          stNote.innerText = 'Confirmed by Strong Institutional Momentum & Volume Surge.';
+        } else if (res.hasVolSurge && res.pattern.includes('Shooting Star')) {
+          stNote.innerText = 'Top Supply Rejection at Highs & Volume Exhaustion.';
+        }
       }
     }
 
@@ -5574,38 +5582,41 @@
         }
       }
 
-      // Candlestick Pattern Trajectory Confluence
+            // Candlestick Pattern Trajectory Confluence & Next Candle Prediction
       if (typeof currentCandlePattern !== 'undefined' && currentCandlePattern) {
         if (currentCandlePattern.bias.includes('BULLISH')) {
-          const push = currentCandlePattern.netTargetPush || 12.0;
-          c1_close = c1_open + (atr * 0.70);
-          c1_high = c1_close + (atr * 0.35);
+          const push = currentCandlePattern.netTargetPush || (2.0 * atr);
+          c1_open = currentPrice;
+          c1_close = c1_open + (atr * 1.8);
+          c1_high = Math.max(lastCandle.high + 0.8, c1_close + (atr * 0.35));
           c1_low = c1_open - (atr * 0.15);
           c2_open = c1_close;
-          c2_close = c2_open + (atr * 0.85);
-          c2_high = c2_close + (atr * 0.40);
+          c2_close = c2_open + (atr * 0.75);
+          c2_high = c2_close + (atr * 0.35);
           c2_low = c2_open - (atr * 0.15);
           c3_open = c2_close;
-          c3_close = Math.max(currentPrice + push, c3_open + (atr * 0.95));
+          c3_close = Math.max(currentPrice + push, c3_open + (atr * 0.85));
           c3_high = c3_close + (atr * 0.45);
           c3_low = c3_open - (atr * 0.20);
-          targetLabel = `🎯 Target $${c3_close.toFixed(1)} (${currentCandlePattern.pattern.split(' ')[1] || 'Bullish'})`;
+          targetLabel = `🎯 Target $${c3_close.toFixed(1)} (${currentCandlePattern.pattern.split(' ')[1] || 'Expansion'})`;
           targetColor = '#2ea043';
           isUp = true;
         } else if (currentCandlePattern.bias.includes('BEARISH')) {
-          const drop = Math.abs(currentCandlePattern.netTargetPush || 12.0);
-          c1_close = c1_open - (atr * 0.70);
-          c1_low = c1_close - (atr * 0.35);
+          const drop = Math.abs(currentCandlePattern.netTargetPush || (2.0 * atr));
+          const emaTarget = (typeof ema20Val === 'number' && ema20Val > 0) ? ema20Val : (currentPrice - (2.0 * atr));
+          c1_open = currentPrice;
+          c1_close = c1_open - (atr * 1.8);
+          c1_low = Math.min(emaTarget, c1_close - (atr * 0.35));
           c1_high = c1_open + (atr * 0.15);
           c2_open = c1_close;
-          c2_close = c2_open - (atr * 0.85);
-          c2_low = c2_close - (atr * 0.40);
+          c2_close = Math.min(c2_open - (atr * 0.75), emaTarget);
+          c2_low = c2_close - (atr * 0.35);
           c2_high = c2_open + (atr * 0.15);
           c3_open = c2_close;
-          c3_close = Math.min(currentPrice - drop, c3_open - (atr * 0.95));
+          c3_close = Math.min(currentPrice - drop, emaTarget - (0.5 * atr));
           c3_low = c3_close - (atr * 0.45);
           c3_high = c3_open + (atr * 0.20);
-          targetLabel = `🎯 Target $${c3_close.toFixed(1)} (${currentCandlePattern.pattern.split(' ')[1] || 'Bearish'})`;
+          targetLabel = `🎯 Target $${c3_close.toFixed(1)} (${currentCandlePattern.pattern.split(' ')[1] || 'Retracement'})`;
           targetColor = '#f85149';
           isUp = false;
         }
@@ -5731,7 +5742,7 @@
           const avgVol = recent20.length > 0 
             ? (recent20.reduce((acc, c) => acc + (typeof c.volume === 'number' ? c.volume : 120), 0) / recent20.length)
             : 120;
-          const patternRes = analyzeCandlePattern(lastClosed, prevClosed, avgVol);
+          const patternRes = analyzeCandlePattern(lastClosed, prevClosed, avgVol, data.slice(-7, -2));
           updateCandlePatternUI(patternRes);
         }
       } catch (cpErr) {
@@ -5858,12 +5869,12 @@
     // ==========================================
     // 15M - 1H INSTITUTIONAL SIGNAL LOCK LATCH (REAL-TIME AUTO-TRANSITION)
     // ==========================================
-    let shortTermSignalLock = {
+    var shortTermSignalLock = {
       active: false,
       action: 'BUY / LONG',
       signalType: 'BUY',
       confidence: '91% Prob. (War Safe-Haven)',
-      entryZoneText: ',008.50 - ,010.50',
+      entryZoneText: '$4,008.50 - $4,010.50',
       entryPrice: 4009.50,
       tp1: 4025.50,
       tp2: 4033.50,
@@ -5879,16 +5890,17 @@
       lastCompletedType: null,
       lastCompletedStatus: null
     };
+    window.shortTermSignalLock = shortTermSignalLock;
 
     // ==========================================
     // 4H - 1D SWING SIGNAL LOCK LATCH (REAL-TIME AUTO-TRANSITION)
     // ==========================================
-    let longTermSignalLock = {
+    var longTermSignalLock = {
       active: false,
       action: 'BULLISH SWING ACCUMULATION',
       bias: 'BULLISH',
       confidence: 'Institutional Macro Bull',
-      entryZoneText: ',005.00 - ,015.00',
+      entryZoneText: '$4,005.00 - $4,015.00',
       entryPrice: 4010.0,
       tp: 4085.0,
       inval: 3945.0,
@@ -5901,6 +5913,7 @@
       lastCompletedBias: null,
       lastCompletedStatus: null
     };
+    window.longTermSignalLock = longTermSignalLock;
 
     function updateActiveSetupCard(confluence, currentCandle, sup, res) {
       if (!confluence || !confluence.agent4) return;
@@ -6051,10 +6064,13 @@
           const netMove = (typeof macroMarketState !== 'undefined') ? (macroMarketState.netMoveTarget || 14.0) : 14.0;
           const dxyPct = (typeof macroMarketState !== 'undefined') ? (macroMarketState.dxyChange || 0.12) : 0.12;
 
-          const isSafeHavenBull = (warScore >= 60 || netMove > 0 || confluence.buyVotes >= confluence.sellVotes) && (dxyPct < 0.35);
+          const buyV = (confluence && typeof confluence.buyVotes === 'number') ? confluence.buyVotes : 3;
+          const sellV = (confluence && typeof confluence.sellVotes === 'number') ? confluence.sellVotes : 1;
+
+          const isSafeHavenBull = (warScore >= 60 || netMove > 0 || buyV >= sellV) && (dxyPct < 0.35);
           const isDxyBear = (dxyPct >= 0.35 && warScore < 60);
 
-          newSigType = isSafeHavenBull ? 'BUY' : (isDxyBear ? 'SELL' : (confluence.buyVotes >= confluence.sellVotes ? 'BUY' : 'SELL'));
+          newSigType = isSafeHavenBull ? 'BUY' : (isDxyBear ? 'SELL' : (buyV >= sellV ? 'BUY' : 'SELL'));
           const isBuy = (newSigType === 'BUY');
           newAction = isBuy ? 'BUY / LONG' : 'SELL / SHORT';
           newGainPts = Math.abs(netMove) >= 10.0 ? Math.abs(netMove) : 15.0;
@@ -6072,12 +6088,12 @@
           action: newAction,
           signalType: newSigType,
           confidence: newConfidence,
-          entryZoneText: $ - {(newEntry + 1.0).toFixed(2)},
+          entryZoneText: '$' + (newEntry - 1.0).toFixed(2) + ' - $' + (newEntry + 1.0).toFixed(2),
           entryPrice: newEntry,
           tp1: newTp1,
           tp2: newTp2,
           sl: newSl,
-          rrText: 1 : 2.0 (+ pts),
+          rrText: '1 : 2.0 (+' + newGainPts.toFixed(1) + ' pts)',
           gainPts: newGainPts,
           reason: newReason,
           lockedAt: now,
@@ -6088,6 +6104,7 @@
           lastCompletedType: prevType,
           lastCompletedStatus: prevStatus
         };
+        window.shortTermSignalLock = shortTermSignalLock;
 
         // Redraw Ghost Prediction immediately towards new target
         if (typeof generateNext3CandlesPrediction === 'function' && currentCandle) {
@@ -6158,7 +6175,7 @@
           action: ltActionText,
           bias: ltBias,
           confidence: ltConfText,
-          entryZoneText: $ - {(currentSpot + 4.0).toFixed(2)},
+          entryZoneText: '$' + (currentSpot - 4.0).toFixed(2) + ' - $' + (currentSpot + 4.0).toFixed(2),
           entryPrice: currentSpot,
           tp: ltTargetVal,
           inval: ltInvalVal,
@@ -6171,6 +6188,7 @@
           lastCompletedBias: prevLtBias,
           lastCompletedStatus: prevLtStatus
         };
+        window.longTermSignalLock = longTermSignalLock;
       }
 
       // --- 5. SHORT-TERM SIGNAL UI UPDATE ---
@@ -6190,13 +6208,13 @@
       if (stTimer) {
         if (shortTermSignalLock.status === 'TP_HIT') {
           const remSec = Math.max(1, Math.ceil((6000 - (now - shortTermSignalLock.completedAt)) / 1000));
-          stTimer.innerText = ⚡ NEXT SIGNAL IN s...;
+          stTimer.innerText = '⚡ NEXT SIGNAL IN ' + remSec + 's...';
           stTimer.style.background = 'rgba(234, 179, 8, 0.2)';
           stTimer.style.color = '#eab308';
           stTimer.style.borderColor = 'rgba(234, 179, 8, 0.4)';
         } else if (shortTermSignalLock.status === 'SL_HIT') {
           const remSec = Math.max(1, Math.ceil((6000 - (now - shortTermSignalLock.completedAt)) / 1000));
-          stTimer.innerText = ⚡ NEXT SIGNAL IN s...;
+          stTimer.innerText = '⚡ NEXT SIGNAL IN ' + remSec + 's...';
           stTimer.style.background = 'rgba(248, 81, 73, 0.2)';
           stTimer.style.color = '#f85149';
           stTimer.style.borderColor = 'rgba(248, 81, 73, 0.4)';
@@ -6206,13 +6224,13 @@
             const remSec = Math.max(0, Math.ceil((shortTermSignalLock.minLockDurationMs - curElapsed) / 1000));
             const mins = Math.floor(remSec / 60);
             const secs = remSec % 60;
-            stTimer.innerText = 🔒 LOCKED: m s;
+            stTimer.innerText = '🔒 LOCKED: ' + mins + 'm ' + (secs < 10 ? '0' : '') + secs + 's';
             stTimer.style.background = 'rgba(46,160,67,0.15)';
             stTimer.style.color = '#3fb950';
             stTimer.style.borderColor = 'rgba(46,160,67,0.3)';
           } else {
             const holdMins = Math.min(60, Math.floor(curElapsed / 60000));
-            stTimer.innerText = ⏱️ 1H HOLD: m / 60m;
+            stTimer.innerText = '⏱️ 1H HOLD: ' + holdMins + 'm / 60m';
             stTimer.style.background = 'rgba(88,166,255,0.15)';
             stTimer.style.color = '#58a6ff';
             stTimer.style.borderColor = 'rgba(88,166,255,0.3)';
@@ -6227,7 +6245,7 @@
         } else if (shortTermSignalLock.status === 'SL_HIT') {
           stBanner.className = 'clean-signal-banner neutral';
         } else {
-          stBanner.className = clean-signal-banner ;
+          stBanner.className = 'clean-signal-banner ' + (isBuy ? 'buy' : 'sell');
         }
       }
 
@@ -6243,17 +6261,17 @@
 
       if (stConf) {
         if (shortTermSignalLock.status === 'TP_HIT') {
-          stConf.innerText = + pts Secured • Recalculating Next Setup...;
+          stConf.innerText = '+' + shortTermSignalLock.gainPts.toFixed(1) + ' pts Secured • Recalculating Next Setup...';
         } else if (shortTermSignalLock.status === 'SL_HIT') {
           stConf.innerText = 'Capital Protected • Recalculating Next Setup...';
         } else {
-          stConf.innerText = ${shortTermSignalLock.confidence} • 15M Confirmed;
+          stConf.innerText = shortTermSignalLock.confidence + ' • 15M Confirmed';
         }
       }
 
       if (stEntry) stEntry.innerText = shortTermSignalLock.entryZoneText;
-      if (stTp) stTp.innerText = $;
-      if (stSl) stSl.innerText = $;
+      if (stTp) stTp.innerText = '$' + shortTermSignalLock.tp1.toFixed(2);
+      if (stSl) stSl.innerText = '$' + shortTermSignalLock.sl.toFixed(2);
       if (stRr) stRr.innerText = shortTermSignalLock.rrText;
 
       if (stNote) {
@@ -6282,13 +6300,13 @@
       if (ltTimer) {
         if (longTermSignalLock.status === 'TP_HIT') {
           const remLt = Math.max(1, Math.ceil((8000 - (now - longTermSignalLock.completedAt)) / 1000));
-          ltTimer.innerText = 🎯 SWING TP HIT (s);
+          ltTimer.innerText = '🎯 SWING TP HIT (' + remLt + 's)';
           ltTimer.style.background = 'rgba(46,160,67,0.2)';
           ltTimer.style.color = '#3fb950';
           ltTimer.style.borderColor = 'rgba(46,160,67,0.4)';
         } else if (longTermSignalLock.status === 'SL_HIT') {
           const remLt = Math.max(1, Math.ceil((8000 - (now - longTermSignalLock.completedAt)) / 1000));
-          ltTimer.innerText = 🛑 SWING SL HIT (s);
+          ltTimer.innerText = '🛑 SWING SL HIT (' + remLt + 's)';
           ltTimer.style.background = 'rgba(248,81,73,0.2)';
           ltTimer.style.color = '#f85149';
           ltTimer.style.borderColor = 'rgba(248,81,73,0.4)';
@@ -6306,13 +6324,13 @@
         } else if (longTermSignalLock.status === 'SL_HIT') {
           ltBanner.className = 'clean-signal-banner neutral';
         } else {
-          ltBanner.className = clean-signal-banner ;
+          ltBanner.className = 'clean-signal-banner ' + (isLtBuy ? 'buy' : 'sell');
         }
       }
 
       if (ltAction) {
         if (longTermSignalLock.status === 'TP_HIT') {
-          ltAction.innerText = 🎯 SWING TARGET ACHIEVED (+ pts);
+          ltAction.innerText = '🎯 SWING TARGET ACHIEVED (+' + longTermSignalLock.gainPts.toFixed(1) + ' pts)';
         } else if (longTermSignalLock.status === 'SL_HIT') {
           ltAction.innerText = '🛑 SWING INVAL CUT';
         } else {
@@ -6329,16 +6347,16 @@
       }
 
       if (ltBias) {
-        ltBias.innerText = ${longTermSignalLock.bias} ();
-        ltBias.className = al-txt ;
+        ltBias.innerText = longTermSignalLock.bias + ' (' + (isLtBuy ? 'Uptrend' : 'Downtrend') + ')';
+        ltBias.className = 'val-txt ' + (isLtBuy ? 'green' : 'red');
       }
 
       if (ltTarget) {
-        ltTarget.innerText = $ (+ pts);
+        ltTarget.innerText = '$' + longTermSignalLock.tp.toFixed(2) + ' (+' + longTermSignalLock.gainPts.toFixed(1) + ' pts)';
       }
 
       if (ltInval) {
-        ltInval.innerText = $;
+        ltInval.innerText = '$' + longTermSignalLock.inval.toFixed(2);
       }
 
       if (ltHorizon) {
@@ -6353,6 +6371,7 @@
       const legacySignalBadge = document.getElementById('signalBadge');
       if (legacySignalBadge) legacySignalBadge.innerText = isBuy ? 'BUY' : 'SELL';
     }
+    window.updateActiveSetupCard = updateActiveSetupCard;
 
     // ==========================================
     // BACKEND API FETCHERS
