@@ -6,10 +6,6 @@
       "destination": "/api/index.py"
     },
     {
-      "source": "/",
-      "destination": "/index.html"
-    },
-    {
       "source": "/deep-analysis-gold",
       "destination": "/deep_analysis_gold.html"
     },
