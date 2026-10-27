@@ -1424,6 +1424,7 @@
       border-radius: 0 6px 6px 0;
     }
     .clean-signal-note.gold { border-left-color: #d29922; }
+    #demoLotInfoBar { display: none !important; }
     .clean-signal-history {
       display: flex;
       flex-direction: column;
@@ -4288,7 +4289,7 @@
                 <span onclick="setLotSize(0.05)">0.05</span>
                 <span onclick="setLotSize(0.10)">0.10</span>
               </div>
-              <div id="demoLotInfoBar" style="font-size: 10px; color: #8b949e; width: 100%; display: flex; justify-content: space-between; margin-top: 4px; padding: 2px 2px;">
+              <div id="demoLotInfoBar" style="display: none !important;">
                 <span>Contract: <strong id="demoLotUnits" style="color: #ffd700;">1 oz</strong> (0.01L)</span>
                 <span>Point Val: <strong id="demoPointVal" style="color: #3fb950;">$1.00 / $1 pt</strong></span>
                 <span>Margin: <strong id="demoReqMargin" style="color: #58a6ff;">~$40</strong></span>
@@ -4411,6 +4412,58 @@
           </div>
         </div>
 
+        <!-- CANDLE PATTERN RADAR -->
+        <div class="terminal-card clean-signal-card" id="candlePatternRadarCard" style="border: 1px solid rgba(255, 215, 0, 0.3); background: linear-gradient(180deg, #161b22 0%, #0d1117 100%);">
+          <div class="terminal-card-title">
+            <span style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 13px;">🕯️</span>
+              <strong style="color: #ffd700; letter-spacing: 0.5px; font-size: 11.5px;">CANDLE PATTERN RADAR</strong>
+            </span>
+            <span id="cpConfidenceBadge" class="tag-badge" style="background: rgba(46,160,67,0.18); color: #3fb950; border: 1px solid rgba(46,160,67,0.3); font-size: 9.5px; font-weight: 700;">HIGH CONVICTION</span>
+          </div>
+
+          <!-- Identified Pattern Banner -->
+          <div id="cpPatternBanner" class="clean-signal-banner buy" style="padding: 9px 11px; margin-bottom: 7px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <div>
+                <div id="cpPatternName" style="font-size: 12.5px; font-weight: 800; color: #f0f6fc; display: flex; align-items: center; gap: 6px;">
+                  <span>🟢 Bullish Marubozu</span>
+                </div>
+                <div id="cpProjectionText" style="font-size: 10px; color: #3fb950; font-weight: 600; margin-top: 2px;">
+                  🚀 Momentum Expansion (+1.8x ATR Target)
+                </div>
+              </div>
+              <span id="cpBiasTag" class="tag-badge" style="background: rgba(46,160,67,0.2); color: #3fb950; font-size: 9.5px; font-weight: 800; padding: 2px 7px;">BUY BIAS</span>
+            </div>
+          </div>
+
+          <!-- Exact Candle Dimensions Grid -->
+          <div class="clean-metrics-grid" style="grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 7px;">
+            <div class="clean-metric-box" style="padding: 5px 3px; text-align: center;">
+              <label style="font-size: 8px;">TOTAL RANGE</label>
+              <div id="cpRangeVal" class="val-txt gold" style="font-size: 10.5px;">$4.20 (42 Pips)</div>
+            </div>
+            <div class="clean-metric-box" style="padding: 5px 3px; text-align: center;">
+              <label style="font-size: 8px;">BODY RATIO</label>
+              <div id="cpBodyVal" class="val-txt" style="font-size: 10.5px; color: #58a6ff;">88%</div>
+            </div>
+            <div class="clean-metric-box" style="padding: 5px 3px; text-align: center;">
+              <label style="font-size: 8px;">UPPER WICK</label>
+              <div id="cpUpperWickVal" class="val-txt" style="font-size: 10.5px; color: #8b949e;">6%</div>
+            </div>
+            <div class="clean-metric-box" style="padding: 5px 3px; text-align: center;">
+              <label style="font-size: 8px;">LOWER WICK</label>
+              <div id="cpLowerWickVal" class="val-txt" style="font-size: 10.5px; color: #8b949e;">6%</div>
+            </div>
+          </div>
+
+          <!-- Volume Confluence Meter -->
+          <div style="background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 6px 8px; font-size: 9.5px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #8b949e;">Volume vs 20-Avg:</span>
+            <span id="cpVolConfluence" style="font-weight: 700; color: #ffd700;">1.42x Avg (Surge Confirmed)</span>
+          </div>
+        </div>
+
         <!-- 1. SHORT-TERM SIGNAL -->
         <div class="terminal-card clean-signal-card">
           <div class="terminal-card-title">
@@ -4448,7 +4501,7 @@
           </div>
 
           <div id="stNoteVal" class="clean-signal-note">
-            Momentum breakout confirmed above 20 EMA. Liquidity sweep targeting local supply pool.
+            Safe-haven capital flow breaking through local supply.
           </div>
         </div>
 
@@ -4486,7 +4539,7 @@
           </div>
 
           <div id="ltNoteVal" class="clean-signal-note gold">
-            Global central bank reserve buying & real-yield divergence confirm institutional multi-week continuation.
+            Central bank accumulation & macro uptrend continuation.
           </div>
         </div>
 
@@ -4850,6 +4903,156 @@
       // Confluence Threshold Trigger Notification
       if (confluenceScore >= 7.5) {
         console.log(`%c[HIGH CONVICTION TRIGGER] Confluence Score: ${confluenceScore.toFixed(1)}/10 -> ${setupTag}`, 'color: #ffd700; font-weight: bold;');
+      }
+    }
+
+    // ========================================================
+    // QUANTITATIVE CANDLESTICK PATTERN RECOGNITION ENGINE
+    // ========================================================
+    let currentCandlePattern = null;
+
+    function analyzeCandlePattern(lastClosed, prevCandle, avgVolume) {
+      if (!lastClosed) return null;
+
+      const o = Number(lastClosed.open);
+      const h = Number(lastClosed.high);
+      const l = Number(lastClosed.low);
+      const c = Number(lastClosed.close);
+
+      const totalRange = Math.max(0.01, h - l);
+      const bodySize = Math.abs(c - o);
+      const upperWick = Math.max(0, h - Math.max(o, c));
+      const lowerWick = Math.max(0, Math.min(o, c) - l);
+      const bodyRatio = bodySize / totalRange;
+
+      const isGreen = c >= o;
+      let pattern = isGreen ? "🟢 Bullish Momentum Bar" : "🔴 Bearish Retracement Bar";
+      let bias = isGreen ? "BULLISH_LEAN" : "BEARISH_LEAN";
+      let confidence = "Moderate";
+      let projection = isGreen ? "🟢 Mild Upside Continuation Expected" : "🔴 Downside Retracement Expected";
+      let netTargetPush = isGreen ? 4.0 : -4.0;
+
+      // Volume Confluence Comparison
+      const vol = (typeof lastClosed.volume === 'number' && lastClosed.volume > 0) ? lastClosed.volume : 120;
+      const volRatio = (avgVolume && avgVolume > 0) ? (vol / avgVolume) : 1.15;
+      const hasVolSurge = volRatio >= 1.30;
+
+      // 1. Marubozu Check (body_ratio >= 0.85)
+      if (bodyRatio >= 0.85) {
+        pattern = isGreen ? "🟢 Bullish Marubozu" : "🔴 Bearish Marubozu";
+        bias = isGreen ? "BULLISH_CONTINUATION" : "BEARISH_CONTINUATION";
+        confidence = hasVolSurge ? "High Conviction (Volume Surge)" : "High";
+        projection = isGreen ? "🚀 Bullish Momentum Expansion (+1.8x ATR Target)" : "🔻 Bearish Momentum Expansion (-1.8x ATR Target)";
+        netTargetPush = isGreen ? 15.0 : -15.0;
+      }
+      // 2. Dragonfly Doji (lower_wick >= 0.70 * totalRange, body <= 0.10)
+      else if (bodyRatio <= 0.10 && lowerWick >= 0.70 * totalRange) {
+        pattern = "⚡ Dragonfly Doji (Bottom Absorption)";
+        bias = "BULLISH_REVERSAL";
+        confidence = hasVolSurge ? "High Conviction (Institutional Buy Sweep)" : "High";
+        projection = "🟢 Strong Bullish Reversal: Bottom Wick Absorbed";
+        netTargetPush = 14.0;
+      }
+      // 3. Gravestone Doji (upper_wick >= 0.70 * totalRange, body <= 0.10)
+      else if (bodyRatio <= 0.10 && upperWick >= 0.70 * totalRange) {
+        pattern = "⚠️ Gravestone Doji (Top Supply Rejection)";
+        bias = "BEARISH_REVERSAL";
+        confidence = hasVolSurge ? "High Conviction (Institutional Dump)" : "High";
+        projection = "🔴 Strong Bearish Reversal: Top Supply Rejected";
+        netTargetPush = -14.0;
+      }
+      // 4. Regular Doji (body <= 0.08, wicks > 0.25)
+      else if (bodyRatio <= 0.08) {
+        pattern = "⚖️ Standard Doji (Indecision)";
+        bias = "NEUTRAL_WAIT";
+        confidence = "Neutral";
+        projection = "⏳ Market Indecision: Awaiting Breakout Confirmation";
+        netTargetPush = 0.0;
+      }
+      // 5. Hammer vs Hanging Man (lowerWick >= 1.8 * bodySize and upperWick <= 0.18 * totalRange)
+      else if (lowerWick >= 1.8 * bodySize && upperWick <= 0.18 * totalRange) {
+        const isPrevRed = prevCandle && prevCandle.close < prevCandle.open;
+        if (isPrevRed) {
+          pattern = "🔨 Bullish Hammer (Demand Sweep)";
+          bias = "BULLISH_REVERSAL";
+          confidence = hasVolSurge ? "High Conviction (Volume Confirmed)" : "High";
+          projection = "🟢 Bullish Reversal: Price Action Follow-Through";
+          netTargetPush = 12.0;
+        } else {
+          pattern = "🪓 Hanging Man (Top Exhaustion)";
+          bias = "BEARISH_PULLBACK";
+          confidence = "Moderate";
+          projection = "⚠️ Buyers Exhausted: Pullback Towards EMA 20 Expected";
+          netTargetPush = -8.0;
+        }
+      }
+      // 6. Shooting Star (upperWick >= 1.8 * bodySize and lowerWick <= 0.18 * totalRange)
+      else if (upperWick >= 1.8 * bodySize && lowerWick <= 0.18 * totalRange) {
+        pattern = "🌠 Shooting Star (Supply Rejection)";
+        bias = "BEARISH_REVERSAL";
+        confidence = hasVolSurge ? "High Conviction (Volume Rejection)" : "High";
+        projection = "🔴 Bearish Reversal: Supply Rejected, Dump Expected";
+        netTargetPush = -12.0;
+      }
+
+      return {
+        pattern,
+        bias,
+        confidence,
+        projection,
+        netTargetPush,
+        volRatio: Number(volRatio.toFixed(2)),
+        hasVolSurge,
+        rangeUSD: totalRange.toFixed(2),
+        pips: Math.round(totalRange * 10),
+        bodyPct: Math.round(bodyRatio * 100),
+        wickUpperPct: Math.round((upperWick / totalRange) * 100),
+        wickLowerPct: Math.round((lowerWick / totalRange) * 100)
+      };
+    }
+
+    function updateCandlePatternUI(res) {
+      if (!res) return;
+      currentCandlePattern = res;
+
+      const pName = document.getElementById("cpPatternName");
+      const pBadge = document.getElementById("cpConfidenceBadge");
+      const pProj = document.getElementById("cpProjectionText");
+      const pBias = document.getElementById("cpBiasTag");
+      const pBanner = document.getElementById("cpPatternBanner");
+      const rVal = document.getElementById("cpRangeVal");
+      const bVal = document.getElementById("cpBodyVal");
+      const uwVal = document.getElementById("cpUpperWickVal");
+      const lwVal = document.getElementById("cpLowerWickVal");
+      const vConf = document.getElementById("cpVolConfluence");
+
+      if (pName) pName.innerHTML = `<span>${res.pattern}</span>`;
+      if (pBadge) {
+        pBadge.innerText = res.confidence.toUpperCase();
+        pBadge.style.color = res.confidence.includes('High') ? '#3fb950' : (res.confidence.includes('Neutral') ? '#8b949e' : '#ffd700');
+        pBadge.style.background = res.confidence.includes('High') ? 'rgba(46,160,67,0.18)' : 'rgba(255,215,0,0.12)';
+      }
+      if (pProj) {
+        pProj.innerText = res.projection;
+        pProj.style.color = res.netTargetPush > 0 ? '#3fb950' : (res.netTargetPush < 0 ? '#f85149' : '#8b949e');
+      }
+      if (pBias) {
+        const isBuy = res.bias.includes('BULLISH');
+        const isSell = res.bias.includes('BEARISH');
+        pBias.innerText = isBuy ? 'BUY BIAS' : (isSell ? 'SELL BIAS' : 'NEUTRAL');
+        pBias.style.background = isBuy ? 'rgba(46,160,67,0.2)' : (isSell ? 'rgba(248,81,73,0.2)' : 'rgba(88,166,255,0.15)');
+        pBias.style.color = isBuy ? '#3fb950' : (isSell ? '#f85149' : '#58a6ff');
+      }
+      if (pBanner) {
+        pBanner.className = 'clean-signal-banner ' + (res.netTargetPush > 0 ? 'buy' : (res.netTargetPush < 0 ? 'sell' : 'neutral'));
+      }
+      if (rVal) rVal.innerText = `$${res.rangeUSD} (${res.pips} Pips)`;
+      if (bVal) bVal.innerText = `${res.bodyPct}%`;
+      if (uwVal) uwVal.innerText = `${res.wickUpperPct}%`;
+      if (lwVal) lwVal.innerText = `${res.wickLowerPct}%`;
+      if (vConf) {
+        vConf.innerText = `${res.volRatio}x Avg (${res.hasVolSurge ? 'Surge Confirmed' : 'Normal Flow'})`;
+        vConf.style.color = res.hasVolSurge ? '#ffd700' : '#8b949e';
       }
     }
 
@@ -6726,6 +6929,17 @@
         agent3Desc = 'Neutral Geopolitical & Rate wire';
       }
 
+      // AGENT 5: QUANTITATIVE CANDLESTICK PATTERN CONFLUENCE
+      if (typeof currentCandlePattern !== 'undefined' && currentCandlePattern) {
+        if (currentCandlePattern.bias.includes('BULLISH')) {
+          buyVotes += (currentCandlePattern.hasVolSurge ? 1.5 : 1.0);
+          agent1Desc += ` · Price Action: ${currentCandlePattern.pattern}`;
+        } else if (currentCandlePattern.bias.includes('BEARISH')) {
+          sellVotes += (currentCandlePattern.hasVolSurge ? 1.5 : 1.0);
+          agent1Desc += ` · Rejection: ${currentCandlePattern.pattern}`;
+        }
+      }
+
       // AGENT 4: INVALIDATION & DYNAMIC ATR RISK ENGINE
       let entry, sl, tp1, tp2, rr;
       let shortTermProfit = { lot01: 0, lot02: 0, lot05: 0 };
@@ -6750,7 +6964,7 @@
       if (macroWarBuy) {
         finalAction = "HIGH CONVICTION BUY";
         confidence = `${Math.min(94, Math.round(75 + (macroMarketState.confluenceScore * 2.0)))}% Prob. (War Safe-Haven)`;
-        reason = `Twelve Data + Sugra AI Confluence: War Index (${macroMarketState.sugraWarScore}/100) + DXY Weakness (${macroMarketState.dxyChange >= 0 ? '+' : ''}${macroMarketState.dxyChange.toFixed(2)}%). Safe-haven capital flow breaking through local supply.`;
+        reason = 'Safe-haven capital flow breaking through local supply.';
         entry = currentPrice;
         sl = Number((currentPrice - (atr * 1.5)).toFixed(2));
         const pushPts = macroMarketState.netMoveTarget || 16.0;
@@ -6765,7 +6979,7 @@
       } else if (macroDxySell) {
         finalAction = "HIGH CONVICTION SELL";
         confidence = "86% Prob. (DXY Surge / Hawkish)";
-        reason = `Twelve Data Confluence: DXY Surge (+${macroMarketState.dxyChange.toFixed(2)}%) putting downward pressure on Gold.`;
+        reason = 'DXY surge putting downward pressure on Gold.';
         entry = currentPrice;
         sl = Number((currentPrice + (atr * 1.5)).toFixed(2));
         const dropPts = Math.abs(macroMarketState.netMoveTarget || 18.0);
@@ -7105,6 +7319,43 @@
         }
       }
 
+      // Candlestick Pattern Trajectory Confluence
+      if (typeof currentCandlePattern !== 'undefined' && currentCandlePattern) {
+        if (currentCandlePattern.bias.includes('BULLISH')) {
+          const push = currentCandlePattern.netTargetPush || 12.0;
+          c1_close = c1_open + (atr * 0.70);
+          c1_high = c1_close + (atr * 0.35);
+          c1_low = c1_open - (atr * 0.15);
+          c2_open = c1_close;
+          c2_close = c2_open + (atr * 0.85);
+          c2_high = c2_close + (atr * 0.40);
+          c2_low = c2_open - (atr * 0.15);
+          c3_open = c2_close;
+          c3_close = Math.max(currentPrice + push, c3_open + (atr * 0.95));
+          c3_high = c3_close + (atr * 0.45);
+          c3_low = c3_open - (atr * 0.20);
+          targetLabel = `🎯 Target $${c3_close.toFixed(1)} (${currentCandlePattern.pattern.split(' ')[1] || 'Bullish'})`;
+          targetColor = '#2ea043';
+          isUp = true;
+        } else if (currentCandlePattern.bias.includes('BEARISH')) {
+          const drop = Math.abs(currentCandlePattern.netTargetPush || 12.0);
+          c1_close = c1_open - (atr * 0.70);
+          c1_low = c1_close - (atr * 0.35);
+          c1_high = c1_open + (atr * 0.15);
+          c2_open = c1_close;
+          c2_close = c2_open - (atr * 0.85);
+          c2_low = c2_close - (atr * 0.40);
+          c2_high = c2_open + (atr * 0.15);
+          c3_open = c2_close;
+          c3_close = Math.min(currentPrice - drop, c3_open - (atr * 0.95));
+          c3_low = c3_close - (atr * 0.45);
+          c3_high = c3_open + (atr * 0.20);
+          targetLabel = `🎯 Target $${c3_close.toFixed(1)} (${currentCandlePattern.pattern.split(' ')[1] || 'Bearish'})`;
+          targetColor = '#f85149';
+          isUp = false;
+        }
+      }
+
       const ghostCandles = [
         { time: startTime + stepSec, open: Number(c1_open.toFixed(2)), high: Number(c1_high.toFixed(2)), low: Number(c1_low.toFixed(2)), close: Number(c1_close.toFixed(2)) },
         { time: startTime + (2 * stepSec), open: Number(c2_open.toFixed(2)), high: Number(c2_high.toFixed(2)), low: Number(c2_low.toFixed(2)), close: Number(c2_close.toFixed(2)) },
@@ -7214,6 +7465,22 @@
         try {
           chart.timeScale().setVisibleLogicalRange(prevLogicalRange);
         } catch(e) {}
+      }
+
+      // Quantitative Candlestick Pattern Recognition on Last Closed Candle
+      try {
+        if (data && data.length >= 3) {
+          const lastClosed = data[data.length - 2];
+          const prevClosed = data[data.length - 3];
+          const recent20 = data.slice(-22, -2);
+          const avgVol = recent20.length > 0 
+            ? (recent20.reduce((acc, c) => acc + (typeof c.volume === 'number' ? c.volume : 120), 0) / recent20.length)
+            : 120;
+          const patternRes = analyzeCandlePattern(lastClosed, prevClosed, avgVol);
+          updateCandlePatternUI(patternRes);
+        }
+      } catch (cpErr) {
+        console.warn("Candle pattern analysis error:", cpErr);
       }
 
       // Execute Ensemble Arbiter
@@ -7348,7 +7615,7 @@
       sl: 4001.50,
       rrText: '1 : 2.0 (+16.0 pts)',
       gainPts: 16.0,
-      reason: 'Twelve Data + Sugra AI Confluence: War Index (68/100) + DXY Weakness (-0.12%). Institutional Safe-Haven Breakout targeting $4025.50.',
+      reason: 'Safe-haven capital flow breaking through local supply.',
       lockedAt: Date.now(),
       minLockDurationMs: 15 * 60 * 1000,   // 15 Minutes minimum lock (anti-repainting)
       maxLockDurationMs: 60 * 60 * 1000,   // 1 Hour scalp maximum hold
@@ -7396,8 +7663,8 @@
           rrText: `1 : 2.0 (+${targetPts.toFixed(1)} pts)`,
           gainPts: targetPts,
           reason: isBuy 
-            ? `Twelve Data + Sugra AI Confluence: War Index (${warScore}/100) + DXY (${dxyPct >= 0 ? '+' : ''}${dxyPct.toFixed(2)}%). Safe-haven capital flow breaking through local supply pool.`
-            : `Twelve Data Confluence: DXY Surge (+${dxyPct.toFixed(2)}%) putting downward pressure on Gold.`,
+            ? 'Safe-haven capital flow breaking through local supply.'
+            : 'DXY surge putting downward pressure on Gold.',
           lockedAt: now,
           minLockDurationMs: 15 * 60 * 1000,
           maxLockDurationMs: 60 * 60 * 1000,
@@ -7493,9 +7760,9 @@
 
       if (stNote) {
         if (shortTermSignalLock.status === 'TP_HIT') {
-          stNote.innerText = `Target $${shortTermSignalLock.tp1.toFixed(2)} reached successfully within the 15M cycle! Move trailing stop to breakeven ($${shortTermSignalLock.entryPrice.toFixed(2)}) or secure 80% profit.`;
+          stNote.innerText = 'Target reached · Lock profit or trail stop to breakeven.';
         } else if (shortTermSignalLock.status === 'SL_HIT') {
-          stNote.innerText = `Stop level triggered at $${shortTermSignalLock.sl.toFixed(2)}. Invalidation strictly respected to avoid drawdown. Waiting for fresh 15M bar close.`;
+          stNote.innerText = 'Stop level triggered · Invalidation strictly respected.';
         } else {
           stNote.innerText = shortTermSignalLock.reason;
         }
@@ -7538,8 +7805,8 @@
       }
       if (ltNote) {
         ltNote.innerText = isLtBullish 
-          ? 'Global central bank reserve buying & real-yield divergence confirm institutional multi-week continuation.'
-          : 'Yield spike and liquidity contraction forcing macro defensive hedging.';
+          ? 'Central bank accumulation & macro uptrend continuation.'
+          : 'Macro defensive hedging & liquidity contraction.';
       }
 
       // Safe fallback for legacy ID

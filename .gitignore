@@ -5,3 +5,5 @@ node_modules/
 .disk_cache.json
 ~$*
 *.tmp
+edge_*
+*.csv
