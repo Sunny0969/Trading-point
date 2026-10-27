@@ -355,33 +355,27 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             parsed = urlparse(self.path)
-            path = parsed.path
             query = parse_qs(parsed.query)
+            endpoint = query.get("endpoint", [""])[0]
+            target = f"{parsed.path}/{endpoint}".lower()
 
-            if path.endswith("/api/gold/live") or path == "/api/gold/live":
+            if "gold/live" in target:
                 return self._send_json(get_cached_live_ticker())
-
-            elif path.endswith("/api/gold/candles") or path == "/api/gold/candles":
+            elif "gold/candles" in target:
                 tf = query.get("timeframe", ["15m"])[0]
                 limit = int(query.get("limit", [500])[0])
                 return self._send_json(get_cached_candles(tf, limit))
-
-            elif path.endswith("/api/calendar/live") or path == "/api/calendar/live":
+            elif "calendar" in target:
                 return self._send_json(get_cached_economic_calendar())
-
-            elif path.endswith("/api/macro/geopolitical") or path == "/api/macro/geopolitical":
+            elif "macro/geopolitical" in target:
                 return self._send_json(get_cached_geopolitical_news())
-
-            elif path.endswith("/api/macro/drivers") or path == "/api/macro/drivers":
+            elif "macro/drivers" in target:
                 return self._send_json(get_cached_macro_drivers())
-
-            elif path.endswith("/api/twelvedata/quotes") or path == "/api/twelvedata/quotes":
+            elif "twelvedata/quotes" in target:
                 return self._send_json(get_cached_twelvedata_quotes())
-
-            elif path.endswith("/api/sugra/analyze") or path == "/api/sugra/analyze":
+            elif "sugra/analyze" in target:
                 topic = query.get("topic", [None])[0]
                 return self._send_json(get_sugra_sentiment(topic))
-
             else:
                 return self._send_json({
                     "status": "online",
@@ -419,6 +413,10 @@ def app(environ, start_response):
     method = environ.get("REQUEST_METHOD", "GET")
     query_string = environ.get("QUERY_STRING", "")
     query = parse_qs(query_string)
+    endpoint = query.get("endpoint", [""])[0]
+
+    raw_matched = environ.get("HTTP_X_MATCHED_PATH") or environ.get("RAW_URI") or environ.get("REQUEST_URI") or ""
+    target = f"{path}/{endpoint}/{raw_matched}".lower()
 
     headers = [
         ("Content-Type", "application/json"),
@@ -432,21 +430,21 @@ def app(environ, start_response):
         return [b""]
 
     try:
-        if path.endswith("/api/gold/live") or path == "/api/gold/live":
+        if "gold/live" in target:
             data = get_cached_live_ticker()
-        elif path.endswith("/api/gold/candles") or path == "/api/gold/candles":
+        elif "gold/candles" in target:
             tf = query.get("timeframe", ["15m"])[0]
             limit = int(query.get("limit", [500])[0])
             data = get_cached_candles(tf, limit)
-        elif path.endswith("/api/calendar/live") or path == "/api/calendar/live":
+        elif "calendar" in target:
             data = get_cached_economic_calendar()
-        elif path.endswith("/api/macro/geopolitical") or path == "/api/macro/geopolitical":
+        elif "macro/geopolitical" in target:
             data = get_cached_geopolitical_news()
-        elif path.endswith("/api/macro/drivers") or path == "/api/macro/drivers":
+        elif "macro/drivers" in target:
             data = get_cached_macro_drivers()
-        elif path.endswith("/api/twelvedata/quotes") or path == "/api/twelvedata/quotes":
+        elif "twelvedata/quotes" in target:
             data = get_cached_twelvedata_quotes()
-        elif path.endswith("/api/sugra/analyze") or path == "/api/sugra/analyze":
+        elif "sugra/analyze" in target:
             if method == "POST":
                 try:
                     content_length = int(environ.get("CONTENT_LENGTH", 0))
