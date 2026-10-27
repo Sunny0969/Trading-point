@@ -1,0 +1,74 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap");
+
+:root {
+  --gold: #FFD700;
+  --green: #22C55E;
+  --red: #EF4444;
+  --bg: #080907;
+  --surface: rgba(22, 23, 19, .78);
+  --surface-solid: #12130f;
+  --line: rgba(255, 255, 255, .09);
+  --text: #f6f6ef;
+  --muted: rgba(246, 246, 239, .52);
+  --radius: 20px;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", sans-serif;
+  background-image: radial-gradient(circle at 32% -5%, rgba(255, 215, 0, .09), transparent 28%), radial-gradient(circle at 100% 40%, rgba(255, 215, 0, .035), transparent 30%);
+}
+
+button, input { font: inherit; }
+button { color: inherit; border: 0; cursor: pointer; transition: transform .2s ease, background .2s ease, border-color .2s ease; }
+button:hover { transform: translateY(-1px); }
+h1, h2, p { margin: 0; }
+
+.app-shell { min-height: 100vh; padding-bottom: 40px; }
+.navbar { height: 74px; display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 24px; padding: 0 3.5vw; border-bottom: 1px solid var(--line); background: rgba(8, 9, 7, .82); backdrop-filter: blur(20px); position: sticky; top: 0; z-index: 20; }
+.brand { display: flex; align-items: center; gap: 10px; font: 700 18px "Space Grotesk"; letter-spacing: -.4px; white-space: nowrap; }
+.brand-mark { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 11px; color: var(--bg); background: linear-gradient(135deg, var(--gold), #b99900); box-shadow: 0 0 22px rgba(255,215,0,.18); font-size: 14px; }
+.muted { color: var(--muted); }
+
+.view-switcher { display: flex; gap: 6px; }
+.view-btn { padding: 8px 14px; border-radius: 10px; font: 600 12px "Space Grotesk"; background: rgba(255,255,255,.04); color: var(--muted); border: 1px solid var(--line); }
+.view-btn.active { color: var(--gold); border-color: rgba(255,215,0,.35); background: rgba(255,215,0,.1); }
+
+.timeframes { display: flex; justify-content: center; gap: 3px; }
+.timeframes button { background: transparent; color: var(--muted); padding: 7px 10px; border-radius: 9px; font-size: 12px; font-weight: 600; }
+.timeframes button.active { color: var(--gold); background: rgba(255,215,0,.1); }
+
+.nav-actions { display: flex; align-items: center; gap: 10px; }
+.insights { color: var(--bg); background: linear-gradient(135deg, var(--gold), #d4af37); border-radius: 11px; padding: 9px 16px; font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+
+main { width: min(1440px, 93vw); margin: 0 auto; }
+.price-hero { display: grid; grid-template-columns: auto minmax(180px, 1fr) auto; gap: 40px; align-items: end; padding: 38px 4px 28px; }
+.eyebrow, .kicker { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 1.4px; }
+.live-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-right: 7px; box-shadow: 0 0 8px var(--green); }
+.market-open { color: var(--green); margin-left: 8px; font-weight: 700; font-size: 12px; }
+.price-line { display: flex; align-items: baseline; gap: 11px; margin-top: 7px; }
+.price-line h1 { font: 700 clamp(38px, 4vw, 62px)/1 "Space Grotesk"; letter-spacing: -3px; }
+.currency { color: var(--muted); font-size: 13px; font-weight: 600; }
+.change { color: var(--green); font: 600 14px "Space Grotesk"; }
+.price-sub { margin-top: 10px; color: var(--muted); font-size: 12px; }
+
+.sparkline { width: 100%; max-width: 300px; justify-self: center; overflow: visible; }
+.sparkline path { fill: none; stroke: var(--gold); stroke-width: 2; filter: drop-shadow(0 0 5px rgba(255,215,0,.4)); stroke-linecap: round; }
+.market-metrics { display: flex; gap: 34px; }
+.market-metrics div { display: grid; gap: 8px; }
+.market-metrics span { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+.market-metrics b { font: 600 14px "Space Grotesk"; }
+
+.card, .mini-card { border: 1px solid var(--line); background: var(--surface); backdrop-filter: blur(18px); border-radius: var(--radius); box-shadow: 0 18px 60px rgba(0,0,0,.18); padding: 20px; }
+.section-title { margin-bottom: 18px; }
+.section-title h2 { font: 600 16px "Space Grotesk"; }
+.driver-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 9px; margin-top: 10px; }
+.driver { padding: 14px; border-radius: 13px; background: rgba(255,255,255,.028); border: 1px solid var(--line); display: grid; gap: 5px; }
+.driver span, .driver small { color: var(--muted); font-size: 12px; }
+.driver b { font: 600 14px "Space Grotesk"; }
+.driver small.up { color: var(--green); }
+.driver small.down { color: var(--red); }
+.driver em { color: var(--muted); font-size: 12px; font-style: normal; padding-top: 5px; border-top: 1px solid var(--line); white-space: nowrap; }

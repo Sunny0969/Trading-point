@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trader Profile & Demo Wallet | TradingPoint</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #08090a;
+      --card-bg: #0d1117;
+      --border: #21262d;
+      --border-light: #30363d;
+      --gold: #ffd700;
+      --gold-dark: #d4af37;
+      --green: #3fb950;
+      --red: #f85149;
+      --blue: #58a6ff;
+      --purple: #bc8cff;
+      --text: #f0f6fc;
+      --muted: #8b949e;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    .navbar {
+      height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4vw;
+      border-bottom: 1px solid rgba(255, 215, 0, 0.14);
+      background: rgba(8, 9, 10, 0.85);
+      backdrop-filter: blur(16px);
+      position: sticky;
+      top: 0;
+      z-index: 20000;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .brand-mark {
+      background: linear-gradient(135deg, var(--gold), #ff9900);
+      color: #0d1117;
+      font-size: 13px;
+      font-weight: 900;
+      padding: 4px 7px;
+      border-radius: 6px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-btn {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-btn:hover {
+      color: var(--text);
+      background: #161b22;
+      border-color: #30363d;
+    }
+    .nav-btn.active {
+      color: var(--gold);
+      background: rgba(255, 215, 0, 0.1);
+      border-color: rgba(255, 215, 0, 0.3);
+    }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .ticker-capsule {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      font-size: 12px;
+    }
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+    .ticker-price {
+      font-weight: 700;
+      color: var(--blue);
+      font-family: 'Space Grotesk', monospace;
+    }
+
+    /* Profile Button & Dropdown */
+    .nav-user-profile-wrapper {
+      position: relative;
+    }
+    .btn-user-profile-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #161b22;
+      border: 1px solid rgba(255, 215, 0, 0.45);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+    .btn-user-profile-icon:hover {
+      background: #21262d;
+      border-color: #ffd700;
+      transform: scale(1.05);
+      box-shadow: 0 0 14px rgba(255, 215, 0, 0.4);
+    }
+    .nav-user-profile-wrapper.open .btn-user-profile-icon {
+      border-color: #ffd700;
+      box-shadow: 0 0 16px rgba(255, 215, 0, 0.6);
+      background: #21262d;
+    }
+    .btn-user-profile-icon .user-avatar-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ffd700, #ff9900);
+      color: #0d1117;
+      display: grid;
+      place-items: center;
+    }
+    .profile-dropdown-menu {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      width: 260px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85);
+      z-index: 100000;
+      overflow: hidden;
+      animation: dropdownFadeIn 0.15s ease-out;
+    }
+    @keyframes dropdownFadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .profile-dropdown-header {
+      padding: 14px 16px;
+      background: #0d1117;
+      border-bottom: 1px solid #21262d;
+    }
+    .profile-avatar-large {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 215, 0, 0.12);
+      border: 1px solid rgba(255, 215, 0, 0.35);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    .profile-dropdown-body {
+      padding: 6px 0;
+    }
+    .profile-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      font-size: 12.5px;
+      color: #c9d1d9;
+      text-decoration: none;
+      background: transparent;
+      border: none;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .profile-menu-item:hover {
+      background: #21262d;
+      color: #ffd700;
+    }
+    .profile-dropdown-footer {
+      border-top: 1px solid #21262d;
+      padding: 4px 0;
+      background: #0d1117;
+    }
+    .profile-menu-item.sign-out-btn:hover {
+      background: rgba(248, 81, 73, 0.12);
+      color: #f85149;
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 30px 20px 60px;
+      flex: 1;
+    }
+
+    /* Profile Header Card */
+    .profile-hero {
+      background: linear-gradient(180deg, #161b22 0%, #0d1117 100%);
+      border: 1px solid #30363d;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .profile-hero::before {
+      content: '';
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(255,215,0,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .profile-user-left {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .profile-big-avatar {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ffd700, #ff9900);
+      color: #0d1117;
+      display: grid;
+      place-items: center;
+      font-size: 26px;
+      font-weight: 900;
+      box-shadow: 0 0 24px rgba(255, 215, 0, 0.35);
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .profile-name-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #f0f6fc;
+      margin-bottom: 4px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .profile-email-text {
+      font-size: 13px;
+      color: #8b949e;
+      margin-bottom: 10px;
+    }
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .badge-green {
+      background: rgba(63, 185, 80, 0.15);
+      color: #3fb950;
+      border: 1px solid rgba(63, 185, 80, 0.4);
+    }
+    .badge-blue {
+      background: rgba(88, 166, 255, 0.15);
+      color: #58a6ff;
+      border: 1px solid rgba(88, 166, 255, 0.4);
+    }
+
+    /* Demo Wallet Stats Grid */
+    .wallet-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 12px;
+      padding: 18px;
+      position: relative;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .stat-card:hover {
+      border-color: #30363d;
+      transform: translateY(-2px);
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stat-value {
+      font-size: 26px;
+      font-weight: 800;
+      font-family: 'Space Grotesk', monospace;
+      color: #f0f6fc;
+    }
+    .stat-value.gold { color: #ffd700; }
+    .stat-value.green { color: #3fb950; }
+    .stat-value.red { color: #f85149; }
+    .stat-sub {
+      font-size: 11.5px;
+      color: #8b949e;
+      margin-top: 6px;
+    }
+
+    /* Actions Banner */
+    .wallet-actions-bar {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .btn-action {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #f0f6fc;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 9px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-action:hover {
+      background: #30363d;
+      border-color: #58a6ff;
+    }
+    .btn-action.gold-btn {
+      background: linear-gradient(135deg, #ffd700, #ff9900);
+      color: #0d1117;
+      border: none;
+      box-shadow: 0 4px 14px rgba(255, 215, 0, 0.25);
+    }
+    .btn-action.gold-btn:hover {
+      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+      transform: translateY(-1px);
+    }
+    .btn-action.danger-btn {
+      background: rgba(248, 81, 73, 0.12);
+      border-color: rgba(248, 81, 73, 0.4);
+      color: #f85149;
+    }
+    .btn-action.danger-btn:hover {
+      background: rgba(248, 81, 73, 0.25);
+      border-color: #f85149;
+    }
+
+    /* Orders History Table */
+    .card-box {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .card-header-bar {
+      padding: 16px 20px;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-header-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #f0f6fc;
+      font-family: 'Space Grotesk', sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+    .data-table th {
+      background: #161b22;
+      color: #8b949e;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 10.5px;
+      letter-spacing: 0.5px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #21262d;
+    }
+    .data-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #161b22;
+      color: #c9d1d9;
+    }
+    .data-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .type-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-weight: 800;
+      font-size: 10.5px;
+      font-family: 'Space Grotesk', monospace;
+    }
+    .type-badge.buy { background: rgba(63, 185, 80, 0.2); color: #3fb950; }
+    .type-badge.sell { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+
+    /* Toast Notification */
+    .toast-msg {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #f0f6fc;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      z-index: 1000000;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      animation: fadeIn 0.2s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Auth modal for login if not logged in */
+    .auth-banner-overlay {
+      background: rgba(88, 166, 255, 0.08);
+      border: 1px dashed rgba(88, 166, 255, 0.35);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <a class="brand" href="/">
+      <span class="brand-mark">TP</span>
+      <span>Trading<span style="color: var(--gold);">Point</span></span>
+    </a>
+
+    <nav class="nav-links">
+      <a href="/" class="nav-btn">
+        <span>🏠 Overview Dashboard</span>
+      </a>
+      <a href="/deep-analysis-gold" class="nav-btn">
+        <span>📊 Deep Analysis Terminal</span>
+      </a>
+      <a href="/trading-conditions" class="nav-btn">
+        <span>⚙️ Trading Conditions</span>
+      </a>
+      <a href="/profile" class="nav-btn active">
+        <span>👤 Profile &amp; Demo Wallet</span>
+      </a>
+    </nav>
+
+    <div class="nav-actions">
+      <div class="ticker-capsule">
+        <span class="live-dot"></span>
+        <span style="color: var(--muted); font-weight: 600;">SPOT:</span>
+        <span id="navSpotPrice" class="ticker-price">$4,007.05</span>
+      </div>
+
+      <!-- Profile Icon Trigger (No text on navbar) -->
+      <div id="navUserProfileContainer" class="nav-user-profile-wrapper">
+        <button id="navProfileTriggerBtn" class="btn-user-profile-icon" onclick="toggleProfileDropdown(event)" title="TradingPoint Account">
+          <div class="user-avatar-badge" id="navAvatarCircle">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
+        </button>
+
+        <!-- Profile Dropdown Menu -->
+        <div id="navProfileDropdown" class="profile-dropdown-menu" style="display: none;" onclick="event.stopPropagation()">
+          <div class="profile-dropdown-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="profile-avatar-large">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <div style="overflow: hidden;">
+                <div id="menuUserName" style="font-weight: 700; color: #f0f6fc; font-size: 13px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Trader</div>
+                <div id="menuUserEmail" style="font-size: 11px; color: #8b949e; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">trader@gmail.com</div>
+              </div>
+            </div>
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #21262d; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 10.5px; color: #8b949e; font-weight: 700;">DEMO WALLET</span>
+              <span id="menuUserBalance" style="font-size: 13px; font-weight: 700; color: #ffd700; font-family: 'Space Grotesk', monospace;">$1,000.00</span>
+            </div>
+          </div>
+
+          <div class="profile-dropdown-body">
+            <a href="/" class="profile-menu-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              <span>Overview Dashboard</span>
+            </a>
+            <a href="/deep-analysis-gold" class="profile-menu-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              <span>Deep Analysis Terminal</span>
+            </a>
+            <a href="/profile" class="profile-menu-item" style="color: #ffd700; background: rgba(255, 215, 0, 0.08);">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Profile &amp; Demo Wallet</span>
+            </a>
+            <a href="/trading-conditions" class="profile-menu-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#bc8cff" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              <span>Trading Conditions</span>
+            </a>
+          </div>
+
+          <div class="profile-dropdown-footer">
+            <button class="profile-menu-item sign-out-btn" onclick="handleLogout()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f85149" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" e2="9" y2="12"></line></svg>
+              <span style="color: #f85149; font-weight: 700;">Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="container">
+
+    <!-- Guest / Not Logged In Notice -->
+    <div id="guestNotice" class="auth-banner-overlay" style="display: none;">
+      <h3 style="font-size: 18px; color: #f0f6fc; margin-bottom: 8px;">🔐 Cloud Demo Account Access</h3>
+      <p style="font-size: 13px; color: #8b949e; margin-bottom: 16px;">Please sign in to view your private wallet balance, active orders, and trade statistics.</p>
+      <a href="/" class="btn-action gold-btn" style="text-decoration: none;">Go to Dashboard &amp; Sign In</a>
+    </div>
+
+    <!-- Profile Hero Card -->
+    <div class="profile-hero">
+      <div class="profile-user-left">
+        <div class="profile-big-avatar" id="heroAvatarInitial">TP</div>
+        <div>
+          <div class="profile-name-title" id="heroUserName">Demo Trader</div>
+          <div class="profile-email-text" id="heroUserEmail">trader@supabase.co</div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <span class="badge-pill badge-green">● ACTIVE DEMO TRADER</span>
+            <span class="badge-pill badge-blue">☁️ SUPABASE RLS SECURED</span>
+            <span class="badge-pill" style="background: rgba(255,215,0,0.12); color: #ffd700; border: 1px solid rgba(255,215,0,0.3);">1:100 LEVERAGE</span>
+          </div>
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 11px; color: #8b949e; text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">USER UUID</div>
+        <div id="heroUserUuid" style="font-size: 11.5px; font-family: monospace; color: #58a6ff; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Demo Wallet Key Metrics Grid -->
+    <div class="wallet-stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">
+          <span>VIRTUAL BALANCE</span>
+          <span style="color: #ffd700;">USD</span>
+        </div>
+        <div class="stat-value gold" id="valWalletBalance">$1,000.00</div>
+        <div class="stat-sub">Realized capital in cloud database</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">
+          <span>NET EQUITY</span>
+          <span id="equityBadge" style="color: #3fb950;">LIVE</span>
+        </div>
+        <div class="stat-value" id="valEquity">$1,000.00</div>
+        <div class="stat-sub">Balance + Floating PnL</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">
+          <span>FLOATING P&amp;L</span>
+          <span id="pnlTag" style="color: #8b949e;">0 POSITIONS</span>
+        </div>
+        <div class="stat-value" id="valFloatingPnl">$0.00</div>
+        <div class="stat-sub">Open market exposure</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-label">
+          <span>FREE MARGIN</span>
+          <span style="color: #58a6ff;">AVAILABLE</span>
+        </div>
+        <div class="stat-value" id="valFreeMargin">$1,000.00</div>
+        <div class="stat-sub">Used margin: <span id="valUsedMargin" style="color: #f0f6fc; font-weight: 700;">$0.00</span></div>
+      </div>
+    </div>
+
+    <!-- Quick Wallet Actions Bar -->
+    <div class="wallet-actions-bar">
+      <div>
+        <div style="font-size: 13.5px; font-weight: 700; color: #f0f6fc; margin-bottom: 3px;">Demo Fund Management</div>
+        <div style="font-size: 11.5px; color: #8b949e;">Sandbox demo funds for practicing institutional gold order flow without financial risk.</div>
+      </div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn-action" onclick="resetDemoBalance(1000)">
+          <span>🔄 Reset to $1,000.00</span>
+        </button>
+        <button class="btn-action gold-btn" onclick="addDemoFunds(500)">
+          <span>💰 Top-Up +$500.00</span>
+        </button>
+        <button class="btn-action danger-btn" onclick="closeAllUserOrders()">
+          <span>⚡ Close All Positions</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Trade History / Orders Table -->
+    <div class="card-box">
+      <div class="card-header-bar">
+        <div class="card-header-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          <span>Account Order Book &amp; Trade History</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-action" style="padding: 5px 12px; font-size: 11px;" onclick="fetchUserData()">Refresh Orders</button>
+        </div>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Ticket ID</th>
+              <th>Side</th>
+              <th>Lots</th>
+              <th>Symbol</th>
+              <th>Entry Price</th>
+              <th>TP / SL</th>
+              <th>Profit / Loss</th>
+              <th>Status</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="ordersTableBody">
+            <tr>
+              <td colspan="9" style="text-align: center; color: #8b949e; padding: 24px;">Loading cloud orders from Supabase...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Safety Disclosure Banner -->
+    <div style="background: rgba(255, 215, 0, 0.04); border: 1px dashed rgba(255, 215, 0, 0.25); border-radius: 12px; padding: 18px; font-size: 12px; color: #8b949e; line-height: 1.6;">
+      🛡️ <strong>Institutional Demo Sandbox Isolation:</strong> All balances, orders, and realized PnL are isolated inside your personal Supabase account under strict PostgreSQL Row-Level Security (RLS) policies. No real money or banking credentials are used.
+    </div>
+
+  </main>
+
+  <div id="toastMessage" class="toast-msg">
+    <span>⚡</span>
+    <span id="toastText">Notification text</span>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://tcwboskfypcrsrniatni.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_r39tpba3IS43B9icWt26KA_kC0OH5Pk";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentUser = null;
+    let liveSpotPrice = 4007.05;
+    let userBalance = 1000.00;
+    let userOrders = [];
+
+    // Dropdown Handlers
+    function toggleProfileDropdown(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('navProfileDropdown');
+      const wrapper = document.getElementById('navUserProfileContainer');
+      if (!menu) return;
+      const isOpen = menu.style.display === 'block';
+      menu.style.display = isOpen ? 'none' : 'block';
+      if (wrapper) wrapper.classList.toggle('open', !isOpen);
+    }
+    function closeProfileDropdown() {
+      const menu = document.getElementById('navProfileDropdown');
+      const wrapper = document.getElementById('navUserProfileContainer');
+      if (menu) menu.style.display = 'none';
+      if (wrapper) wrapper.classList.remove('open');
+    }
+    document.addEventListener('click', (e) => {
+      const wrapper = document.getElementById('navUserProfileContainer');
+      if (wrapper && !wrapper.contains(e.target)) closeProfileDropdown();
+    });
+
+    function showToast(msg) {
+      const t = document.getElementById('toastMessage');
+      const txt = document.getElementById('toastText');
+      if (txt) txt.innerText = msg;
+      if (t) {
+        t.style.display = 'flex';
+        setTimeout(() => { t.style.display = 'none'; }, 3500);
+      }
+    }
+
+    // Live Ticker Feed
+    async function fetchLiveTicker() {
+      try {
+        const res = await fetch('/api/gold/live');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.price) {
+            liveSpotPrice = parseFloat(data.price);
+            const el = document.getElementById('navSpotPrice');
+            if (el) el.innerText = '$' + liveSpotPrice.toFixed(2);
+            updateWalletCalculations();
+          }
+        }
+      } catch (e) {
+        console.warn('Ticker error:', e);
+      }
+    }
+
+    // Supabase Auth and User Data
+    async function initAuth() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session && session.user) {
+        currentUser = session.user;
+        onUserReady(currentUser);
+      } else {
+        // Check localStorage fallback demo user
+        document.getElementById('guestNotice').style.display = 'block';
+      }
+
+      supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (session && session.user) {
+          currentUser = session.user;
+          onUserReady(currentUser);
+        } else {
+          currentUser = null;
+          document.getElementById('guestNotice').style.display = 'block';
+        }
+      });
+    }
+
+    function onUserReady(user) {
+      document.getElementById('guestNotice').style.display = 'none';
+      const email = user.email || 'trader@demo.com';
+      const short = email.split('@')[0];
+      const initial = short.charAt(0).toUpperCase();
+
+      document.getElementById('heroUserName').innerText = short.charAt(0).toUpperCase() + short.slice(1);
+      document.getElementById('heroUserEmail').innerText = email;
+      document.getElementById('heroAvatarInitial').innerText = initial;
+      document.getElementById('heroUserUuid').innerText = user.id;
+
+      document.getElementById('menuUserName').innerText = short.charAt(0).toUpperCase() + short.slice(1);
+      document.getElementById('menuUserEmail').innerText = email;
+
+      fetchUserData();
+    }
+
+    async function fetchUserData() {
+      if (!currentUser) return;
+      try {
+        // 1. Fetch Profile Demo Balance
+        const { data: prof, error: profErr } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
+        if (prof) {
+          userBalance = parseFloat(prof.demo_balance);
+        } else {
+          await supabaseClient.from('profiles').upsert({ id: currentUser.id, email: currentUser.email, demo_balance: 1000.00 });
+          userBalance = 1000.00;
+        }
+
+        // 2. Fetch User Orders
+        const { data: orders, error: ordErr } = await supabaseClient.from('orders')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('opened_at', { ascending: false });
+
+        if (orders) {
+          userOrders = orders;
+          renderOrdersTable(userOrders);
+        }
+        updateWalletCalculations();
+      } catch (err) {
+        console.error('Data fetch error:', err);
+      }
+    }
+
+    function updateWalletCalculations() {
+      const openOrders = userOrders.filter(o => o.status === 'OPEN');
+      let totalFloatingPnl = 0;
+      let usedMargin = 0;
+
+      openOrders.forEach(o => {
+        const lots = parseFloat(o.lots);
+        const entry = parseFloat(o.entry_price);
+        const margin = parseFloat(o.margin || (lots * entry));
+        usedMargin += margin;
+
+        const diff = o.type === 'BUY' ? (liveSpotPrice - entry) : (entry - liveSpotPrice);
+        totalFloatingPnl += diff * lots * 100;
+      });
+
+      const equity = userBalance + totalFloatingPnl;
+      const freeMargin = Math.max(0, equity - usedMargin);
+
+      const balFormatted = '$' + userBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('valWalletBalance').innerText = balFormatted;
+      document.getElementById('menuUserBalance').innerText = balFormatted;
+
+      const eqEl = document.getElementById('valEquity');
+      eqEl.innerText = '$' + equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      eqEl.style.color = equity >= userBalance ? 'var(--green)' : 'var(--red)';
+
+      const pnlEl = document.getElementById('valFloatingPnl');
+      const sign = totalFloatingPnl >= 0 ? '+' : '';
+      pnlEl.innerText = sign + '$' + totalFloatingPnl.toFixed(2);
+      pnlEl.style.color = totalFloatingPnl > 0 ? 'var(--green)' : (totalFloatingPnl < 0 ? 'var(--red)' : '#f0f6fc');
+
+      document.getElementById('pnlTag').innerText = `${openOrders.length} OPEN POSITIONS`;
+      document.getElementById('valFreeMargin').innerText = '$' + freeMargin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      document.getElementById('valUsedMargin').innerText = '$' + usedMargin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function renderOrdersTable(orders) {
+      const tbody = document.getElementById('ordersTableBody');
+      if (!tbody) return;
+      if (!orders || orders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #8b949e; padding: 24px;">No trade orders found. Open orders on the Dashboard or Terminal to see them here!</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = orders.map(o => {
+        const lots = parseFloat(o.lots);
+        const entry = parseFloat(o.entry_price);
+        const isBuy = o.type === 'BUY';
+        let pnlText = '-';
+        let pnlColor = '#8b949e';
+
+        if (o.status === 'OPEN') {
+          const diff = isBuy ? (liveSpotPrice - entry) : (entry - liveSpotPrice);
+          const pnl = diff * lots * 100;
+          pnlText = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+          pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+        } else if (o.pnl !== null && typeof o.pnl !== 'undefined') {
+          const pnl = parseFloat(o.pnl);
+          pnlText = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+          pnlColor = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+        }
+
+        const dateStr = new Date(o.opened_at).toLocaleString();
+        const shortId = o.id.slice(0, 8);
+
+        return `
+          <tr>
+            <td style="font-family: monospace; font-weight: 700; color: #58a6ff;">#${shortId}</td>
+            <td><span class="type-badge ${isBuy ? 'buy' : 'sell'}">${o.type}</span></td>
+            <td style="font-weight: 700; color: #ffd700; font-family: monospace;">${lots.toFixed(2)}</td>
+            <td style="font-weight: 600;">XAU/USD</td>
+            <td style="font-family: monospace;">$${entry.toFixed(2)}</td>
+            <td style="font-size: 11px; color: #8b949e;">TP: ${o.tp ? '$'+parseFloat(o.tp).toFixed(2) : '--'} | SL: ${o.sl ? '$'+parseFloat(o.sl).toFixed(2) : '--'}</td>
+            <td style="font-weight: 700; font-family: monospace; color: ${pnlColor};">${pnlText}</td>
+            <td>
+              <span class="badge-pill ${o.status === 'OPEN' ? 'badge-green' : ''}" style="${o.status !== 'OPEN' ? 'background: #21262d; color: #8b949e;' : ''}">${o.status}</span>
+            </td>
+            <td style="font-size: 11px; color: #8b949e;">${dateStr}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function resetDemoBalance(amount = 1000) {
+      if (!currentUser) return;
+      try {
+        const { error } = await supabaseClient.from('profiles').update({ demo_balance: amount }).eq('id', currentUser.id);
+        if (!error) {
+          userBalance = amount;
+          showToast(`⚡ Demo balance reset to $${amount.toFixed(2)} USD!`);
+          updateWalletCalculations();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function addDemoFunds(addAmount = 500) {
+      if (!currentUser) return;
+      try {
+        const newBal = userBalance + addAmount;
+        const { error } = await supabaseClient.from('profiles').update({ demo_balance: newBal }).eq('id', currentUser.id);
+        if (!error) {
+          userBalance = newBal;
+          showToast(`💰 Added +$${addAmount.toFixed(2)} to Demo Wallet! Total: $${newBal.toFixed(2)}`);
+          updateWalletCalculations();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function closeAllUserOrders() {
+      if (!currentUser) return;
+      try {
+        const openOrders = userOrders.filter(o => o.status === 'OPEN');
+        if (openOrders.length === 0) {
+          showToast('No open orders to close.');
+          return;
+        }
+
+        let realizedSum = 0;
+        for (const o of openOrders) {
+          const lots = parseFloat(o.lots);
+          const entry = parseFloat(o.entry_price);
+          const diff = o.type === 'BUY' ? (liveSpotPrice - entry) : (entry - liveSpotPrice);
+          const pnl = diff * lots * 100;
+          realizedSum += pnl;
+
+          await supabaseClient.from('orders').update({
+            status: 'CLOSED',
+            pnl: pnl,
+            closed_at: new Date().toISOString()
+          }).eq('id', o.id);
+        }
+
+        userBalance += realizedSum;
+        await supabaseClient.from('profiles').update({ demo_balance: userBalance }).eq('id', currentUser.id);
+
+        showToast(`⚡ Closed ${openOrders.length} positions. Net Realized: ${realizedSum >= 0 ? '+' : ''}$${realizedSum.toFixed(2)}`);
+        fetchUserData();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function handleLogout() {
+      await supabaseClient.auth.signOut();
+      window.location.href = '/';
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchLiveTicker();
+      setInterval(fetchLiveTicker, 3000);
+      initAuth();
+    });
+  </script>
+</body>
+</html>

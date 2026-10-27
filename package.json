@@ -1,0 +1,15 @@
+{
+  "name": "trading-code-try",
+  "version": "1.0.0",
+  "description": "Ek fully-functional local MCP Server jo Forex data fetch karta hai aur AI models (jaise **Gemini**) ko trading tools aur structured technical analysis provide karta hai.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "lightweight-charts": "^5.2.1"
+  }
+}

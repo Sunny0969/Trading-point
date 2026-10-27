@@ -1,0 +1,7 @@
+.env
+.venv/
+__pycache__/
+node_modules/
+.disk_cache.json
+~$*
+*.tmp

@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Conditions & Specifications | TradingPoint</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #08090a;
+      --card-bg: #0d1117;
+      --border: #21262d;
+      --border-light: #30363d;
+      --gold: #ffd700;
+      --gold-dark: #d4af37;
+      --green: #3fb950;
+      --red: #f85149;
+      --blue: #58a6ff;
+      --purple: #bc8cff;
+      --text: #f0f6fc;
+      --muted: #8b949e;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    .navbar {
+      height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4vw;
+      border-bottom: 1px solid rgba(255, 215, 0, 0.14);
+      background: rgba(8, 9, 10, 0.85);
+      backdrop-filter: blur(16px);
+      position: sticky;
+      top: 0;
+      z-index: 20000;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .brand-mark {
+      background: linear-gradient(135deg, var(--gold), #ff9900);
+      color: #0d1117;
+      font-size: 13px;
+      font-weight: 900;
+      padding: 4px 7px;
+      border-radius: 6px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-btn {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-btn:hover {
+      color: var(--text);
+      background: #161b22;
+      border-color: #30363d;
+    }
+    .nav-btn.active {
+      color: var(--gold);
+      background: rgba(255, 215, 0, 0.1);
+      border-color: rgba(255, 215, 0, 0.3);
+    }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .ticker-capsule {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      font-size: 12px;
+    }
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+    .ticker-price {
+      font-weight: 700;
+      color: var(--blue);
+      font-family: 'Space Grotesk', monospace;
+    }
+
+    /* Profile Button & Dropdown */
+    .nav-user-profile-wrapper {
+      position: relative;
+    }
+    .btn-user-profile-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #161b22;
+      border: 1px solid rgba(255, 215, 0, 0.45);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+    .btn-user-profile-icon:hover {
+      background: #21262d;
+      border-color: #ffd700;
+      transform: scale(1.05);
+      box-shadow: 0 0 14px rgba(255, 215, 0, 0.4);
+    }
+    .nav-user-profile-wrapper.open .btn-user-profile-icon {
+      border-color: #ffd700;
+      box-shadow: 0 0 16px rgba(255, 215, 0, 0.6);
+      background: #21262d;
+    }
+    .btn-user-profile-icon .user-avatar-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ffd700, #ff9900);
+      color: #0d1117;
+      display: grid;
+      place-items: center;
+    }
+    .profile-dropdown-menu {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      width: 260px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85);
+      z-index: 100000;
+      overflow: hidden;
+      animation: dropdownFadeIn 0.15s ease-out;
+    }
+    @keyframes dropdownFadeIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .profile-dropdown-header {
+      padding: 14px 16px;
+      background: #0d1117;
+      border-bottom: 1px solid #21262d;
+    }
+    .profile-avatar-large {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 215, 0, 0.12);
+      border: 1px solid rgba(255, 215, 0, 0.35);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    .profile-dropdown-body {
+      padding: 6px 0;
+    }
+    .profile-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      font-size: 12.5px;
+      color: #c9d1d9;
+      text-decoration: none;
+      background: transparent;
+      border: none;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .profile-menu-item:hover {
+      background: #21262d;
+      color: #ffd700;
+    }
+    .profile-dropdown-footer {
+      border-top: 1px solid #21262d;
+      padding: 4px 0;
+      background: #0d1117;
+    }
+    .profile-menu-item.sign-out-btn:hover {
+      background: rgba(248, 81, 73, 0.12);
+      color: #f85149;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 30px 20px 60px;
+      flex: 1;
+    }
+
+    /* Hero Banner */
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(13, 17, 23, 0.95) 100%);
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 28px;
+      position: relative;
+    }
+    .hero-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #f0f6fc;
+      margin-bottom: 8px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .hero-desc {
+      font-size: 13.5px;
+      color: #8b949e;
+      max-width: 780px;
+      line-height: 1.6;
+    }
+    .pill-grid {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .spec-pill {
+      background: #161b22;
+      border: 1px solid #30363d;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #ffd700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Grid Layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 900px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Specifications Card */
+    .spec-card {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .spec-card-header {
+      padding: 16px 20px;
+      background: #161b22;
+      border-bottom: 1px solid #21262d;
+      font-size: 15px;
+      font-weight: 800;
+      color: #f0f6fc;
+      font-family: 'Space Grotesk', sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+    .spec-table td {
+      padding: 13px 20px;
+      border-bottom: 1px solid #161b22;
+    }
+    .spec-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .spec-label {
+      color: #8b949e;
+      font-weight: 600;
+      width: 45%;
+    }
+    .spec-value {
+      color: #f0f6fc;
+      font-weight: 700;
+      text-align: right;
+    }
+    .spec-value.gold { color: #ffd700; font-family: 'Space Grotesk', monospace; }
+    .spec-value.green { color: #3fb950; }
+    .spec-value.blue { color: #58a6ff; }
+    .spec-value.red { color: #f85149; }
+
+    /* Interactive Calculator Card */
+    .calc-card {
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 14px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .calc-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffd700;
+      font-family: 'Space Grotesk', sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .calc-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .calc-input-group label {
+      font-size: 11px;
+      color: #8b949e;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .calc-input {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #f0f6fc;
+      font-family: 'Space Grotesk', monospace;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .calc-input:focus {
+      border-color: #ffd700;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+    }
+    .calc-btn-group {
+      display: flex;
+      gap: 6px;
+    }
+    .calc-preset-btn {
+      flex: 1;
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .calc-preset-btn:hover, .calc-preset-btn.active {
+      background: rgba(255, 215, 0, 0.15);
+      border-color: #ffd700;
+      color: #ffd700;
+    }
+    .calc-results-box {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 16px;
+      margin-top: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .calc-res-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+    .calc-res-label {
+      color: #8b949e;
+      font-weight: 600;
+    }
+    .calc-res-val {
+      font-weight: 800;
+      font-family: 'Space Grotesk', monospace;
+      font-size: 14px;
+      color: #f0f6fc;
+    }
+
+    /* Footer Note */
+    .footer-note {
+      margin-top: 24px;
+      background: rgba(255, 215, 0, 0.04);
+      border: 1px dashed rgba(255, 215, 0, 0.25);
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 12px;
+      color: #8b949e;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <a class="brand" href="/">
+      <span class="brand-mark">TP</span>
+      <span>Trading<span style="color: var(--gold);">Point</span></span>
+    </a>
+
+    <nav class="nav-links">
+      <a href="/" class="nav-btn">
+        <span>🏠 Overview Dashboard</span>
+      </a>
+      <a href="/deep-analysis-gold" class="nav-btn">
+        <span>📊 Deep Analysis Terminal</span>
+      </a>
+      <a href="/trading-conditions" class="nav-btn active">
+        <span>⚙️ Trading Conditions</span>
+      </a>
+      <a href="/profile" class="nav-btn">
+        <span>👤 Profile &amp; Demo Wallet</span>
+      </a>
+    </nav>
+
+    <div class="nav-actions">
+      <div class="ticker-capsule">
+        <span class="live-dot"></span>
+        <span style="color: var(--muted); font-weight: 600;">SPOT:</span>
+        <span id="navSpotPrice" class="ticker-price">$4,007.05</span>
+      </div>
+
+      <!-- Profile Icon Trigger (No text on navbar) -->
+      <div id="navUserProfileContainer" class="nav-user-profile-wrapper">
+        <button id="navProfileTriggerBtn" class="btn-user-profile-icon" onclick="toggleProfileDropdown(event)" title="TradingPoint Account">
+          <div class="user-avatar-badge" id="navAvatarCircle">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
+        </button>
+
+        <!-- Dropdown Menu -->
+        <div id="navProfileDropdown" class="profile-dropdown-menu" style="display: none;" onclick="event.stopPropagation()">
+          <div class="profile-dropdown-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="profile-avatar-large">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <div style="overflow: hidden;">
+                <div id="menuUserName" style="font-weight: 700; color: #f0f6fc; font-size: 13px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Trader</div>
+                <div id="menuUserEmail" style="font-size: 11px; color: #8b949e; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">trader@gmail.com</div>
+              </div>
+            </div>
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #21262d; display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 10.5px; color: #8b949e; font-weight: 700;">DEMO WALLET</span>
+              <span id="menuUserBalance" style="font-size: 13px; font-weight: 700; color: #ffd700; font-family: 'Space Grotesk', monospace;">$1,000.00</span>
+            </div>
+          </div>
+
+          <div class="profile-dropdown-body">
+            <a href="/" class="profile-menu-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              <span>Overview Dashboard</span>
+            </a>
+            <a href="/deep-analysis-gold" class="profile-menu-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              <span>Deep Analysis Terminal</span>
+            </a>
+            <a href="/profile" class="profile-menu-item">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Profile &amp; Demo Wallet</span>
+            </a>
+            <a href="/trading-conditions" class="profile-menu-item" style="color: #ffd700; background: rgba(255, 215, 0, 0.08);">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#bc8cff" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              <span>Trading Conditions</span>
+            </a>
+          </div>
+
+          <div class="profile-dropdown-footer">
+            <button class="profile-menu-item sign-out-btn" onclick="handleLogout()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f85149" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" e2="9" y2="12"></line></svg>
+              <span style="color: #f85149; font-weight: 700;">Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+
+    <!-- Hero Specifications Banner -->
+    <div class="hero-banner">
+      <div class="hero-title">Institutional Trading Specifications: XAU/USD</div>
+      <div class="hero-desc">
+        TradingPoint provides high-frequency virtual execution for Loco London Spot Gold (XAU/USD). All positions follow standard international CFD contract sizing, guaranteed real-time pricing via TradingView scanners, and strict 1:100 leverage margin rules.
+      </div>
+      <div class="pill-grid">
+        <span class="spec-pill">⚖️ 1:100 Standard Leverage</span>
+        <span class="spec-pill">🪙 100 Troy Oz Contract</span>
+        <span class="spec-pill">⚡ Instant Spot Execution</span>
+        <span class="spec-pill">🛡️ 10% Stop Out Protection</span>
+        <span class="spec-pill">☁️ Supabase Cloud Synced</span>
+      </div>
+    </div>
+
+    <!-- Main Grid: Conditions Table & Margin Calculator -->
+    <div class="main-grid">
+
+      <!-- Left: Specifications Table -->
+      <div class="spec-card">
+        <div class="spec-card-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span>Contract Rules &amp; Operational Parameters</span>
+        </div>
+        <table class="spec-table">
+          <tr>
+            <td class="spec-label">Trading Instrument</td>
+            <td class="spec-value gold">XAU/USD (Spot Gold)</td>
+          </tr>
+          <tr>
+            <td class="spec-label">Base / Quote Currency</td>
+            <td class="spec-value">XAU (Troy Ounce) / USD (US Dollar)</td>
+          </tr>
+          <tr>
+            <td class="spec-label">Contract Multiplier</td>
+            <td class="spec-value">1.00 Lot = 100 Troy Ounces</td>
+          </tr>
+          <tr>
+            <td class="spec-label">Order Volume Range</td>
+            <td class="spec-value">0.01 Min &bull; 5.00 Max (Step 0.01)</td>
+          </tr>
+          <tr>
+            <td class="spec-label">Point / Pip Sensitivity</td>
+            <td class="spec-value green">$1.00 per $1.00 move (at 0.01 Lot)</td>
+          </tr>
+          <tr>
+            <td class="spec-label">Standard Pip Sensitivity</td>
+            <td class="spec-value green">$100.00 per $1.00 move (at 1.00 Lot)</td>
+          </tr>
+          <tr>
+            <td class="spec-label">Trading Leverage</td>
+            <td class="spec-value blue">1:100 (1.00% Margin Requirement)</td>
+          </tr>
+          <tr>
+            <td class="spec-label">Margin Formula</td>
+            <td class="spec-value">Lots &times; 100 &times; Spot Price &divide; 100</td>
+          </tr>
+          <tr>
+            <td class="spec-label">Margin Call Level</td>
+            <td class="spec-value" style="color: #d29922;">50% Margin Level</td>
+          </tr>
+          <tr>
+            <td class="spec-label">Liquidation / Stop Out Level</td>
+            <td class="spec-value red">10% Margin Level</td>
+          </tr>
+          <tr>
+            <td class="spec-label">Execution Architecture</td>
+            <td class="spec-value">Instant Virtual Fill via CFD Scanner</td>
+          </tr>
+          <tr>
+            <td class="spec-label">Overnight Financing (Swap)</td>
+            <td class="spec-value green">0.00% (Free Demo Sandbox)</td>
+          </tr>
+          <tr>
+            <td class="spec-label">Trading Session Hours</td>
+            <td class="spec-value">24/5 (Sun 22:00 GMT - Fri 21:00 GMT)</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Right: Interactive Margin & PnL Calculator -->
+      <div class="calc-card">
+        <div class="calc-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="18"></line><path d="M16 10h.01"></path><path d="M12 10h.01"></path><path d="M8 10h.01"></path><path d="M12 14h.01"></path><path d="M8 14h.01"></path><path d="M12 18h.01"></path><path d="M8 18h.01"></path></svg>
+          <span>Live Margin &amp; Profit Calculator</span>
+        </div>
+
+        <div class="calc-input-group">
+          <label>Position Volume (Lots)</label>
+          <div class="calc-btn-group" style="margin-bottom: 6px;">
+            <button class="calc-preset-btn active" onclick="setCalcLot(0.01)">0.01</button>
+            <button class="calc-preset-btn" onclick="setCalcLot(0.05)">0.05</button>
+            <button class="calc-preset-btn" onclick="setCalcLot(0.10)">0.10</button>
+            <button class="calc-preset-btn" onclick="setCalcLot(0.50)">0.50</button>
+            <button class="calc-preset-btn" onclick="setCalcLot(1.00)">1.00</button>
+          </div>
+          <input type="number" id="calcLotInput" class="calc-input" value="0.01" step="0.01" min="0.01" max="5.00" oninput="recalc()">
+        </div>
+
+        <div class="calc-input-group">
+          <label>Entry Price ($ USD)</label>
+          <input type="number" id="calcEntryInput" class="calc-input" value="4007.05" step="0.01" oninput="recalc()">
+        </div>
+
+        <div class="calc-input-group">
+          <label>Target Exit Price ($ USD)</label>
+          <input type="number" id="calcExitInput" class="calc-input" value="4017.05" step="0.01" oninput="recalc()">
+        </div>
+
+        <div class="calc-results-box">
+          <div class="calc-res-row">
+            <span class="calc-res-label">Required Margin (1:100):</span>
+            <span class="calc-res-val" id="resMargin" style="color: #58a6ff;">$40.07</span>
+          </div>
+          <div class="calc-res-row">
+            <span class="calc-res-label">Point Value ($1 Move):</span>
+            <span class="calc-res-val" id="resPipVal" style="color: #ffd700;">$1.00 USD</span>
+          </div>
+          <div class="calc-res-row">
+            <span class="calc-res-label">Gold Price Move:</span>
+            <span class="calc-res-val" id="resPriceDiff">+$10.00</span>
+          </div>
+          <div class="calc-res-row" style="border-top: 1px solid #30363d; padding-top: 10px; margin-top: 2px;">
+            <span class="calc-res-label" style="font-weight: 700; color: #f0f6fc;">Projected Profit / Loss:</span>
+            <span class="calc-res-val" id="resTotalPnl" style="color: var(--green); font-size: 16px;">+$10.00 USD</span>
+          </div>
+        </div>
+
+        <div style="font-size: 11px; color: #8b949e; line-height: 1.5;">
+          💡 <em>Formula:</em> Profit = (Exit - Entry) &times; Lots &times; 100 Troy Ounces. Required Margin = Lots &times; Entry Price.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Safety Disclaimer -->
+    <div class="footer-note">
+      🛡️ <strong>Sandbox Safety Guarantee:</strong> TradingPoint operates exclusively on virtual demo balances stored securely in Supabase PostgreSQL cloud tables. Instant market order executions simulate spot CFD conditions without financial risk.
+    </div>
+
+  </main>
+
+  <script>
+    const SUPABASE_URL = "https://tcwboskfypcrsrniatni.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_r39tpba3IS43B9icWt26KA_kC0OH5Pk";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let liveSpotPrice = 4007.05;
+
+    // Dropdown Handlers
+    function toggleProfileDropdown(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('navProfileDropdown');
+      const wrapper = document.getElementById('navUserProfileContainer');
+      if (!menu) return;
+      const isOpen = menu.style.display === 'block';
+      menu.style.display = isOpen ? 'none' : 'block';
+      if (wrapper) wrapper.classList.toggle('open', !isOpen);
+    }
+    function closeProfileDropdown() {
+      const menu = document.getElementById('navProfileDropdown');
+      const wrapper = document.getElementById('navUserProfileContainer');
+      if (menu) menu.style.display = 'none';
+      if (wrapper) wrapper.classList.remove('open');
+    }
+    document.addEventListener('click', (e) => {
+      const wrapper = document.getElementById('navUserProfileContainer');
+      if (wrapper && !wrapper.contains(e.target)) closeProfileDropdown();
+    });
+
+    // Calculator Functions
+    function setCalcLot(lot) {
+      document.getElementById('calcLotInput').value = lot;
+      document.querySelectorAll('.calc-preset-btn').forEach(b => {
+        b.classList.toggle('active', parseFloat(b.innerText) === lot);
+      });
+      recalc();
+    }
+
+    function recalc() {
+      const lots = parseFloat(document.getElementById('calcLotInput').value) || 0.01;
+      const entry = parseFloat(document.getElementById('calcEntryInput').value) || liveSpotPrice;
+      const exit = parseFloat(document.getElementById('calcExitInput').value) || (entry + 10);
+
+      const margin = lots * entry;
+      const pipVal = lots * 100;
+      const diff = exit - entry;
+      const pnl = diff * lots * 100;
+
+      document.getElementById('resMargin').innerText = '$' + margin.toFixed(2);
+      document.getElementById('resPipVal').innerText = '$' + pipVal.toFixed(2) + ' USD';
+      
+      const diffEl = document.getElementById('resPriceDiff');
+      diffEl.innerText = (diff >= 0 ? '+' : '') + '$' + diff.toFixed(2);
+      diffEl.style.color = diff >= 0 ? 'var(--green)' : 'var(--red)';
+
+      const pnlEl = document.getElementById('resTotalPnl');
+      pnlEl.innerText = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2) + ' USD';
+      pnlEl.style.color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+    }
+
+    // Live Ticker Feed
+    async function fetchLiveTicker() {
+      try {
+        const res = await fetch('/api/gold/live');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.price) {
+            liveSpotPrice = parseFloat(data.price);
+            const el = document.getElementById('navSpotPrice');
+            if (el) el.innerText = '$' + liveSpotPrice.toFixed(2);
+          }
+        }
+      } catch (e) {
+        console.warn('Ticker error:', e);
+      }
+    }
+
+    async function initAuth() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session && session.user) {
+        const email = session.user.email || 'trader@demo.com';
+        const short = email.split('@')[0];
+        document.getElementById('menuUserName').innerText = short.charAt(0).toUpperCase() + short.slice(1);
+        document.getElementById('menuUserEmail').innerText = email;
+
+        const { data: prof } = await supabaseClient.from('profiles').select('demo_balance').eq('id', session.user.id).single();
+        if (prof) {
+          const bal = parseFloat(prof.demo_balance);
+          document.getElementById('menuUserBalance').innerText = '$' + bal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+      }
+    }
+
+    async function handleLogout() {
+      await supabaseClient.auth.signOut();
+      window.location.href = '/';
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchLiveTicker();
+      setInterval(fetchLiveTicker, 3000);
+      initAuth();
+      recalc();
+    });
+  </script>
+</body>
+</html>

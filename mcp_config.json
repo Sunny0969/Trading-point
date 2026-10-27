@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "forex": {
+      "command": "D:\\trading code try\\.venv\\Scripts\\python.exe",
+      "args": [
+        "D:\\trading code try\\server.py"
+      ],
+      "cwd": "D:\\trading code try"
+    }
+  }
+}
