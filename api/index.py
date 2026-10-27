@@ -409,3 +409,67 @@ class handler(BaseHTTPRequestHandler):
                 return self._send_json({"error": "Endpoint not found"}, 404)
         except Exception as e:
             return self._send_json({"error": str(e)}, 500)
+
+
+# ==========================================
+# WSGI APPLICATION WRAPPER FOR VERCEL
+# ==========================================
+def app(environ, start_response):
+    path = environ.get("PATH_INFO", "/")
+    method = environ.get("REQUEST_METHOD", "GET")
+    query_string = environ.get("QUERY_STRING", "")
+    query = parse_qs(query_string)
+
+    headers = [
+        ("Content-Type", "application/json"),
+        ("Access-Control-Allow-Origin", "*"),
+        ("Access-Control-Allow-Methods", "GET, POST, OPTIONS"),
+        ("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    ]
+
+    if method == "OPTIONS":
+        start_response("204 No Content", headers)
+        return [b""]
+
+    try:
+        if path.endswith("/api/gold/live") or path == "/api/gold/live":
+            data = get_cached_live_ticker()
+        elif path.endswith("/api/gold/candles") or path == "/api/gold/candles":
+            tf = query.get("timeframe", ["15m"])[0]
+            limit = int(query.get("limit", [500])[0])
+            data = get_cached_candles(tf, limit)
+        elif path.endswith("/api/calendar/live") or path == "/api/calendar/live":
+            data = get_cached_economic_calendar()
+        elif path.endswith("/api/macro/geopolitical") or path == "/api/macro/geopolitical":
+            data = get_cached_geopolitical_news()
+        elif path.endswith("/api/macro/drivers") or path == "/api/macro/drivers":
+            data = get_cached_macro_drivers()
+        elif path.endswith("/api/twelvedata/quotes") or path == "/api/twelvedata/quotes":
+            data = get_cached_twelvedata_quotes()
+        elif path.endswith("/api/sugra/analyze") or path == "/api/sugra/analyze":
+            if method == "POST":
+                try:
+                    content_length = int(environ.get("CONTENT_LENGTH", 0))
+                    body = environ["wsgi.input"].read(content_length).decode("utf-8")
+                    payload = json.loads(body)
+                    topic = payload.get("topic")
+                except Exception:
+                    topic = None
+            else:
+                topic = query.get("topic", [None])[0]
+            data = get_sugra_sentiment(topic)
+        else:
+            data = {
+                "status": "online",
+                "engine": "TradingPoint Serverless Microservice",
+                "path": path,
+                "timestamp": int(time.time())
+            }
+
+        payload_bytes = json.dumps(data).encode("utf-8")
+        start_response("200 OK", headers)
+        return [payload_bytes]
+    except Exception as e:
+        err_bytes = json.dumps({"error": str(e), "status": "fail"}).encode("utf-8")
+        start_response("500 Internal Server Error", headers)
+        return [err_bytes]

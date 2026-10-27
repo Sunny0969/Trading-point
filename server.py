@@ -21,14 +21,14 @@ from indicators import compute_indicators_bundle
 from analyzer import generate_market_analysis
 
 # Initialize the MCP Server
-app = MCPServer(
+mcp_server = MCPServer(
     name="forex-mcp-server",
     version="1.0.0",
     description="Local Forex MCP Server providing quotes, candles, technical indicators, and Gemini market analysis."
 )
 
 
-@app.tool(
+@mcp_server.tool(
     name="get_forex_price",
     description="Fetch current live exchange rate, bid price, ask price, and spread for a currency pair (e.g. 'EUR/USD', 'GBPUSD', 'USD/JPY')."
 )
@@ -60,7 +60,7 @@ def get_forex_price(
         }
 
 
-@app.tool(
+@mcp_server.tool(
     name="get_forex_candles",
     description="Fetch OHLC (open, high, low, close) candlestick history for a forex pair. Supports timeframes: 'daily', 'weekly', 'monthly'."
 )
@@ -102,7 +102,7 @@ def get_forex_candles(
         }
 
 
-@app.tool(
+@mcp_server.tool(
     name="calculate_indicators",
     description="Calculate key technical indicators (RSI, EMA 12/26/50/200, and MACD line/signal/histogram) from historical forex candles."
 )
@@ -159,7 +159,7 @@ def calculate_indicators(
         }
 
 
-@app.tool(
+@mcp_server.tool(
     name="analyze_market",
     description="Generate comprehensive structured forex market analysis designed for Gemini/LLM reasoning, including trends, bias, technical signals (BUY/SELL/NEUTRAL), key support/resistance levels, and bullish/bearish factor breakdowns."
 )
@@ -202,7 +202,7 @@ def main():
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stderr.reconfigure(encoding="utf-8")
 
-    app.run(transport="stdio")
+    mcp_server.run(transport="stdio")
 
 
 if __name__ == "__main__":
