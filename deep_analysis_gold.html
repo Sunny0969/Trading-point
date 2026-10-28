@@ -6584,6 +6584,422 @@
     setInterval(updateSessionWatermark, 30000);
 
     // ==========================================
+
+    // ==========================================
+    // COMPLETE SMC INSTITUTIONAL LIQUIDITY SWEEP ENGINE
+    // (Session High/Low, EQH/EQL, Trendline, & Old High/Low)
+    // ==========================================
+    let currentLiquidityPools = null;
+    window.latestLiquiditySweep = null;
+
+    function trackInstitutionalLiquidity(candles) {
+      if (!candles || candles.length < 15) return null;
+
+      const currentPrice = (typeof currentLiveSpot !== 'undefined' && currentLiveSpot) 
+        ? currentLiveSpot 
+        : candles[candles.length - 1].close;
+
+      // 1. Asian Session Range (00:00 to 07:00 UTC)
+      const todayAsianCandles = [];
+      for (let i = candles.length - 1; i >= 0; i--) {
+        const c = candles[i];
+        const dt = new Date(c.time * 1000);
+        const utcHours = dt.getUTCHours();
+        if (utcHours >= 0 && utcHours < 7) {
+          todayAsianCandles.push(c);
+          if (todayAsianCandles.length >= 28) break; // 7h * 4 bars/h = 28 bars
+        } else if (todayAsianCandles.length > 0) {
+          break; // reached prior day
+        }
+      }
+
+      let asianHigh = 0;
+      let asianLow = 0;
+      if (todayAsianCandles.length > 0) {
+        asianHigh = Math.max(...todayAsianCandles.map(c => c.high));
+        asianLow = Math.min(...todayAsianCandles.map(c => c.low));
+      } else {
+        const s = candles.slice(-28, -6);
+        if (s.length) {
+          asianHigh = Math.max(...s.map(c => c.high));
+          asianLow = Math.min(...s.map(c => c.low));
+        }
+      }
+
+      // 2. Higher Timeframe Pool: Previous Day High/Low (PDH / PDL)
+      let pdh = 0;
+      let pdl = 0;
+      const prevDaySlice = candles.slice(-96, -24);
+      if (prevDaySlice.length > 10) {
+        pdh = Math.max(...prevDaySlice.map(c => c.high));
+        pdl = Math.min(...prevDaySlice.map(c => c.low));
+      } else {
+        const s = candles.slice(-45, -12);
+        pdh = Math.max(...s.map(c => c.high));
+        pdl = Math.min(...s.map(c => c.low));
+      }
+
+      // Previous 4H High/Low (P4HH / P4HL)
+      const prev4HSlice = candles.slice(-32, -16);
+      const p4hh = prev4HSlice.length ? Math.max(...prev4HSlice.map(c => c.high)) : (pdh - 2.0);
+      const p4hl = prev4HSlice.length ? Math.min(...prev4HSlice.map(c => c.low)) : (pdl + 2.0);
+
+      // 3. Equal Highs (EQH) & Equal Lows (EQL) (Swing points within $0.80 of each other)
+      let eqh = null;
+      let eql = null;
+      const swingHighs = [];
+      const swingLows = [];
+
+      for (let i = 2; i < candles.length - 2; i++) {
+        const c = candles[i];
+        if (c.high > candles[i - 1].high && c.high > candles[i - 2].high &&
+            c.high > candles[i + 1].high && c.high > candles[i + 2].high) {
+          swingHighs.push({ price: c.high, time: c.time, index: i });
+        }
+        if (c.low < candles[i - 1].low && c.low < candles[i - 2].low &&
+            c.low < candles[i + 1].low && c.low < candles[i + 2].low) {
+          swingLows.push({ price: c.low, time: c.time, index: i });
+        }
+      }
+
+      // Find Equal Highs within $0.80
+      for (let i = swingHighs.length - 1; i >= 1; i--) {
+        for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
+          if (Math.abs(swingHighs[i].price - swingHighs[j].price) <= 0.80) {
+            eqh = Number(((swingHighs[i].price + swingHighs[j].price) / 2).toFixed(2));
+            break;
+          }
+        }
+        if (eqh) break;
+      }
+
+      // Find Equal Lows within $0.80
+      for (let i = swingLows.length - 1; i >= 1; i--) {
+        for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
+          if (Math.abs(swingLows[i].price - swingLows[j].price) <= 0.80) {
+            eql = Number(((swingLows[i].price + swingLows[j].price) / 2).toFixed(2));
+            break;
+          }
+        }
+        if (eql) break;
+      }
+
+      // 4. Old High / Old Low (Major liquidity boundaries)
+      const oldHighSlice = candles.slice(-40, -8);
+      const oldHigh = oldHighSlice.length ? Math.max(...oldHighSlice.map(c => c.high)) : (currentPrice + 12);
+      const oldLow = oldHighSlice.length ? Math.min(...oldHighSlice.map(c => c.low)) : (currentPrice - 12);
+
+      return {
+        asianHigh: Number(asianHigh.toFixed(2)),
+        asianLow: Number(asianLow.toFixed(2)),
+        pdh: Number(pdh.toFixed(2)),
+        pdl: Number(pdl.toFixed(2)),
+        p4hh: Number(p4hh.toFixed(2)),
+        p4hl: Number(p4hl.toFixed(2)),
+        eqh,
+        eql,
+        oldHigh: Number(oldHigh.toFixed(2)),
+        oldLow: Number(oldLow.toFixed(2)),
+        currentPrice
+      };
+    }
+
+    // 2. LIQUIDITY SWEEP DETECTION STATE MACHINE (The 4 Institutional Raids)
+    function detectInstitutionalLiquiditySweeps(candles, pools) {
+      if (!candles || candles.length < 5 || !pools) return null;
+
+      const current = candles[candles.length - 1];
+      const prev = candles[candles.length - 2];
+      const prev2 = candles[candles.length - 3];
+
+      const nowUTC = new Date(current.time * 1000);
+      const utcHours = nowUTC.getUTCHours() + (nowUTC.getUTCMinutes() / 60);
+      const isLondonOrNY = (utcHours >= 7.0 && utcHours <= 21.0);
+
+      const curRange = Math.max(0.001, current.high - current.low);
+      const isBullWick = (Math.min(current.open, current.close) - current.low) / curRange >= 0.35;
+      const isBearWick = (current.high - Math.max(current.open, current.close)) / curRange >= 0.35;
+
+      // RAID A: Session High / Low Raid (Asian Low swept by London/NY Session -> Mandatory Bullish Setup)
+      if (isLondonOrNY && pools.asianLow && pools.asianLow > 0) {
+        const sweptAsianLow = (prev.low < pools.asianLow && current.close > pools.asianLow) ||
+                              (current.low < pools.asianLow && current.close > pools.asianLow && isBullWick);
+        if (sweptAsianLow) {
+          const sweepLowest = Math.min(current.low, prev.low);
+          const entry = Number(current.close.toFixed(2));
+          const sl = Number((sweepLowest - 1.20).toFixed(2));
+          const risk = Math.max(1.80, entry - sl);
+          const tp = Number(pools.asianHigh.toFixed(2));
+          return {
+            type: "BUY",
+            setup: "ASIAN LOW LIQUIDITY RAID",
+            sweepLevel: pools.asianLow,
+            entry,
+            sl,
+            tp,
+            rr: "1 : 3.5",
+            reason: `Confirmed after London Session swept Asian Low ($${pools.asianLow.toFixed(2)}) (Sell-Side Liquidity Raid).`,
+            markerText: "⚡ SSL SWEPT (ASIAN LOW)"
+          };
+        }
+
+        // Asian High Swept by London/NY -> Mandatory Bearish Setup
+        const sweptAsianHigh = (prev.high > pools.asianHigh && current.close < pools.asianHigh) ||
+                               (current.high > pools.asianHigh && current.close < pools.asianHigh && isBearWick);
+        if (sweptAsianHigh) {
+          const sweepHighest = Math.max(current.high, prev.high);
+          const entry = Number(current.close.toFixed(2));
+          const sl = Number((sweepHighest + 1.20).toFixed(2));
+          const risk = Math.max(1.80, sl - entry);
+          const tp = Number(pools.asianLow.toFixed(2));
+          return {
+            type: "SELL",
+            setup: "ASIAN HIGH LIQUIDITY RAID",
+            sweepLevel: pools.asianHigh,
+            entry,
+            sl,
+            tp,
+            rr: "1 : 3.5",
+            reason: `Confirmed after London Session swept Asian High ($${pools.asianHigh.toFixed(2)}) (Buy-Side Liquidity Raid).`,
+            markerText: "⚡ BSL SWEPT (ASIAN HIGH)"
+          };
+        }
+      }
+
+      // RAID B: Equal Highs (EQH) / Equal Lows (EQL) Hunt
+      if (pools.eql) {
+        // Price pierces EQL with a wick and closes back ABOVE -> Bullish Reversal
+        const sweptEQL = (prev.low <= pools.eql && current.close > pools.eql) ||
+                         (current.low < pools.eql && current.close > pools.eql && isBullWick);
+        if (sweptEQL) {
+          const sweepLowest = Math.min(current.low, prev.low);
+          const entry = Number(current.close.toFixed(2));
+          const sl = Number((sweepLowest - 1.20).toFixed(2));
+          const risk = Math.max(1.80, entry - sl);
+          const tp = Number((pools.eqh || (entry + (risk * 3.5))).toFixed(2));
+          return {
+            type: "BUY",
+            setup: "BUY-SIDE LIQUIDITY RAID (EQL SWEPT)",
+            sweepLevel: pools.eql,
+            entry,
+            sl,
+            tp,
+            rr: "1 : 3.5",
+            reason: `Confirmed after Smart Money swept retail sell-stops below Equal Lows ($${pools.eql.toFixed(2)}).`,
+            markerText: "⚡ EQL SWEPT"
+          };
+        }
+      }
+
+      if (pools.eqh) {
+        // Price pierces EQH by $1.00-$2.50 with a wick and closes back INSIDE -> Bearish Reversal
+        const sweptEQH = (prev.high >= pools.eqh && current.close < pools.eqh) ||
+                         (current.high > pools.eqh && current.close < pools.eqh && isBearWick);
+        if (sweptEQH) {
+          const sweepHighest = Math.max(current.high, prev.high);
+          const entry = Number(current.close.toFixed(2));
+          const sl = Number((sweepHighest + 1.20).toFixed(2));
+          const risk = Math.max(1.80, sl - entry);
+          const tp = Number((pools.eql || (entry - (risk * 3.5))).toFixed(2));
+          return {
+            type: "SELL",
+            setup: "SELL-SIDE LIQUIDITY RAID (EQH SWEPT)",
+            sweepLevel: pools.eqh,
+            entry,
+            sl,
+            tp,
+            rr: "1 : 3.5",
+            reason: `Confirmed after Smart Money swept retail buy-stops above Equal Highs ($${pools.eqh.toFixed(2)}).`,
+            markerText: "⚡ EQH SWEPT"
+          };
+        }
+      }
+
+      // RAID C: Old High / Old Low Sweep (Turtle Soup)
+      if (pools.oldHigh && current.high >= pools.oldHigh && current.close < pools.oldHigh && isBearWick) {
+        const entry = Number(current.close.toFixed(2));
+        const sl = Number((current.high + 1.20).toFixed(2));
+        const risk = Math.max(1.80, sl - entry);
+        const tp = Number((entry - (risk * 3.5)).toFixed(2));
+        return {
+          type: "SELL",
+          setup: "OLD HIGH TURTLE SOUP RAID",
+          sweepLevel: pools.oldHigh,
+          entry,
+          sl,
+          tp,
+          rr: "1 : 3.5",
+          reason: `Confirmed Turtle Soup raid above Old High ($${pools.oldHigh.toFixed(2)}). Reversal initiated.`,
+          markerText: "⚡ OLD HIGH SWEPT"
+        };
+      }
+
+      if (pools.oldLow && current.low <= pools.oldLow && current.close > pools.oldLow && isBullWick) {
+        const entry = Number(current.close.toFixed(2));
+        const sl = Number((current.low - 1.20).toFixed(2));
+        const risk = Math.max(1.80, entry - sl);
+        const tp = Number((entry + (risk * 3.5)).toFixed(2));
+        return {
+          type: "BUY",
+          setup: "OLD LOW TURTLE SOUP RAID",
+          sweepLevel: pools.oldLow,
+          entry,
+          sl,
+          tp,
+          rr: "1 : 3.5",
+          reason: `Confirmed Turtle Soup raid below Old Low ($${pools.oldLow.toFixed(2)}). Reversal initiated.`,
+          markerText: "⚡ OLD LOW SWEPT"
+        };
+      }
+
+      // RAID D: Trendline Liquidity Fake-Break + Marubozu Expansion
+      if (current.close > current.open && (current.close - current.open) >= 2.5) {
+        const lowPrev = Math.min(prev.low, prev2.low);
+        if (pools.asianLow && lowPrev < pools.asianLow && current.close > pools.asianLow) {
+          const entry = Number(current.close.toFixed(2));
+          const sl = Number((lowPrev - 1.20).toFixed(2));
+          const risk = Math.max(1.80, entry - sl);
+          const tp = Number((entry + (risk * 3.5)).toFixed(2));
+          return {
+            type: "BUY",
+            setup: "TRENDLINE LIQUIDITY SWEEP BUY",
+            sweepLevel: lowPrev,
+            entry,
+            sl,
+            tp,
+            rr: "1 : 3.5",
+            reason: "Fake-break below retail trendline swept stops. Institutional expansion candle confirmed.",
+            markerText: "⚡ TRENDLINE SWEPT"
+          };
+        }
+      }
+
+      return null;
+    }
+
+    // 3. EXECUTION RULE 0.1: THE LIQUIDITY SHIELD (FORBIDDEN TRADES)
+    function applyLiquidityShield(proposedAction, currentPrice, pools) {
+      if (!pools) return { allowed: true };
+
+      // Rule 0.1A: NEVER Buy just above an un-swept EQL or Asian Low
+      if (proposedAction === 'BUY') {
+        if (pools.asianLow && currentPrice > pools.asianLow && (currentPrice - pools.asianLow) <= 4.0) {
+          return {
+            allowed: false,
+            reason: `Rule 0.1 Liquidity Shield: Un-swept Asian Low at $${pools.asianLow.toFixed(2)} nearby. Smart Money will hunt stops first before rally.`,
+            poolLevel: pools.asianLow
+          };
+        }
+        if (pools.eql && currentPrice > pools.eql && (currentPrice - pools.eql) <= 3.2) {
+          return {
+            allowed: false,
+            reason: `Rule 0.1 Liquidity Shield: Un-swept Equal Lows at $${pools.eql.toFixed(2)} nearby. Sell-stops will be raided first.`,
+            poolLevel: pools.eql
+          };
+        }
+      }
+
+      // Rule 0.1B: NEVER Sell just below an un-swept EQH or Asian High
+      if (proposedAction === 'SELL') {
+        if (pools.asianHigh && currentPrice < pools.asianHigh && (pools.asianHigh - currentPrice) <= 4.0) {
+          return {
+            allowed: false,
+            reason: `Rule 0.1 Liquidity Shield: Un-swept Asian High at $${pools.asianHigh.toFixed(2)} nearby. Smart Money will hunt buy-stops first before drop.`,
+            poolLevel: pools.asianHigh
+          };
+        }
+        if (pools.eqh && currentPrice < pools.eqh && (pools.eqh - currentPrice) <= 3.2) {
+          return {
+            allowed: false,
+            reason: `Rule 0.1 Liquidity Shield: Un-swept Equal Highs at $${pools.eqh.toFixed(2)} nearby. Buy-stops will be raided first.`,
+            poolLevel: pools.eqh
+          };
+        }
+      }
+
+      return { allowed: true };
+    }
+
+    // 4. CANVAS OVERLAY FOR INSTITUTIONAL LIQUIDITY POOLS (Clean & Non-Cluttering)
+    function drawInstitutionalLiquidityOverlay(ctx, pools, activeSweep) {
+      if (!smcEnabled || !pools || !ctx || !candleSeries || !chart) return;
+
+      ctx.save();
+
+      const levelsToDraw = [
+        { label: 'ASH 🎯 ($)', price: pools.asianHigh, color: 'rgba(255, 215, 0, 0.45)', textColor: '#ffd700' },
+        { label: 'ASL 🎯 ($)', price: pools.asianLow, color: 'rgba(56, 139, 253, 0.45)', textColor: '#58a6ff' },
+      ];
+
+      if (pools.eqh) {
+        levelsToDraw.push({ label: 'EQH ($)', price: pools.eqh, color: 'rgba(248, 81, 73, 0.45)', textColor: '#f85149' });
+      }
+      if (pools.eql) {
+        levelsToDraw.push({ label: 'EQL ($)', price: pools.eql, color: 'rgba(63, 185, 80, 0.45)', textColor: '#3fb950' });
+      }
+
+      levelsToDraw.forEach(lvl => {
+        if (!lvl.price || lvl.price <= 0) return;
+        const y = candleSeries.priceToCoordinate(lvl.price);
+        if (y === null || y < 0 || y > canvasCssHeight) return;
+
+        // Subtle, fine dashed line
+        ctx.strokeStyle = lvl.color;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath();
+        ctx.moveTo(20, y);
+        ctx.lineTo(canvasCssWidth - 65, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Clean small badge at the right edge
+        const txt = `${lvl.label} · $${lvl.price.toFixed(1)}`;
+        ctx.font = '600 9px monospace';
+        const w = ctx.measureText(txt).width + 8;
+        const tagX = canvasCssWidth - w - 70;
+
+        ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.90)' : 'rgba(10, 14, 23, 0.88)';
+        ctx.fillRect(tagX, y - 7, w, 14);
+        ctx.strokeStyle = lvl.color;
+        ctx.strokeRect(tagX, y - 7, w, 14);
+
+        ctx.fillStyle = lvl.textColor;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(txt, tagX + 4, y);
+      });
+
+      // Flash subtle "⚡ LIQUIDITY SWEPT" marker if sweep is active
+      if (activeSweep && activeSweep.sweepLevel) {
+        const sweepY = candleSeries.priceToCoordinate(activeSweep.sweepLevel);
+        if (sweepY !== null && sweepY >= 0 && sweepY <= canvasCssHeight) {
+          const bannerTxt = activeSweep.markerText || "⚡ LIQUIDITY SWEPT";
+          ctx.font = '800 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const bannerW = ctx.measureText(bannerTxt).width + 16;
+          const bannerX = Math.round(canvasCssWidth / 2 - (bannerW / 2));
+          const bannerY = Math.max(10, Math.min(canvasCssHeight - 25, sweepY - 10));
+
+          ctx.fillStyle = activeSweep.type === 'BUY' ? 'rgba(46, 160, 67, 0.95)' : 'rgba(248, 81, 73, 0.95)';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, 20, 4);
+          else ctx.rect(bannerX, bannerY, bannerW, 20);
+          ctx.fill();
+
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(bannerTxt, bannerX + (bannerW / 2), bannerY + 10);
+        }
+      }
+
+      ctx.restore();
+    }
+
     function detectSmartMoneyZones(candles) {
       if (!candles || candles.length < 5) return { fvgList: [], obList: [], activeRRSetup: null };
 
@@ -7122,6 +7538,10 @@
         if (currentSMCZones.activeRRSetup) {
           drawRiskRewardOverlay(drawingCtx, currentSMCZones.activeRRSetup);
         }
+        // Institutional Liquidity Pools & Sweep Alerts (ASH, ASL, EQH, EQL)
+        if (currentLiquidityPools) {
+          drawInstitutionalLiquidityOverlay(drawingCtx, currentLiquidityPools, window.latestLiquiditySweep);
+        }
       }
 
       // 1.5 Draw Quantitative Breakout Line (Only when SMC is off to avoid collision)
@@ -7530,6 +7950,11 @@
       const currentEma = emaMap.get(currentCandle.time) || (typeof currentEMA20 !== 'undefined' ? currentEMA20 : currentPrice);
       const prevEma = emaMap.get(prevCandle.time) || currentEma;
 
+      // 0. INSTITUTIONAL LIQUIDITY TRACKER & SWEEP DETECTION
+      currentLiquidityPools = trackInstitutionalLiquidity(candles);
+      const activeSweep = detectInstitutionalLiquiditySweeps(candles, currentLiquidityPools);
+      window.latestLiquiditySweep = activeSweep;
+
       // 1. Calculate true 14-period ATR
       const recent14 = candles.slice(-14);
       let trSum = 0;
@@ -7590,6 +8015,21 @@
 
       let institutionalBuyTrigger = false;
       let supplyRejectionWarning = false;
+
+      // Priority 0: CONFIRMED INSTITUTIONAL LIQUIDITY SWEEP (MANDATORY EXECUTION)
+      if (activeSweep) {
+        if (activeSweep.type === 'BUY') {
+          buyVotes += 4.5;
+          institutionalBuyTrigger = true;
+          agent1Bias = 'LIQUIDITY_RAID_BUY';
+          agent1Desc = activeSweep.reason;
+        } else {
+          sellVotes += 4.5;
+          supplyRejectionWarning = true;
+          agent1Bias = 'LIQUIDITY_RAID_SELL';
+          agent1Desc = activeSweep.reason;
+        }
+      }
 
       // Priority 1: Institutional Demand / FVG Inflow
       if (nearDemandOB || nearBullishFVG) {
@@ -7751,8 +8191,37 @@
         macroMarketState.dxyChange >= 0.35 && 
         macroMarketState.sugraWarScore < 60);
 
+      // ==========================================
+      // MANDATORY INSTITUTIONAL LIQUIDITY SWEEP EXECUTION OVERRIDE
+      // ==========================================
+      if (activeSweep) {
+        finalAction = activeSweep.type === 'BUY' ? "HIGH CONVICTION BUY" : "HIGH CONVICTION SELL";
+        confidence = "95% (Institutional Liquidity Raid)";
+        reason = activeSweep.reason;
+        entry = activeSweep.entry;
+        sl = Number(activeSweep.sl);
+        tp1 = Number(activeSweep.tp);
+        tp2 = Number((activeSweep.tp + (activeSweep.type === 'BUY' ? 6.0 : -6.0)).toFixed(2));
+        rr = activeSweep.rr;
+        const pushPts = Math.abs(tp1 - entry);
+        shortTermProfit = {
+          lot01: Number((pushPts * 1.00).toFixed(2)),
+          lot02: Number((pushPts * 2.00).toFixed(2)),
+          lot05: Number((pushPts * 5.00).toFixed(2))
+        };
+      } else {
+        // ENFORCE RULE 0.1: THE LIQUIDITY SHIELD (FORBIDDEN TRADES)
+        const proposedAction = macroWarBuy ? 'BUY' : (macroDxySell ? 'SELL' : (buyVotes > sellVotes ? 'BUY' : 'SELL'));
+        const shield = applyLiquidityShield(proposedAction, currentPrice, currentLiquidityPools);
+        if (!shield.allowed) {
+          finalAction = "WAIT_FOR_CONFLUENCE";
+          confidence = "Shield Active (Forbidden Trade)";
+          reason = shield.reason;
+        }
+      }
+
       // Rule: War Spikes -> Pause short-selling at supply and trigger High Conviction Safe-Haven Buy
-      if (macroWarBuy) {
+      if (!activeSweep && macroWarBuy) {
         finalAction = "HIGH CONVICTION BUY";
         confidence = `${Math.min(94, Math.round(75 + (macroMarketState.confluenceScore * 2.0)))}% Prob. (War Safe-Haven)`;
         reason = 'Safe-haven capital flow breaking through local supply.';
@@ -8788,6 +9257,31 @@ const ghostCandles = [
         : (currentCandle ? currentCandle.close : 4010.0);
 
       const now = Date.now();
+
+      // 0. REAL-TIME INSTITUTIONAL LIQUIDITY SWEEP PRIORITY UPDATE
+      if (window.latestLiquiditySweep && (!shortTermSignalLock.active || shortTermSignalLock.status !== 'ACTIVE_HOLD')) {
+        const sw = window.latestLiquiditySweep;
+        shortTermSignalLock = {
+          active: true,
+          signalType: sw.type,
+          action: sw.type === 'BUY' ? 'HIGH CONVICTION BUY' : 'HIGH CONVICTION SELL',
+          confidence: '95% (Institutional Liquidity Raid)',
+          entryPrice: sw.entry,
+          tp1: sw.tp,
+          tp2: sw.tp + (sw.type === 'BUY' ? 6.0 : -6.0),
+          sl: Number(sw.sl),
+          rr: sw.rr,
+          gainPts: Math.abs(sw.tp - sw.entry),
+          reason: sw.reason,
+          lockedAt: now,
+          maxLockDurationMs: 60 * 60 * 1000,
+          status: 'ACTIVE_HOLD',
+          completedAt: null,
+          lastCompletedType: shortTermSignalLock.lastCompletedType,
+          lastCompletedStatus: shortTermSignalLock.lastCompletedStatus
+        };
+        window.shortTermSignalLock = shortTermSignalLock;
+      }
 
       // 1. REAL-TIME SHORT-TERM TP / SL TRIGGER & HARD STRUCTURE INVALIDATION
       if (shortTermSignalLock.active) {
