@@ -7121,20 +7121,21 @@
           ? `Demand OB test ($${nearDemandOB.bottom.toFixed(1)} - $${nearDemandOB.top.toFixed(1)})`
           : `Bullish FVG retest ($${nearBullishFVG.bottom.toFixed(1)} - $${nearBullishFVG.top.toFixed(1)})`;
       } 
-      // Priority 2: Supply Zone / Bearish FVG Inflow -> Expect Rejection or War Safe-Haven Breakout
+      // Priority 2: Supply Zone / Bearish FVG Inflow -> Price Action Rejection Takes Strict Precedence
       else if (nearSupplyOB || nearBearishFVG) {
-        const isSafeHavenWar = (typeof macroMarketState !== 'undefined') && (macroMarketState.sugraWarScore >= 60 || macroMarketState.netMoveTarget > 0);
-        if (isSafeHavenWar) {
-          buyVotes += 2.0;
-          agent1Bias = 'BREAKOUT_ACCUMULATION';
-          agent1Desc = `Safe-Haven Expansion breaking through Supply OB ($${nearSupplyOB ? nearSupplyOB.top.toFixed(1) : ''})`;
-        } else {
-          sellVotes += 2.0;
+        // If candle is red (rejecting supply), Price Action strictly takes precedence over geopolitical sentiment!
+        const isCandleRejecting = (currentCandle.close < currentCandle.open) || (currentCandle.high - Math.max(currentCandle.open, currentCandle.close) >= 0.35 * (currentCandle.high - currentCandle.low));
+        if (isCandleRejecting) {
+          sellVotes += 2.5;
           supplyRejectionWarning = true;
           agent1Bias = 'SUPPLY_OB_REJECT';
           agent1Desc = nearSupplyOB
-            ? `Supply OB rejection ($${nearSupplyOB.top.toFixed(1)})`
+            ? `Supply OB rejection ($${nearSupplyOB.top.toFixed(1)}) - Sellers defending supply`
             : `Bearish FVG resistance ($${nearBearishFVG.top.toFixed(1)})`;
+        } else {
+          buyVotes += 1.5;
+          agent1Bias = 'TESTING_SUPPLY';
+          agent1Desc = `Testing Supply OB ($${nearSupplyOB ? nearSupplyOB.top.toFixed(1) : ''}) with bullish candle`;
         }
       }
       // Priority 3: Liquidity Sweeps & EMA 20
@@ -7216,6 +7217,29 @@
         agent3Desc = 'Neutral Geopolitical & Rate wire';
       }
 
+      // =========================================================================
+      // PRICE ACTION VETO RULE (Structure strictly overrides Macro Sentiment)
+      // =========================================================================
+      const isPriceActionBearish = (currentCandle.close < currentEma && currentCandle.close < currentCandle.open) || 
+                                   (currentPrice < (currentEma - 1.2)) ||
+                                   (currentCandle.close < support);
+      const isPriceActionBullish = (currentCandle.close > currentEma && currentCandle.close > currentCandle.open) || 
+                                   (currentPrice > (currentEma + 1.2)) ||
+                                   (currentCandle.close > resistance);
+
+      if (isPriceActionBearish) {
+        // Hard Veto: Never allow safe-haven macro to force a BUY during active breakdown below EMA 20
+        buyVotes = 0;
+        sellVotes += 3.0;
+        agent3Bias = 'PRICE_ACTION_VETO_BEARISH';
+        agent3Desc = 'Macro sentiment VETOED by live Bearish Breakdown strictly below EMA 20 & Demand.';
+      } else if (isPriceActionBullish) {
+        sellVotes = 0;
+        buyVotes += 3.0;
+        agent3Bias = 'PRICE_ACTION_VETO_BULLISH';
+        agent3Desc = 'Price Action Bullish: Live Candle expanding strictly above EMA 20 & Supply.';
+      }
+
       // AGENT 5: QUANTITATIVE CANDLESTICK PATTERN CONFLUENCE
       if (typeof currentCandlePattern !== 'undefined' && currentCandlePattern) {
         if (currentCandlePattern.bias.includes('BULLISH')) {
@@ -7238,12 +7262,13 @@
 
       // ==========================================
       // TWELVE DATA & SUGRA AI RADAR CONFLUENCE OVERRIDE
+      // (SUBJECT STRICTLY TO PRICE ACTION VETO)
       // ==========================================
-      const macroWarBuy = (typeof macroMarketState !== 'undefined' && 
+      const macroWarBuy = (!isPriceActionBearish) && (typeof macroMarketState !== 'undefined' && 
         (macroMarketState.sugraWarScore >= 60 || macroMarketState.confluenceScore >= 7.0 || macroMarketState.netMoveTarget > 0) && 
         macroMarketState.dxyChange <= 0.35);
 
-      const macroDxySell = (typeof macroMarketState !== 'undefined' && 
+      const macroDxySell = (!isPriceActionBullish) && (typeof macroMarketState !== 'undefined' && 
         macroMarketState.dxyChange >= 0.35 && 
         macroMarketState.sugraWarScore < 60);
 
@@ -7545,7 +7570,17 @@
       let targetColor = '#2ea043';
       let isUp = true;
 
-      if (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock.active) {
+      // 1. If Setup was Stopped Out / Invalidated, Ghost Candle MUST immediately track downside to next demand
+      if (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock.status === 'SL_HIT') {
+        isUp = false;
+        const nextSupportTarget = (typeof supportLevel === 'number' && supportLevel < currentPrice) ? supportLevel : (currentPrice - (atr * 2.5));
+        targetLabel = `🎯 Next Demand $${nextSupportTarget.toFixed(1)} (Downside Extension)`;
+        targetColor = '#f85149';
+
+        c1_open = currentPrice; c1_close = c1_open - (atr * 0.70); c1_low = c1_close - (atr * 0.35); c1_high = c1_open + (atr * 0.15);
+        c2_open = c1_close; c2_close = c2_open - (atr * 0.85); c2_low = c2_close - (atr * 0.40); c2_high = c2_open + (atr * 0.15);
+        c3_open = c2_close; c3_close = Math.min(nextSupportTarget, c3_open - (atr * 0.95)); c3_low = c3_close - (atr * 0.45); c3_high = c3_open + (atr * 0.20);
+      } else if (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock.active) {
         isUp = (shortTermSignalLock.signalType === 'BUY');
         const tp1 = shortTermSignalLock.tp1;
         targetLabel = isUp 
@@ -7701,7 +7736,23 @@ const ghostCandles = [
       ];
 
       try {
-        ghostCandleSeries.setData(ghostCandles);
+              // STRICT MATHEMATICAL SYNCHRONIZATION:
+      // If Ghost Candles point Downside (isUp === false), Execution Card is FORBIDDEN from showing BUY!
+      if (!isUp && typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock.signalType === 'BUY' && shortTermSignalLock.status === 'ACTIVE_HOLD') {
+        const currentSpot = (typeof currentLiveSpot !== 'undefined' && currentLiveSpot) ? currentLiveSpot : currentPrice;
+        if (currentSpot < (currentEMA20 || currentPrice) || (currentCandle && currentCandle.close < currentCandle.open)) {
+          shortTermSignalLock.status = 'SL_HIT';
+          shortTermSignalLock.active = false;
+          shortTermSignalLock.completedAt = Date.now();
+          shortTermSignalLock.action = 'SETUP INVALIDATED / STOPPED OUT';
+          shortTermSignalLock.reason = 'SETUP INVALIDATED / STOPPED OUT -> SEARCHING FOR NEXT ZONE';
+          if (typeof updateActiveSetupCard === 'function') {
+            updateActiveSetupCard(confluence, lastCandle, supportLevel, resistanceLevel);
+          }
+        }
+      }
+
+      ghostCandleSeries.setData(ghostCandles);
       } catch (err) {}
 
       const ghostMarkers = [{
@@ -8227,7 +8278,7 @@ const ghostCandles = [
     window.longTermSignalLock = longTermSignalLock;
 
     function updateActiveSetupCard(confluence, currentCandle, sup, res) {
-      if (!confluence || !confluence.agent4) return;
+      if (!confluence) return;
 
       const currentSpot = (typeof currentLiveSpot !== 'undefined' && currentLiveSpot) 
         ? currentLiveSpot 
@@ -8235,70 +8286,81 @@ const ghostCandles = [
 
       const now = Date.now();
 
-      // 1. REAL-TIME SHORT-TERM TP / SL TRIGGER EVALUATION
-      if (shortTermSignalLock.active && shortTermSignalLock.status === 'ACTIVE_HOLD') {
-        if (shortTermSignalLock.signalType === 'BUY') {
-          if (currentSpot >= shortTermSignalLock.tp1) {
+      // 1. REAL-TIME SHORT-TERM TP / SL TRIGGER & HARD STRUCTURE INVALIDATION
+      if (shortTermSignalLock.active) {
+        const isBuy = (shortTermSignalLock.signalType === 'BUY');
+        const slPrice = Number(shortTermSignalLock.sl);
+        const entryPrice = Number(shortTermSignalLock.entryPrice);
+
+        // Immediate SL breach detection
+        const isSlBreached = isBuy ? (currentSpot <= slPrice) : (currentSpot >= slPrice);
+
+        // Immediate Demand / Supply structure breakdown detection
+        const isStructureBroken = isBuy 
+          ? ((currentSpot < (sup - 0.75)) || (currentCandle && currentCandle.close < (currentEMA20 || currentSpot) && currentSpot <= (entryPrice - 2.50)))
+          : ((currentSpot > (res + 0.75)) || (currentCandle && currentCandle.close > (currentEMA20 || currentSpot) && currentSpot >= (entryPrice + 2.50)));
+
+        if (isSlBreached || isStructureBroken) {
+          // IMMEDIATE HARD OVERRIDE: Invalidate immediately, do NOT wait for 15M lock timer!
+          shortTermSignalLock.status = 'SL_HIT';
+          shortTermSignalLock.active = false; // RELEASE LOCK IMMEDIATELY
+          shortTermSignalLock.completedAt = now;
+          shortTermSignalLock.lastCompletedType = isBuy ? 'BUY' : 'SELL';
+          shortTermSignalLock.lastCompletedStatus = 'SL_HIT';
+          shortTermSignalLock.action = 'SETUP INVALIDATED / STOPPED OUT';
+          shortTermSignalLock.reason = 'SETUP INVALIDATED / STOPPED OUT -> SEARCHING FOR NEXT ZONE';
+        } else if (shortTermSignalLock.status === 'ACTIVE_HOLD') {
+          if (isBuy && currentSpot >= shortTermSignalLock.tp1) {
             shortTermSignalLock.status = 'TP_HIT';
             shortTermSignalLock.completedAt = now;
             shortTermSignalLock.lastCompletedType = 'BUY';
             shortTermSignalLock.lastCompletedStatus = 'TP_HIT';
-          } else if (currentSpot <= shortTermSignalLock.sl) {
-            shortTermSignalLock.status = 'SL_HIT';
-            shortTermSignalLock.completedAt = now;
-            shortTermSignalLock.lastCompletedType = 'BUY';
-            shortTermSignalLock.lastCompletedStatus = 'SL_HIT';
-          }
-        } else {
-          if (currentSpot <= shortTermSignalLock.tp1) {
+          } else if (!isBuy && currentSpot <= shortTermSignalLock.tp1) {
             shortTermSignalLock.status = 'TP_HIT';
             shortTermSignalLock.completedAt = now;
             shortTermSignalLock.lastCompletedType = 'SELL';
             shortTermSignalLock.lastCompletedStatus = 'TP_HIT';
-          } else if (currentSpot >= shortTermSignalLock.sl) {
-            shortTermSignalLock.status = 'SL_HIT';
-            shortTermSignalLock.completedAt = now;
-            shortTermSignalLock.lastCompletedType = 'SELL';
-            shortTermSignalLock.lastCompletedStatus = 'SL_HIT';
           }
         }
       }
 
-      // 2. REAL-TIME LONG-TERM TP / SL TRIGGER EVALUATION
-      if (longTermSignalLock.active && longTermSignalLock.status === 'ACTIVE_HOLD') {
-        if (longTermSignalLock.bias === 'BULLISH') {
-          if (currentSpot >= longTermSignalLock.tp) {
-            longTermSignalLock.status = 'TP_HIT';
-            longTermSignalLock.completedAt = now;
-            longTermSignalLock.lastCompletedBias = 'BULLISH';
-            longTermSignalLock.lastCompletedStatus = 'TP_HIT';
-          } else if (currentSpot <= longTermSignalLock.inval) {
-            longTermSignalLock.status = 'SL_HIT';
-            longTermSignalLock.completedAt = now;
-            longTermSignalLock.lastCompletedBias = 'BULLISH';
-            longTermSignalLock.lastCompletedStatus = 'SL_HIT';
-          }
-        } else {
-          if (currentSpot <= longTermSignalLock.tp) {
-            longTermSignalLock.status = 'TP_HIT';
-            longTermSignalLock.completedAt = now;
-            longTermSignalLock.lastCompletedBias = 'BEARISH';
-            longTermSignalLock.lastCompletedStatus = 'TP_HIT';
-          } else if (currentSpot >= longTermSignalLock.inval) {
-            longTermSignalLock.status = 'SL_HIT';
-            longTermSignalLock.completedAt = now;
-            longTermSignalLock.lastCompletedBias = 'BEARISH';
-            longTermSignalLock.lastCompletedStatus = 'SL_HIT';
-          }
+      // 2. REAL-TIME LONG-TERM TP / SL TRIGGER & HARD STRUCTURE INVALIDATION
+      if (longTermSignalLock.active) {
+        const isLtBuy = (longTermSignalLock.bias === 'BULLISH');
+        const ltInval = Number(longTermSignalLock.inval);
+        const ltTp = Number(longTermSignalLock.tp);
+
+        const isLtSlBreached = isLtBuy ? (currentSpot <= ltInval) : (currentSpot >= ltInval);
+        const isLtTpReached = isLtBuy ? (currentSpot >= ltTp) : (currentSpot <= ltTp);
+
+        if (isLtSlBreached) {
+          // IMMEDIATE HARD OVERRIDE FOR SWING
+          longTermSignalLock.status = 'SL_HIT';
+          longTermSignalLock.active = false;
+          longTermSignalLock.completedAt = now;
+          longTermSignalLock.lastCompletedBias = isLtBuy ? 'BULLISH' : 'BEARISH';
+          longTermSignalLock.lastCompletedStatus = 'SL_HIT';
+          longTermSignalLock.action = 'SWING INVALIDATED / STOPPED OUT';
+          longTermSignalLock.reason = 'Macro swing invalidation level breached -> Re-evaluating HTF trend.';
+        } else if (longTermSignalLock.status === 'ACTIVE_HOLD' && isLtTpReached) {
+          longTermSignalLock.status = 'TP_HIT';
+          longTermSignalLock.completedAt = now;
+          longTermSignalLock.lastCompletedBias = isLtBuy ? 'BULLISH' : 'BEARISH';
+          longTermSignalLock.lastCompletedStatus = 'TP_HIT';
         }
       }
 
       // 3. SHORT-TERM SIGNAL AUTO-TRANSITION (IMMEDIATE RE-EVALUATION UPON TP/SL)
       const stElapsed = now - shortTermSignalLock.lockedAt;
-      const isLockExpired = (!shortTermSignalLock.active || stElapsed >= shortTermSignalLock.maxLockDurationMs);
-      const isTargetOrSlDone = (shortTermSignalLock.status === 'TP_HIT' || shortTermSignalLock.status === 'SL_HIT') && 
+      const isStatusPending = (shortTermSignalLock.status === 'TP_HIT' || shortTermSignalLock.status === 'SL_HIT');
+      const minWait = (shortTermSignalLock.status === 'SL_HIT') ? 3500 : 6000;
+      const isTargetOrSlDone = isStatusPending && 
                                shortTermSignalLock.completedAt && 
-                               (now - shortTermSignalLock.completedAt >= 6000);
+                               (now - shortTermSignalLock.completedAt >= minWait);
+
+      // Lock expires only if normal holding time elapsed, NOT during pending invalidation/completion cooldown!
+      const isLockExpired = !isStatusPending && 
+                            (shortTermSignalLock.status === 'ACTIVE_HOLD' && stElapsed >= shortTermSignalLock.maxLockDurationMs);
 
       if (isLockExpired || isTargetOrSlDone) {
         const prevType = shortTermSignalLock.lastCompletedType;
@@ -8309,13 +8371,13 @@ const ghostCandles = [
         const atr = (confluence && confluence.agent4 && confluence.agent4.atr) ? confluence.agent4.atr : 3.5;
 
         // TOP-DOWN MULTI-TIMEFRAME EVALUATION (Hard Gated)
-        const mtfRes = evaluateTopDownMTF(
+        const mtfRes = (typeof evaluateTopDownMTF === 'function') ? evaluateTopDownMTF(
           mtfCandleStore['4h'],
           mtfCandleStore['1h'],
           mtfCandleStore['15m'],
           mtfCandleStore['5m'],
           mtfCandleStore['3m']
-        );
+        ) : null;
 
         let newSigType = 'BUY';
         let newAction = 'BUY / LONG';
@@ -8334,11 +8396,33 @@ const ghostCandles = [
           newRr = mtfRes.rr;
           newReason = mtfRes.reason;
         } else {
-          // Dynamic structural fallback
+          // Dynamic structural fallback with explicit Invalidation handling (NO GUESSWORK!)
           const isNearSupply = (currentSpot >= resistance - 4.5);
           const isNearDemand = (currentSpot <= support + 4.5);
 
-          if (prevType === 'BUY' && prevStatus === 'TP_HIT' && isNearSupply) {
+          if (prevType === 'BUY' && prevStatus === 'SL_HIT') {
+            // Demand was broken! Market momentum has flipped Bearish. Track breakdown to next demand!
+            newSigType = 'SELL';
+            newAction = 'BEARISH BREAKDOWN CONTINUATION';
+            newConfidence = 'SMC Shift (Demand Broken -> Target Lower Liquidity)';
+            newGainPts = Number((atr * 2.8).toFixed(1));
+            newTp1 = Number((currentSpot - newGainPts).toFixed(2));
+            newTp2 = Number((currentSpot - newGainPts - 6.0).toFixed(2));
+            newSl = Number((currentSpot + 2.50).toFixed(2));
+            newRr = '1 : 2.8 (+' + newGainPts.toFixed(1) + ' pts)';
+            newReason = 'Demand zone invalidated. Bearish displacement targeting next lower liquidity pool ($' + newTp1.toFixed(1) + ').';
+          } else if (prevType === 'SELL' && prevStatus === 'SL_HIT') {
+            // Supply was swept! Market momentum has flipped Bullish. Track expansion to next supply!
+            newSigType = 'BUY';
+            newAction = 'BULLISH EXPANSION BREAKOUT';
+            newConfidence = 'SMC Shift (Supply Swept -> Target Higher Liquidity)';
+            newGainPts = Number((atr * 2.8).toFixed(1));
+            newTp1 = Number((currentSpot + newGainPts).toFixed(2));
+            newTp2 = Number((currentSpot + newGainPts + 6.0).toFixed(2));
+            newSl = Number((currentSpot - 2.50).toFixed(2));
+            newRr = '1 : 2.8 (+' + newGainPts.toFixed(1) + ' pts)';
+            newReason = 'Supply zone breached. Bullish expansion targeting overhead liquidity pool ($' + newTp1.toFixed(1) + ').';
+          } else if (prevType === 'BUY' && prevStatus === 'TP_HIT' && isNearSupply) {
             newSigType = 'SELL';
             newAction = 'SELL / SHORT';
             newConfidence = '4/5 Timeframes Aligned (Supply Rejection)';
@@ -8359,7 +8443,7 @@ const ghostCandles = [
             newRr = '1 : 3.0 (+' + newGainPts.toFixed(1) + ' pts)';
             newReason = 'Target TP1 achieved at Demand. Liquidity floor defended; bullish absorption targeting EMA 20 & Supply.';
           } else {
-            const isBuy = (confluence.buyVotes >= confluence.sellVotes);
+            const isBuy = (confluence && confluence.buyVotes >= confluence.sellVotes);
             newSigType = isBuy ? 'BUY' : 'SELL';
             newAction = isBuy ? 'BUY / LONG' : 'SELL / SHORT';
             newGainPts = 12.0;
@@ -8405,14 +8489,17 @@ const ghostCandles = [
 
       // 4. LONG-TERM SWING SIGNAL AUTO-TRANSITION
       const ltElapsed = now - longTermSignalLock.lockedAt;
-      const isLtExpired = (!longTermSignalLock.active || ltElapsed >= (72 * 60 * 60 * 1000));
-      const isLtTargetOrSlDone = (longTermSignalLock.status === 'TP_HIT' || longTermSignalLock.status === 'SL_HIT') && 
+      const isLtStatusPending = (longTermSignalLock.status === 'TP_HIT' || longTermSignalLock.status === 'SL_HIT');
+      const ltMinWait = (longTermSignalLock.status === 'SL_HIT') ? 4000 : 7000;
+      const isLtTargetOrSlDone = isLtStatusPending && 
                                  longTermSignalLock.completedAt && 
-                                 (now - longTermSignalLock.completedAt >= 8000);
+                                 (now - longTermSignalLock.completedAt >= ltMinWait);
+      const isLtExpired = !isLtStatusPending && 
+                          (longTermSignalLock.status === 'ACTIVE_HOLD' && ltElapsed >= (72 * 60 * 60 * 1000));
 
       if (isLtExpired || isLtTargetOrSlDone) {
         const prevLtBias = longTermSignalLock.lastCompletedBias;
-        const prevLtStatus = longTermSignalLock.status;
+        const prevLtStatus = longTermSignalLock.lastCompletedStatus;
 
         let ltBias = 'BULLISH';
         let ltActionText = 'BULLISH SWING ACCUMULATION';
@@ -8421,6 +8508,26 @@ const ghostCandles = [
         let ltInvalVal = Number((currentSpot - 45.0).toFixed(2));
         let ltHorizonText = '3 - 7 Days';
         let ltNoteText = 'Central bank accumulation & macro uptrend continuation.';
+
+        if (prevLtBias === 'BULLISH' && prevLtStatus === 'SL_HIT') {
+          // Macro Demand broken -> Switch to Bearish Swing Distribution
+          ltBias = 'BEARISH';
+          ltActionText = 'BEARISH MACRO DISTRIBUTION';
+          ltConfText = 'HTF Liquidity Shift (Floor Breached)';
+          ltTargetVal = Number((currentSpot - 65.0).toFixed(2));
+          ltInvalVal = Number((currentSpot + 35.0).toFixed(2));
+          ltHorizonText = '3 - 6 Days';
+          ltNoteText = 'Macro Demand invalidated. Downward distribution targeting lower daily liquidity pool ($' + ltTargetVal.toFixed(1) + ').';
+        } else if (prevLtBias === 'BEARISH' && prevLtStatus === 'SL_HIT') {
+          // Macro Supply swept -> Switch to Bullish Macro Discovery
+          ltBias = 'BULLISH';
+          ltActionText = 'BULLISH MACRO DISCOVERY';
+          ltConfText = 'HTF Liquidity Shift (Ceiling Breached)';
+          ltTargetVal = Number((currentSpot + 65.0).toFixed(2));
+          ltInvalVal = Number((currentSpot - 35.0).toFixed(2));
+          ltHorizonText = '3 - 6 Days';
+          ltNoteText = 'Macro Supply ceiling swept. Upward expansion targeting overhead ATH liquidity ($' + ltTargetVal.toFixed(1) + ').';
+        } else
 
         if (prevLtBias === 'BULLISH' && prevLtStatus === 'TP_HIT') {
           if (currentSpot >= 4055.0) {
@@ -8499,24 +8606,40 @@ const ghostCandles = [
 
       // Update Direction & Confidence Pills (Clean Bento Execution)
       if (stDirPill) {
-        stDirPill.innerText = isBuy ? 'BUY' : 'SELL';
-        stDirPill.className = 'exec-dir-pill ' + (isBuy ? 'buy' : 'sell');
+        if (shortTermSignalLock.status === 'SL_HIT') {
+          stDirPill.innerText = 'INVALIDATED 🛑';
+          stDirPill.className = 'exec-dir-pill neutral';
+          stDirPill.style.background = 'rgba(248, 81, 73, 0.2)';
+          stDirPill.style.color = '#f85149';
+          stDirPill.style.borderColor = 'rgba(248, 81, 73, 0.5)';
+        } else {
+          stDirPill.innerText = isBuy ? 'BUY' : 'SELL';
+          stDirPill.className = 'exec-dir-pill ' + (isBuy ? 'buy' : 'sell');
+          stDirPill.style.background = '';
+          stDirPill.style.color = '';
+          stDirPill.style.borderColor = '';
+        }
       }
       if (stConfPill) {
-        stConfPill.innerText = shortTermSignalLock.confidence;
-        stConfPill.style.color = isBuy ? '#3fb950' : '#f85149';
+        if (shortTermSignalLock.status === 'SL_HIT') {
+          stConfPill.innerText = 'STOPPED OUT (SEARCHING NEXT ZONE)';
+          stConfPill.style.color = '#f85149';
+        } else {
+          stConfPill.innerText = shortTermSignalLock.confidence;
+          stConfPill.style.color = isBuy ? '#3fb950' : '#f85149';
+        }
       }
 
       // Update Lock Countdown Timer
       if (stTimer) {
         if (shortTermSignalLock.status === 'TP_HIT') {
-          const remSec = Math.max(1, Math.ceil((6000 - (now - shortTermSignalLock.completedAt)) / 1000));
+          const remSec = Math.max(1, Math.ceil((3500 - (now - shortTermSignalLock.completedAt)) / 1000));
           stTimer.innerText = '⚡ NEXT SIGNAL IN ' + remSec + 's...';
           stTimer.style.background = 'rgba(234, 179, 8, 0.2)';
           stTimer.style.color = '#eab308';
           stTimer.style.borderColor = 'rgba(234, 179, 8, 0.4)';
         } else if (shortTermSignalLock.status === 'SL_HIT') {
-          const remSec = Math.max(1, Math.ceil((6000 - (now - shortTermSignalLock.completedAt)) / 1000));
+          const remSec = Math.max(1, Math.ceil((3500 - (now - shortTermSignalLock.completedAt)) / 1000));
           stTimer.innerText = '⚡ NEXT SIGNAL IN ' + remSec + 's...';
           stTimer.style.background = 'rgba(248, 81, 73, 0.2)';
           stTimer.style.color = '#f85149';
@@ -8572,18 +8695,28 @@ const ghostCandles = [
         }
       }
 
-      if (stEntry) stEntry.innerText = '$' + shortTermSignalLock.entryPrice.toFixed(2);
-      if (stTp) stTp.innerText = '$' + shortTermSignalLock.tp1.toFixed(2);
-      if (stSl) stSl.innerText = '$' + shortTermSignalLock.sl.toFixed(2);
-      if (stRr) stRr.innerText = shortTermSignalLock.rrText;
+      if (shortTermSignalLock.status === 'SL_HIT') {
+        if (stEntry) { stEntry.innerText = 'INVALIDATED'; stEntry.style.color = '#8b949e'; }
+        if (stSl) { stSl.innerText = '$' + shortTermSignalLock.sl.toFixed(2) + ' (HIT)'; stSl.style.color = '#f85149'; }
+        if (stTp) { stTp.innerText = 'CANCELLED'; stTp.style.color = '#8b949e'; }
+        if (stRr) stRr.innerText = '0 : 0 (STOPPED)';
+      } else {
+        if (stEntry) { stEntry.innerText = '$' + shortTermSignalLock.entryPrice.toFixed(2); stEntry.style.color = '#f0f6fc'; }
+        if (stTp) { stTp.innerText = '$' + shortTermSignalLock.tp1.toFixed(2); stTp.style.color = '#3fb950'; }
+        if (stSl) { stSl.innerText = '$' + shortTermSignalLock.sl.toFixed(2); stSl.style.color = '#f85149'; }
+        if (stRr) stRr.innerText = shortTermSignalLock.rrText;
+      }
 
       if (stNote) {
         if (shortTermSignalLock.status === 'TP_HIT') {
           stNote.innerText = 'Target reached · Lock profit or trail stop to breakeven.';
+          stNote.style.color = '#3fb950';
         } else if (shortTermSignalLock.status === 'SL_HIT') {
-          stNote.innerText = 'Stop level triggered · Invalidation strictly respected.';
+          stNote.innerText = 'SETUP INVALIDATED / STOPPED OUT -> SEARCHING FOR NEXT ZONE';
+          stNote.style.color = '#f85149';
         } else {
           stNote.innerText = shortTermSignalLock.reason;
+          stNote.style.color = '';
         }
       }
 
@@ -8603,11 +8736,28 @@ const ghostCandles = [
       const isLtBuy = (longTermSignalLock.bias === 'BULLISH');
 
       if (ltDirPill) {
-        ltDirPill.innerText = isLtBuy ? 'BULLISH' : 'BEARISH';
-        ltDirPill.className = 'exec-dir-pill ' + (isLtBuy ? 'buy' : 'sell');
+        if (longTermSignalLock.status === 'SL_HIT') {
+          ltDirPill.innerText = 'INVALIDATED 🛑';
+          ltDirPill.className = 'exec-dir-pill neutral';
+          ltDirPill.style.background = 'rgba(248, 81, 73, 0.2)';
+          ltDirPill.style.color = '#f85149';
+          ltDirPill.style.borderColor = 'rgba(248, 81, 73, 0.5)';
+        } else {
+          ltDirPill.innerText = isLtBuy ? 'BULLISH' : 'BEARISH';
+          ltDirPill.className = 'exec-dir-pill ' + (isLtBuy ? 'buy' : 'sell');
+          ltDirPill.style.background = '';
+          ltDirPill.style.color = '';
+          ltDirPill.style.borderColor = '';
+        }
       }
       if (ltConfPill) {
-        ltConfPill.innerText = longTermSignalLock.confidence;
+        if (longTermSignalLock.status === 'SL_HIT') {
+          ltConfPill.innerText = 'SWING STOPPED OUT (RE-EVALUATING HTF)';
+          ltConfPill.style.color = '#f85149';
+        } else {
+          ltConfPill.innerText = longTermSignalLock.confidence;
+          ltConfPill.style.color = isLtBuy ? '#3fb950' : '#f85149';
+        }
       }
 
       if (ltTimer) {
@@ -8665,11 +8815,23 @@ const ghostCandles = [
       }
 
       if (ltTarget) {
-        ltTarget.innerText = '$' + longTermSignalLock.tp.toFixed(2);
+        if (longTermSignalLock.status === 'SL_HIT') {
+          ltTarget.innerText = 'CANCELLED';
+          ltTarget.style.color = '#8b949e';
+        } else {
+          ltTarget.innerText = '$' + longTermSignalLock.tp.toFixed(2);
+          ltTarget.style.color = '#3fb950';
+        }
       }
 
       if (ltInval) {
-        ltInval.innerText = '$' + longTermSignalLock.inval.toFixed(2);
+        if (longTermSignalLock.status === 'SL_HIT') {
+          ltInval.innerText = '$' + longTermSignalLock.inval.toFixed(2) + ' (HIT)';
+          ltInval.style.color = '#f85149';
+        } else {
+          ltInval.innerText = '$' + longTermSignalLock.inval.toFixed(2);
+          ltInval.style.color = '#f85149';
+        }
       }
 
       if (ltHorizon) {
