@@ -6587,390 +6587,338 @@
     function detectSmartMoneyZones(candles) {
       if (!candles || candles.length < 5) return { fvgList: [], obList: [], activeRRSetup: null };
 
-      const allBullishFVGs = [];
-      const allBearishFVGs = [];
-      const allDemandOBs = [];
-      const allSupplyOBs = [];
       const currentPrice = (typeof currentLiveSpot !== 'undefined' && currentLiveSpot) 
         ? currentLiveSpot 
         : candles[candles.length - 1].close;
 
-      let detectedRRSetup = null;
+      const rawGaps = [];
 
-      // 1. Fair Value Gap (FVG) Scanner (3-Candle Institutional Imbalance)
-      // Bearish 15M FVG: Candle 1 Low > Candle 3 High during strong drop
-      // Bullish 15M FVG: Candle 3 Low > Candle 1 High during strong rally
+      // 1. Scan 15M Imbalances
       for (let i = 2; i < candles.length; i++) {
         const c1 = candles[i - 2];
         const c2 = candles[i - 1];
         const c3 = candles[i];
 
-        // --- Bullish 15M FVG ---
+        // Bullish 15M FVG: c3.low > c1.high
         if (c3.low > c1.high) {
           const top = c3.low;
           const bottom = c1.high;
           const gap = Number((top - bottom).toFixed(2));
-          const eqLevel = Number(((top + bottom) / 2).toFixed(2));
-
-          let isMitigated = false;
-          let hasTapped = false;
-          let tapRejectionCandle = null;
-
-          for (let j = i + 1; j < candles.length; j++) {
-            const cj = candles[j];
-            if (cj.low <= top) {
-              hasTapped = true;
-              const lowerWick = Math.min(cj.open, cj.close) - cj.low;
-              const range = cj.high - cj.low;
-              // Lower wick rejection or strong green bounce from FVG
-              if (cj.close > cj.open || (range > 0 && lowerWick / range >= 0.30)) {
-                tapRejectionCandle = cj;
+          if (gap >= 0.80) {
+            // Check if subsequent price completely broke below bottom (fully invalidated)
+            let fullyFilled = false;
+            let tapped = false;
+            let rejCandle = null;
+            for (let j = i + 1; j < candles.length; j++) {
+              if (candles[j].close < bottom) { fullyFilled = true; break; }
+              if (candles[j].low <= top) {
+                tapped = true;
+                const lowerWick = Math.min(candles[j].open, candles[j].close) - candles[j].low;
+                const range = candles[j].high - candles[j].low;
+                if (candles[j].close > candles[j].open || (range > 0 && lowerWick / range >= 0.30)) {
+                  rejCandle = candles[j];
+                }
               }
             }
-            if (cj.low <= eqLevel) {
-              isMitigated = true;
+            if (!fullyFilled) {
+              rawGaps.push({
+                type: 'BULLISH_FVG',
+                top,
+                bottom,
+                gap,
+                time: c2.time,
+                eqLevel: Number(((top + bottom) / 2).toFixed(2)),
+                hasTapped: tapped,
+                tapRejectionCandle: rejCandle
+              });
             }
           }
-
-          if (gap >= 0.80 && Math.abs(currentPrice - top) <= 40) {
-            allBullishFVGs.push({
-              type: 'BULLISH_FVG',
-              top,
-              bottom,
-              gap,
-              eqLevel,
-              time: c2.time,
-              isMitigated,
-              hasTapped,
-              tapRejectionCandle,
-              color: 'rgba(41, 98, 255, 0.22)',
-              borderColor: 'rgba(41, 98, 255, 0.65)'
-            });
-          }
         }
-        // --- Bearish 15M FVG ---
+        // Bearish 15M FVG: c3.high < c1.low
         else if (c3.high < c1.low) {
           const top = c1.low;
           const bottom = c3.high;
           const gap = Number((top - bottom).toFixed(2));
-          const eqLevel = Number(((top + bottom) / 2).toFixed(2));
-
-          let isMitigated = false;
-          let hasTapped = false;
-          let tapRejectionCandle = null;
-
-          for (let j = i + 1; j < candles.length; j++) {
-            const cj = candles[j];
-            if (cj.high >= bottom) {
-              hasTapped = true;
-              const upperWick = cj.high - Math.max(cj.open, cj.close);
-              const range = cj.high - cj.low;
-              // Upper wick rejection or strong red reversal from FVG
-              if (cj.close < cj.open || (range > 0 && upperWick / range >= 0.30)) {
-                tapRejectionCandle = cj;
+          if (gap >= 0.80) {
+            let fullyFilled = false;
+            let tapped = false;
+            let rejCandle = null;
+            for (let j = i + 1; j < candles.length; j++) {
+              if (candles[j].close > top) { fullyFilled = true; break; }
+              if (candles[j].high >= bottom) {
+                tapped = true;
+                const upperWick = candles[j].high - Math.max(candles[j].open, candles[j].close);
+                const range = candles[j].high - candles[j].low;
+                if (candles[j].close < candles[j].open || (range > 0 && upperWick / range >= 0.30)) {
+                  rejCandle = candles[j];
+                }
               }
             }
-            if (cj.high >= eqLevel) {
-              isMitigated = true;
+            if (!fullyFilled) {
+              rawGaps.push({
+                type: 'BEARISH_FVG',
+                top,
+                bottom,
+                gap,
+                time: c2.time,
+                eqLevel: Number(((top + bottom) / 2).toFixed(2)),
+                hasTapped: tapped,
+                tapRejectionCandle: rejCandle
+              });
             }
           }
-
-          if (gap >= 0.80 && Math.abs(currentPrice - bottom) <= 40) {
-            allBearishFVGs.push({
-              type: 'BEARISH_FVG',
-              top,
-              bottom,
-              gap,
-              eqLevel,
-              time: c2.time,
-              isMitigated,
-              hasTapped,
-              tapRejectionCandle,
-              color: 'rgba(255, 82, 82, 0.25)', // Soft red/pink semi-transparent box (#FF5252 at 0.25 opacity)
-              borderColor: 'rgba(255, 82, 82, 0.65)'
-            });
-          }
         }
       }
 
-      // Merge contiguous/overlapping FVGs
-      function consolidateFVGs(list) {
-        if (!list || list.length === 0) return [];
-        const sorted = [...list].sort((a, b) => b.time - a.time);
-        const consolidated = [];
-        for (const item of sorted) {
-          const existing = consolidated.find(c => 
-            Math.max(c.bottom, item.bottom) <= Math.min(c.top, item.top) + 0.5
-          );
-          if (existing) {
-            existing.top = Math.max(existing.top, item.top);
-            existing.bottom = Math.min(existing.bottom, item.bottom);
-            existing.gap = Number((existing.top - existing.bottom).toFixed(2));
-            existing.eqLevel = Number(((existing.top + existing.bottom) / 2).toFixed(2));
-            if (item.isMitigated) existing.isMitigated = true;
-            if (item.hasTapped) existing.hasTapped = true;
-            if (item.tapRejectionCandle) existing.tapRejectionCandle = item.tapRejectionCandle;
-          } else {
-            consolidated.push({ ...item });
-          }
-        }
-        return consolidated;
-      }
-
-      const cleanBullish = consolidateFVGs(allBullishFVGs)
-        .sort((a, b) => Math.abs(currentPrice - a.top) - Math.abs(currentPrice - b.top))
-        .slice(0, 2);
-
-      const cleanBearish = consolidateFVGs(allBearishFVGs)
-        .sort((a, b) => Math.abs(currentPrice - a.bottom) - Math.abs(currentPrice - b.bottom))
-        .slice(0, 2);
-
-      const fvgList = [...cleanBullish, ...cleanBearish];
-
-      // 2. Order Block (OB) Scanner
+      // 2. Scan Order Blocks (Supply & Demand)
+      const rawOBs = [];
       for (let i = 1; i < candles.length - 1; i++) {
         const prev = candles[i - 1];
         const curr = candles[i];
         const next = candles[i + 1];
-
         const bodySize = Math.abs(curr.close - curr.open);
-        const isDisplacement = bodySize >= 3.5;
-
-        // Bullish Demand OB
-        if (prev.close < prev.open && next.close > next.open && isDisplacement) {
-          const top = Math.max(prev.open, prev.close);
-          const bottom = prev.low;
-          let broken = false;
-          for (let j = i + 1; j < candles.length; j++) {
-            if (candles[j].close < bottom) {
-              broken = true;
-              break;
+        if (bodySize >= 3.5) {
+          if (prev.close < prev.open && next.close > next.open) {
+            // Demand OB
+            const top = Math.max(prev.open, prev.close);
+            const bottom = prev.low;
+            let broken = false;
+            for (let j = i + 1; j < candles.length; j++) {
+              if (candles[j].close < bottom) { broken = true; break; }
+            }
+            if (!broken) {
+              rawOBs.push({ type: 'DEMAND_OB', top, bottom, time: prev.time });
+            }
+          } else if (prev.close > prev.open && next.close < next.open) {
+            // Supply OB
+            const top = prev.high;
+            const bottom = Math.min(prev.open, prev.close);
+            let broken = false;
+            for (let j = i + 1; j < candles.length; j++) {
+              if (candles[j].close > top) { broken = true; break; }
+            }
+            if (!broken) {
+              rawOBs.push({ type: 'SUPPLY_OB', top, bottom, time: prev.time });
             }
           }
-          if (!broken && Math.abs(currentPrice - top) <= 30) {
-            allDemandOBs.push({
-              type: 'DEMAND_OB',
-              top,
-              bottom,
-              time: prev.time,
-              color: 'rgba(56, 139, 253, 0.08)',
-              borderColor: 'rgba(88, 166, 255, 0.6)'
-            });
-          }
-        }
-        // Bearish Supply OB
-        else if (prev.close > prev.open && next.close < next.open && isDisplacement) {
-          const top = prev.high;
-          const bottom = Math.min(prev.open, prev.close);
-          let broken = false;
-          for (let j = i + 1; j < candles.length; j++) {
-            if (candles[j].close > top) {
-              broken = true;
-              break;
-            }
-          }
-          if (!broken && Math.abs(currentPrice - bottom) <= 30) {
-            allSupplyOBs.push({
-              type: 'SUPPLY_OB',
-              top,
-              bottom,
-              time: prev.time,
-              color: 'rgba(227, 98, 9, 0.08)',
-              borderColor: 'rgba(240, 136, 62, 0.6)'
-            });
-          }
         }
       }
 
-      const cleanDemandOB = allDemandOBs
-        .sort((a, b) => Math.abs(currentPrice - a.top) - Math.abs(currentPrice - b.top))
-        .slice(0, 1);
-      const cleanSupplyOB = allSupplyOBs
-        .sort((a, b) => Math.abs(currentPrice - a.bottom) - Math.abs(currentPrice - b.bottom))
-        .slice(0, 1);
+      // 3. STRICT CONSOLIDATION: Pick ONLY ONE Key Supply Zone & ONE Key Demand Zone!
+      // This completely eliminates visual clutter and overlapping stacked boxes.
+      const unmitigatedSupply = [
+        ...rawGaps.filter(g => g.type === 'BEARISH_FVG' && g.bottom >= currentPrice - 1.0),
+        ...rawOBs.filter(o => o.type === 'SUPPLY_OB' && o.bottom >= currentPrice - 1.0)
+      ].sort((a, b) => a.bottom - b.bottom); // closest above price first
 
-      const obList = [...cleanDemandOB, ...cleanSupplyOB];
+      const unmitigatedDemand = [
+        ...rawGaps.filter(g => g.type === 'BULLISH_FVG' && g.top <= currentPrice + 1.0),
+        ...rawOBs.filter(o => o.type === 'DEMAND_OB' && o.top <= currentPrice + 1.0)
+      ].sort((a, b) => b.top - a.top); // closest below price first
 
-      // 3. AUTOMATIC RISK/REWARD POSITION OVERLAY (Short/Long Tool)
-      // When a 15M FVG tap + rejection candle occurs:
-      // Construct the standard TradingView Risk/Reward box
-      for (const zone of fvgList) {
-        if (zone.type === 'BEARISH_FVG' && (zone.hasTapped || zone.isMitigated)) {
-          const rej = zone.tapRejectionCandle || candles[candles.length - 1];
-          const entry = rej.close;
-          const sl = Number((zone.top + 1.20).toFixed(2)); // Stop Loss: Soft pink/red box above the FVG high
-          const risk = Math.max(1.80, Number((sl - entry).toFixed(2)));
-          const reward = Number((risk * 3.5).toFixed(2)); // 1:3.5 RR
-          const tp = Number((entry - reward).toFixed(2)); // Take Profit down to recent liquidity low
+      const consolidatedZones = [];
 
-          detectedRRSetup = {
-            type: 'SHORT',
-            entry,
-            sl,
-            tp,
-            risk,
-            reward,
-            rrRatio: '3.5',
-            time: rej.time,
-            fvgTop: zone.top,
-            fvgBottom: zone.bottom
-          };
-          break;
-        } else if (zone.type === 'BULLISH_FVG' && (zone.hasTapped || zone.isMitigated)) {
-          const rej = zone.tapRejectionCandle || candles[candles.length - 1];
-          const entry = rej.close;
-          const sl = Number((zone.bottom - 1.20).toFixed(2));
-          const risk = Math.max(1.80, Number((entry - sl).toFixed(2)));
-          const reward = Number((risk * 3.5).toFixed(2));
-          const tp = Number((entry + reward).toFixed(2));
-
-          detectedRRSetup = {
-            type: 'LONG',
-            entry,
-            sl,
-            tp,
-            risk,
-            reward,
-            rrRatio: '3.5',
-            time: rej.time,
-            fvgTop: zone.top,
-            fvgBottom: zone.bottom
-          };
-          break;
+      // Primary Key Supply Zone
+      if (unmitigatedSupply.length > 0) {
+        const primary = unmitigatedSupply[0];
+        // If an OB or FVG overlaps within 3.5 pts, merge boundaries
+        let top = primary.top;
+        let bottom = primary.bottom;
+        for (const s of unmitigatedSupply.slice(1, 3)) {
+          if (Math.abs(s.bottom - bottom) <= 4.0 || Math.abs(s.top - top) <= 4.0) {
+            top = Math.max(top, s.top);
+            bottom = Math.min(bottom, s.bottom);
+          }
         }
+        consolidatedZones.push({
+          type: 'BEARISH_FVG',
+          label: '15M KEY SUPPLY',
+          top,
+          bottom,
+          gap: Number((top - bottom).toFixed(2)),
+          eqLevel: Number(((top + bottom) / 2).toFixed(2)),
+          time: primary.time,
+          hasTapped: Math.abs(currentPrice - bottom) <= 3.0 || currentPrice >= bottom,
+          color: 'rgba(255, 82, 82, 0.12)', // Subtle prop-firm fill
+          borderColor: 'rgba(255, 82, 82, 0.50)'
+        });
       }
 
-      // Fallback: If no tap yet, project setup from the closest Bearish/Bullish FVG so position tool is ready
-      if (!detectedRRSetup && fvgList.length > 0) {
-        const primary = fvgList[0];
-        if (primary.type === 'BEARISH_FVG') {
-          const entry = primary.bottom;
-          const sl = Number((primary.top + 1.20).toFixed(2));
-          const risk = Math.max(1.80, Number((sl - entry).toFixed(2)));
-          const reward = Number((risk * 3.5).toFixed(2));
-          const tp = Number((entry - reward).toFixed(2));
-          detectedRRSetup = {
-            type: 'SHORT',
-            entry,
-            sl,
-            tp,
-            risk,
-            reward,
-            rrRatio: '3.5',
-            time: primary.time,
-            fvgTop: primary.top,
-            fvgBottom: primary.bottom
-          };
-        } else {
-          const entry = primary.top;
-          const sl = Number((primary.bottom - 1.20).toFixed(2));
-          const risk = Math.max(1.80, Number((entry - sl).toFixed(2)));
-          const reward = Number((risk * 3.5).toFixed(2));
-          const tp = Number((entry + reward).toFixed(2));
-          detectedRRSetup = {
-            type: 'LONG',
-            entry,
-            sl,
-            tp,
-            risk,
-            reward,
-            rrRatio: '3.5',
-            time: primary.time,
-            fvgTop: primary.top,
-            fvgBottom: primary.bottom
-          };
+      // Primary Key Demand Zone
+      if (unmitigatedDemand.length > 0) {
+        const primary = unmitigatedDemand[0];
+        let top = primary.top;
+        let bottom = primary.bottom;
+        for (const d of unmitigatedDemand.slice(1, 3)) {
+          if (Math.abs(d.top - top) <= 4.0 || Math.abs(d.bottom - bottom) <= 4.0) {
+            top = Math.max(top, d.top);
+            bottom = Math.min(bottom, d.bottom);
+          }
         }
+        consolidatedZones.push({
+          type: 'BULLISH_FVG',
+          label: '15M KEY DEMAND',
+          top,
+          bottom,
+          gap: Number((top - bottom).toFixed(2)),
+          eqLevel: Number(((top + bottom) / 2).toFixed(2)),
+          time: primary.time,
+          hasTapped: Math.abs(currentPrice - top) <= 3.0 || currentPrice <= top,
+          color: 'rgba(41, 98, 255, 0.10)',
+          borderColor: 'rgba(41, 98, 255, 0.50)'
+        });
       }
 
-      return { fvgList, obList, activeRRSetup: detectedRRSetup };
+      // 4. RISK/REWARD SETUP: Clean & Singular (No Collisions)
+      let activeRR = null;
+      const keySupply = consolidatedZones.find(z => z.type === 'BEARISH_FVG');
+      const keyDemand = consolidatedZones.find(z => z.type === 'BULLISH_FVG');
+
+      // Decide direction based on whether price is closer to testing supply or demand
+      if (keySupply && Math.abs(currentPrice - keySupply.bottom) <= 8.0) {
+        // Short setup from Supply
+        const entry = Number(currentPrice.toFixed(2));
+        const sl = Number((keySupply.top + 1.20).toFixed(2));
+        const risk = Number(Math.max(1.80, sl - entry).toFixed(2));
+        const reward = Number((risk * 3.5).toFixed(2));
+        const tp = Number((entry - reward).toFixed(2));
+        activeRR = {
+          type: 'SHORT',
+          entry,
+          sl,
+          tp,
+          risk,
+          reward,
+          rrRatio: '3.5',
+          fvgTop: keySupply.top,
+          fvgBottom: keySupply.bottom
+        };
+      } else if (keyDemand && Math.abs(currentPrice - keyDemand.top) <= 8.0) {
+        // Long setup from Demand
+        const entry = Number(currentPrice.toFixed(2));
+        const sl = Number((keyDemand.bottom - 1.20).toFixed(2));
+        const risk = Number(Math.max(1.80, entry - sl).toFixed(2));
+        const reward = Number((risk * 3.5).toFixed(2));
+        const tp = Number((entry + reward).toFixed(2));
+        activeRR = {
+          type: 'LONG',
+          entry,
+          sl,
+          tp,
+          risk,
+          reward,
+          rrRatio: '3.5',
+          fvgTop: keyDemand.top,
+          fvgBottom: keyDemand.bottom
+        };
+      } else if (keySupply) {
+        // Default Short projection
+        const entry = Number(keySupply.bottom.toFixed(2));
+        const sl = Number((keySupply.top + 1.20).toFixed(2));
+        const risk = Number(Math.max(1.80, sl - entry).toFixed(2));
+        const reward = Number((risk * 3.5).toFixed(2));
+        const tp = Number((entry - reward).toFixed(2));
+        activeRR = {
+          type: 'SHORT',
+          entry,
+          sl,
+          tp,
+          risk,
+          reward,
+          rrRatio: '3.5',
+          fvgTop: keySupply.top,
+          fvgBottom: keySupply.bottom
+        };
+      }
+
+      return { fvgList: consolidatedZones, obList: [], activeRRSetup: activeRR };
     }
 
     // Professional Lightweight Canvas SMC Zone Renderer (Clean & Concise)
     function drawSMCZonesOnCanvas(smcData) {
       if (!smcEnabled || !drawingCtx || !drawingCanvas || !candleSeries || !smcData) return;
 
-      // 1. Draw Active 15M Fair Value Gaps (FVG)
-      if (Array.isArray(smcData.fvgList)) {
-        smcData.fvgList.forEach(zone => {
-          const yTop = candleSeries.priceToCoordinate(zone.top);
-          const yBottom = candleSeries.priceToCoordinate(zone.bottom);
+      const zones = smcData.fvgList || [];
+      if (!Array.isArray(zones) || zones.length === 0) return;
 
-          if (yTop !== null && yBottom !== null) {
-            const topY = Math.min(yTop, yBottom);
-            const botY = Math.max(yTop, yBottom);
-            const height = Math.max(4, botY - topY);
+      const currentPrice = (typeof currentLiveSpot !== 'undefined' && currentLiveSpot) 
+        ? currentLiveSpot 
+        : (rawCandleData.length ? rawCandleData[rawCandleData.length - 1].close : 4050);
 
-            let startX = 0;
-            if (chart && chart.timeScale && zone.time) {
-              const coordX = chart.timeScale().timeToCoordinate(zone.time);
-              if (coordX !== null && coordX >= 0) {
-                startX = coordX;
-              }
-            }
-            const width = Math.max(50, canvasCssWidth - startX - 70);
+      zones.forEach(zone => {
+        const yTop = candleSeries.priceToCoordinate(zone.top);
+        const yBottom = candleSeries.priceToCoordinate(zone.bottom);
 
-            // Shaded FVG Box (Bearish FVG: soft red/pink semi-transparent box #FF5252 with opacity 0.25)
-            drawingCtx.fillStyle = zone.color || (zone.type === 'BEARISH_FVG' ? 'rgba(255, 82, 82, 0.25)' : 'rgba(41, 98, 255, 0.22)');
-            drawingCtx.fillRect(startX, topY, width, height);
+        if (yTop !== null && yBottom !== null) {
+          const topY = Math.min(yTop, yBottom);
+          const botY = Math.max(yTop, yBottom);
+          const height = Math.max(6, botY - topY);
 
-            // Subtle Dashed Border
-            drawingCtx.strokeStyle = zone.borderColor || (zone.type === 'BEARISH_FVG' ? 'rgba(255, 82, 82, 0.65)' : 'rgba(41, 98, 255, 0.65)');
-            drawingCtx.lineWidth = 1;
-            drawingCtx.setLineDash([4, 3]);
-            drawingCtx.strokeRect(startX, topY, width, height);
-            drawingCtx.setLineDash([]);
+          // Span cleanly from 40px to near price axis
+          const startX = 20;
+          const width = Math.max(60, canvasCssWidth - startX - 70);
 
-            // Label inside the box: "15m FVG" in crisp, small typography
-            const labelText = "15m FVG";
-            drawingCtx.font = '700 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-            const metrics = drawingCtx.measureText(labelText);
-            const badgeW = Math.round(metrics.width + 10);
-            const badgeH = 16;
-            const badgeX = startX + 8;
-            const badgeY = topY + 4;
+          // 1. Subtle, translucent zone fill (NEVER obscures candles)
+          drawingCtx.fillStyle = zone.color;
+          drawingCtx.fillRect(startX, topY, width, height);
 
-            drawingCtx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.88)' : 'rgba(10, 14, 23, 0.88)';
-            drawingCtx.beginPath();
-            if (drawingCtx.roundRect) drawingCtx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
-            else drawingCtx.rect(badgeX, badgeY, badgeW, badgeH);
-            drawingCtx.fill();
+          // 2. Crisp, fine border
+          drawingCtx.strokeStyle = zone.borderColor;
+          drawingCtx.lineWidth = 1;
+          drawingCtx.setLineDash([5, 4]);
+          drawingCtx.strokeRect(startX, topY, width, height);
+          drawingCtx.setLineDash([]);
 
-            drawingCtx.strokeStyle = zone.borderColor;
-            drawingCtx.lineWidth = 1;
-            drawingCtx.stroke();
+          // 3. Crisp single badge on the RIGHT margin
+          const isSupply = zone.type === 'BEARISH_FVG';
+          const labelText = `${isSupply ? '🔴 15M Supply' : '🔵 15M Demand'} · $${zone.bottom.toFixed(1)} - $${zone.top.toFixed(1)}`;
+          
+          drawingCtx.font = '600 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const metrics = drawingCtx.measureText(labelText);
+          const badgeW = Math.round(metrics.width + 14);
+          const badgeH = 18;
+          const badgeX = Math.max(startX + 10, canvasCssWidth - badgeW - 75);
+          const badgeY = Math.max(4, Math.min(canvasCssHeight - badgeH - 4, topY + (height / 2) - (badgeH / 2)));
 
-            drawingCtx.fillStyle = zone.type === 'BEARISH_FVG' ? '#ff5252' : '#2962ff';
-            drawingCtx.textAlign = 'left';
-            drawingCtx.textBaseline = 'middle';
-            drawingCtx.fillText(labelText, badgeX + 5, badgeY + (badgeH / 2));
+          // Dark pill background so text NEVER collides with grid or candles
+          drawingCtx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
+          drawingCtx.beginPath();
+          if (drawingCtx.roundRect) drawingCtx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+          else drawingCtx.rect(badgeX, badgeY, badgeW, badgeH);
+          drawingCtx.fill();
 
-            // When price pulls back into the FVG (Mitigation):
-            // Draw a fine horizontal midline (50% Equilibrium level).
-            if (zone.isMitigated || zone.hasTapped) {
-              const eq = zone.eqLevel || Number(((zone.top + zone.bottom) / 2).toFixed(2));
-              const eqY = candleSeries.priceToCoordinate(eq);
-              if (eqY !== null) {
-                drawingCtx.save();
-                drawingCtx.strokeStyle = zone.type === 'BEARISH_FVG' ? 'rgba(255, 82, 82, 0.85)' : 'rgba(41, 98, 255, 0.85)';
-                drawingCtx.lineWidth = 1;
-                drawingCtx.setLineDash([3, 3]);
-                drawingCtx.beginPath();
-                drawingCtx.moveTo(startX, eqY);
-                drawingCtx.lineTo(startX + width, eqY);
-                drawingCtx.stroke();
+          drawingCtx.strokeStyle = zone.borderColor;
+          drawingCtx.lineWidth = 1;
+          drawingCtx.stroke();
 
-                // Small 50% EQ label
-                drawingCtx.font = '600 9px monospace';
-                drawingCtx.fillStyle = zone.type === 'BEARISH_FVG' ? '#ff5252' : '#2962ff';
-                drawingCtx.fillText(`50% EQ · $${eq.toFixed(2)}`, startX + badgeW + 16, eqY - 3);
-                drawingCtx.restore();
-              }
+          drawingCtx.fillStyle = isSupply ? '#ff5252' : '#2962ff';
+          drawingCtx.textAlign = 'left';
+          drawingCtx.textBaseline = 'middle';
+          drawingCtx.fillText(labelText, badgeX + 7, badgeY + (badgeH / 2));
+
+          // 4. Draw 50% Equilibrium midline ONLY if price is actively near the zone (within $8.0)
+          const distToZone = Math.min(Math.abs(currentPrice - zone.top), Math.abs(currentPrice - zone.bottom));
+          if (distToZone <= 8.0) {
+            const eq = zone.eqLevel;
+            const eqY = candleSeries.priceToCoordinate(eq);
+            if (eqY !== null && eqY >= topY && eqY <= botY) {
+              drawingCtx.save();
+              drawingCtx.strokeStyle = isSupply ? 'rgba(255, 82, 82, 0.75)' : 'rgba(41, 98, 255, 0.75)';
+              drawingCtx.lineWidth = 1;
+              drawingCtx.setLineDash([3, 3]);
+              drawingCtx.beginPath();
+              drawingCtx.moveTo(startX, eqY);
+              drawingCtx.lineTo(badgeX - 8, eqY);
+              drawingCtx.stroke();
+              drawingCtx.restore();
             }
           }
-        });
-      }
+        }
+      });
+    }
 
-      // 2. Draw Active Demand & Supply Order Blocks (OB)
+    // Legacy OB stub (merged into primary zones)
+    function drawLegacyOBStub() {}
       if (Array.isArray(smcData.obList)) {
         smcData.obList.forEach(ob => {
           const yTop = candleSeries.priceToCoordinate(ob.top);
@@ -7046,8 +6994,16 @@
     // ==========================================
     // 3. AUTOMATIC RISK/REWARD POSITION OVERLAY (TradingView Short/Long Tool)
     // ==========================================
+    let showRROverlay = true;
+
+    function toggleRROverlay() {
+      showRROverlay = !showRROverlay;
+      showSignalToast(`Risk/Reward Overlay: ${showRROverlay ? 'ON' : 'OFF'}`);
+      redrawDrawings();
+    }
+
     function drawRiskRewardOverlay(ctx, setup) {
-      if (!smcEnabled || !setup || !ctx || !candleSeries || !chart || !chart.timeScale) return;
+      if (!smcEnabled || !showRROverlay || !setup || !ctx || !candleSeries || !chart || !chart.timeScale) return;
 
       const yEntry = candleSeries.priceToCoordinate(setup.entry);
       const ySL = candleSeries.priceToCoordinate(setup.sl);
@@ -7055,119 +7011,102 @@
 
       if (yEntry === null || ySL === null || yTP === null) return;
 
-      let startX = 0;
-      if (setup.time) {
-        const coordX = chart.timeScale().timeToCoordinate(setup.time);
-        if (coordX !== null && coordX >= 0) {
-          startX = Math.max(30, coordX);
-        }
+      // FORWARD PROJECTION:
+      // Position the Risk/Reward box cleanly in the right forward space so candlesticks are 100% visible!
+      let lastCandleX = null;
+      if (rawCandleData && rawCandleData.length) {
+        lastCandleX = chart.timeScale().timeToCoordinate(rawCandleData[rawCandleData.length - 1].time);
       }
-      if (!startX || startX <= 0) {
-        startX = Math.max(50, canvasCssWidth - 280);
-      }
+      
+      const startX = (lastCandleX !== null && lastCandleX > 40 && lastCandleX < canvasCssWidth - 140)
+        ? Math.round(lastCandleX + 16)
+        : Math.round(canvasCssWidth - 165);
 
-      // Width of Risk/Reward box
-      const boxW = Math.max(140, Math.min(220, canvasCssWidth - startX - 75));
+      const boxW = Math.max(90, Math.min(130, canvasCssWidth - startX - 68));
       const endX = startX + boxW;
       const isShort = setup.type === 'SHORT';
 
       ctx.save();
 
-      // --- 1. RISK BOX (Stop Loss) ---
-      // Short: SL is higher price (ySL < yEntry in canvas pixels)
-      // Long: SL is lower price (ySL > yEntry in canvas pixels)
+      // 1. RISK BOX (Stop Loss)
       const riskTopY = isShort ? Math.min(ySL, yEntry) : Math.min(yEntry, ySL);
       const riskBotY = isShort ? Math.max(ySL, yEntry) : Math.max(yEntry, ySL);
       const riskHeight = Math.max(2, riskBotY - riskTopY);
 
-      // Soft pink/red box above FVG high (#FF5252 with opacity 0.25)
-      ctx.fillStyle = 'rgba(255, 82, 82, 0.25)';
+      ctx.fillStyle = 'rgba(255, 82, 82, 0.16)';
       ctx.fillRect(startX, riskTopY, boxW, riskHeight);
-
-      ctx.strokeStyle = 'rgba(255, 82, 82, 0.85)';
+      ctx.strokeStyle = 'rgba(255, 82, 82, 0.70)';
       ctx.lineWidth = 1;
       ctx.strokeRect(startX, riskTopY, boxW, riskHeight);
 
-      // --- 2. REWARD BOX (Take Profit) ---
-      // Short: TP is lower price (yEntry < yTP)
-      // Long: TP is higher price (yTP < yEntry)
+      // 2. REWARD BOX (Take Profit)
       const rewardTopY = isShort ? Math.min(yEntry, yTP) : Math.min(yTP, yEntry);
       const rewardBotY = isShort ? Math.max(yEntry, yTP) : Math.max(yTP, yEntry);
       const rewardHeight = Math.max(2, rewardBotY - rewardTopY);
 
-      // Soft blue box extending down to recent liquidity low (minimum 1:3 to 1:5 RR)
-      ctx.fillStyle = 'rgba(41, 98, 255, 0.25)';
+      ctx.fillStyle = 'rgba(41, 98, 255, 0.16)';
       ctx.fillRect(startX, rewardTopY, boxW, rewardHeight);
-
-      ctx.strokeStyle = 'rgba(41, 98, 255, 0.85)';
+      ctx.strokeStyle = 'rgba(41, 98, 255, 0.70)';
       ctx.lineWidth = 1;
       ctx.strokeRect(startX, rewardTopY, boxW, rewardHeight);
 
-      // --- 3. ENTRY LEVEL MIDLINE ---
+      // 3. ENTRY MIDLINE
       ctx.strokeStyle = isSMCInstitutionalClean ? '#121212' : '#ffffff';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.4;
       ctx.beginPath();
       ctx.moveTo(startX, yEntry);
       ctx.lineTo(endX, yEntry);
       ctx.stroke();
 
-      // --- 4. TEXT LABELS & BADGES ---
-      ctx.font = '700 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+      // 4. CLEAN TEXT PILLS (Guaranteed Zero Collision)
+      ctx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
 
-      // Stop Loss text
+      // Stop Loss text pill
+      const slTxt = `SL $${setup.sl.toFixed(1)}`;
+      const slW = ctx.measureText(slTxt).width + 8;
+      const slY = isShort ? (riskTopY + 8) : (riskBotY - 8);
+      ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.92)' : 'rgba(10, 14, 23, 0.90)';
+      ctx.fillRect(startX + 4, slY - 7, slW, 14);
       ctx.fillStyle = '#ff5252';
-      ctx.fillText(`🛑 Stop: $${setup.sl.toFixed(2)} (-$${setup.risk.toFixed(2)})`, startX + 6, riskTopY + 10);
+      ctx.fillText(slTxt, startX + 8, slY);
 
-      // Take Profit text
+      // Take Profit text pill
+      const tpTxt = `TP $${setup.tp.toFixed(1)}`;
+      const tpW = ctx.measureText(tpTxt).width + 8;
+      const tpY = isShort ? (rewardBotY - 8) : (rewardTopY + 8);
+      ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.92)' : 'rgba(10, 14, 23, 0.90)';
+      ctx.fillRect(startX + 4, tpY - 7, tpW, 14);
       ctx.fillStyle = '#2962ff';
-      ctx.fillText(`🎯 Target: $${setup.tp.toFixed(2)} (1:${setup.rrRatio} RR)`, startX + 6, rewardBotY - 10);
+      ctx.fillText(tpTxt, startX + 8, tpY);
 
-      // Entry text
+      // Entry text pill
+      const entryTxt = `Entry $${setup.entry.toFixed(1)}`;
+      const entW = ctx.measureText(entryTxt).width + 8;
+      ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.92)' : 'rgba(10, 14, 23, 0.90)';
+      ctx.fillRect(startX + 4, yEntry - 7, entW, 14);
       ctx.fillStyle = isSMCInstitutionalClean ? '#121212' : '#ffffff';
-      ctx.fillText(`Entry: $${setup.entry.toFixed(2)}`, startX + 6, yEntry - (isShort ? 7 : -7));
+      ctx.fillText(entryTxt, startX + 8, yEntry);
 
-      // Central TradingView-style RR badge
-      const rrBadgeText = `1 : ${setup.rrRatio} RR`;
-      ctx.font = '700 9.5px monospace';
-      const badgeW = ctx.measureText(rrBadgeText).width + 12;
-      const badgeH = 16;
-      const badgeX = endX - badgeW - 6;
-      const badgeY = yEntry - (badgeH / 2);
+      // R:R Ratio Badge
+      const rrTxt = `1:${setup.rrRatio}`;
+      const rrW = ctx.measureText(rrTxt).width + 8;
+      const rrX = endX - rrW - 4;
+      ctx.fillStyle = 'rgba(41, 98, 255, 0.90)';
+      ctx.fillRect(rrX, yEntry - 7, rrW, 14);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(rrTxt, rrX + 4, yEntry);
 
-      ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(13, 17, 23, 0.92)';
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
-      else ctx.rect(badgeX, badgeY, badgeW, badgeH);
-      ctx.fill();
-
-      ctx.strokeStyle = 'rgba(41, 98, 255, 0.85)';
+      // 5. TARGET DASHED LINE TO RIGHT MARGIN
+      ctx.strokeStyle = 'rgba(41, 98, 255, 0.65)';
       ctx.lineWidth = 1;
-      ctx.stroke();
-
-      ctx.fillStyle = '#2962ff';
-      ctx.fillText(rrBadgeText, badgeX + 6, badgeY + (badgeH / 2));
-
-      // --- 5. TARGET LINE EXTENDING HORIZONTALLY ACROSS CHART ---
-      ctx.strokeStyle = 'rgba(41, 98, 255, 0.85)';
-      ctx.lineWidth = 1.2;
       ctx.setLineDash([4, 3]);
       ctx.beginPath();
       ctx.moveTo(endX, yTP);
       ctx.lineTo(canvasCssWidth - 65, yTP);
       ctx.stroke();
       ctx.setLineDash([]);
-
-      // Target Pin on Right Edge
-      const targetTag = `🎯 $${setup.tp.toFixed(2)}`;
-      ctx.font = '700 10px monospace';
-      const tTagW = ctx.measureText(targetTag).width + 8;
-      const tTagX = canvasCssWidth - tTagW - 68;
-      ctx.fillStyle = '#2962ff';
-      ctx.fillRect(tTagX, yTP - 8, tTagW, 16);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(targetTag, tTagX + 4, yTP);
 
       ctx.restore();
     }
@@ -7185,10 +7124,10 @@
         }
       }
 
-      // 1.5 Draw Quantitative Breakout & Retest Dashed Glow Line
-      try {
-        drawBreakoutOverlayOnCanvas(drawingCtx);
-      } catch (boDrawErr) {}
+      // 1.5 Draw Quantitative Breakout Line (Only when SMC is off to avoid collision)
+      if (!smcEnabled) {
+        try { drawBreakoutOverlayOnCanvas(drawingCtx); } catch (boDrawErr) {}
+      }
 
       // 2. Draw Fibonacci Retracement Levels
       if (typeof fibActive !== "undefined" && fibActive && rawCandleData && rawCandleData.length >= 10 && candleSeries) {
@@ -7947,7 +7886,7 @@
       const emaMap = new Map(emaData.map(e => [e.time, e.value]));
 
       const isDailyOrWeekly = (currentTf === '1d' || currentTf === '1w');
-      const minSpacing = isDailyOrWeekly ? 8 : (currentTf === '4h' ? 5 : (currentTf === '1h' ? 4 : 3));
+      const minSpacing = isDailyOrWeekly ? 14 : (currentTf === '4h' ? 10 : (currentTf === '1h' ? 8 : 7));
       const markerSize = 1;
       const showText = !isDailyOrWeekly;
 
@@ -8054,7 +7993,7 @@
 
       const markersByTime = new Map();
       validMarkers.forEach(m => markersByTime.set(m.time, m));
-      activeMarkers = Array.from(markersByTime.values());
+      activeMarkers = Array.from(markersByTime.values()).slice(-4); // Keep only 4 most recent signals
       applyMarkersToChart(activeMarkers);
 
       updateActiveSetupCard(confluence, currentCandle, dynLow, dynHigh);
