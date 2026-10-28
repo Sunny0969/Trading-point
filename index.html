@@ -948,6 +948,87 @@
       position: relative;
     }
 
+    /* SMC Minimalist Clean View & Session Watermark Styling */
+    .smc-mode-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(22, 27, 34, 0.85);
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 11px;
+      font-family: inherit;
+      color: #8b949e;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+    .smc-mode-toggle:hover {
+      border-color: #58a6ff;
+      color: #c9d1d9;
+    }
+    .smc-mode-tag {
+      opacity: 0.75;
+      font-weight: 500;
+    }
+    .smc-mode-label {
+      transition: color 0.2s ease;
+    }
+    .smc-mode-label.active {
+      color: #ffd700;
+      font-weight: 700;
+    }
+    .smc-mode-sep {
+      opacity: 0.35;
+      margin: 0 1px;
+    }
+
+    /* Clean SMC Light Active Mode */
+    body.smc-clean-active .smc-mode-toggle {
+      background: #ffffff;
+      border-color: #d0d7de;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    body.smc-clean-active #smcModeDark {
+      color: #8b949e !important;
+      font-weight: 500 !important;
+    }
+    body.smc-clean-active #smcModeLight {
+      color: #2962ff !important;
+      font-weight: 700 !important;
+    }
+    body.smc-clean-active .terminal-chart-pane {
+      background: #F5F6F8 !important;
+    }
+
+    /* 4. Session Watermark */
+    .smc-session-watermark {
+      position: absolute;
+      top: 14px;
+      right: 75px;
+      z-index: 6;
+      pointer-events: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", monospace;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: #8b949e;
+      opacity: 0.30;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    body.smc-clean-active .smc-session-watermark {
+      color: #121212 !important;
+      opacity: 0.30 !important;
+    }
+    .smc-wm-sep {
+      opacity: 0.45;
+    }
+
     /* TradingView Left Drawing Toolbar */
     .tv-left-toolbar {
       width: 44px;
@@ -4186,9 +4267,14 @@
         </div>
       </div>
 
-      <div class="engine-toggle-group">
-        <!-- TradingView Native (Commented out per request) -->
-        <!-- <button id="btn-engine-tv" class="btn-engine" onclick="setChartEngine('tradingview')">TradingView Native</button> -->
+      <div class="engine-toggle-group" style="display: flex; align-items: center; gap: 8px;">
+        <!-- Institutional Visual Theme Toggle -->
+        <button id="smcThemeToggleBtn" class="btn-engine smc-mode-toggle" onclick="toggleSMCInstitutionalTheme()" title="Toggle SMC Minimalist Clean / Dark Pro View">
+          <span class="smc-mode-tag">Mode:</span>
+          <span id="smcModeDark" class="smc-mode-label active">Dark Pro</span>
+          <span class="smc-mode-sep">|</span>
+          <span id="smcModeLight" class="smc-mode-label">Clean SMC Light</span>
+        </button>
         <button id="soundToggleBtn" class="btn-engine" onclick="openAlertModal()">🔔 Alert</button>
       </div>
     </div>
@@ -4255,6 +4341,14 @@
 
       <!-- Chart Pane -->
       <div class="terminal-chart-pane" style="position: relative; flex: 1; height: 100%;">
+        <!-- Session Watermark (Top-Right, 30% Opacity) -->
+        <div id="smcSessionWatermark" class="smc-session-watermark">
+          <span class="watermark-sym">XAUUSD</span>
+          <span class="smc-wm-sep">|</span>
+          <span id="smcCurrentSessionLabel" class="watermark-sess">PRE-NY SESSION</span>
+          <span class="smc-wm-sep">|</span>
+          <span class="watermark-tag">15M SMC</span>
+        </div>
         <div id="chart" style="width: 100%; height: 100%;"></div>
         <!-- Zero-Lag Canvas Overlay for Drawings -->
         <canvas id="drawingCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></canvas>
@@ -5704,11 +5798,13 @@
               recreateMainSeries('Candlestick');
             }
             candleSeries.applyOptions({
-              upColor: '#2ea043',
-              downColor: '#f85149',
-              borderVisible: false,
-              wickUpColor: '#2ea043',
-              wickDownColor: '#f85149',
+              upColor: isSMCInstitutionalClean ? '#2962FF' : '#2ea043',
+              downColor: isSMCInstitutionalClean ? '#121212' : '#f85149',
+              borderVisible: isSMCInstitutionalClean ? true : false,
+              borderUpColor: isSMCInstitutionalClean ? '#2962FF' : '#2ea043',
+              borderDownColor: isSMCInstitutionalClean ? '#121212' : '#f85149',
+              wickUpColor: isSMCInstitutionalClean ? '#2962FF' : '#2ea043',
+              wickDownColor: isSMCInstitutionalClean ? '#121212' : '#f85149',
             });
             candleSeries.setData(rawCandleData);
           } catch (e) { console.warn(e); }
@@ -6319,8 +6415,177 @@
         // ==========================================
     // SMART MONEY CONCEPTS (SMC): UNFILLED FVG & ACTIVE ORDER BLOCKS (Zero Clutter)
     // ==========================================
+    // INSTITUTIONAL SMC MINIMALIST CLEAN VIEW & SESSION WATERMARK
+    // ==========================================
+    let isSMCInstitutionalClean = false;
+
+    function getMarketSessionText() {
+      const now = new Date();
+      const utcHours = now.getUTCHours() + (now.getUTCMinutes() / 60);
+      if (utcHours >= 12.0 && utcHours < 13.5) {
+        return "PRE-NY SESSION";
+      } else if (utcHours >= 13.5 && utcHours < 20.5) {
+        return "NY SESSION";
+      } else if (utcHours >= 7.0 && utcHours < 12.0) {
+        return "LONDON SESSION";
+      } else if (utcHours >= 0.0 && utcHours < 7.0) {
+        return "ASIAN SESSION";
+      } else {
+        return "POST-NY SESSION";
+      }
+    }
+
+    function updateSessionWatermark() {
+      const el = document.getElementById('smcCurrentSessionLabel');
+      if (el) {
+        el.innerText = getMarketSessionText();
+      }
+    }
+
+    function toggleSMCInstitutionalTheme() {
+      isSMCInstitutionalClean = !isSMCInstitutionalClean;
+      applySMCThemeMode(isSMCInstitutionalClean);
+      try {
+        localStorage.setItem('smc_clean_theme', isSMCInstitutionalClean ? 'clean' : 'dark');
+      } catch (e) {}
+    }
+
+    function applySMCThemeMode(isClean) {
+      const darkLabel = document.getElementById('smcModeDark');
+      const lightLabel = document.getElementById('smcModeLight');
+
+      if (isClean) {
+        document.body.classList.add('smc-clean-active');
+        if (darkLabel) darkLabel.classList.remove('active');
+        if (lightLabel) lightLabel.classList.add('active');
+
+        // 1. Chart Background & Grid (Clean off-white / light silver #F5F6F8)
+        if (chart && typeof chart.applyOptions === 'function') {
+          chart.applyOptions({
+            layout: {
+              background: { type: 'solid', color: '#F5F6F8' },
+              textColor: '#121212',
+            },
+            grid: {
+              vertLines: { visible: false, color: 'rgba(0, 0, 0, 0.02)' },
+              horzLines: { visible: false, color: 'rgba(0, 0, 0, 0.02)' },
+            },
+            timeScale: {
+              borderColor: '#d0d7de',
+            },
+            rightPriceScale: {
+              borderColor: '#d0d7de',
+            },
+            crosshair: {
+              vertLine: { color: 'rgba(0, 0, 0, 0.25)', style: LightweightCharts.LineStyle.Dashed },
+              horzLine: { color: 'rgba(0, 0, 0, 0.25)', style: LightweightCharts.LineStyle.Dashed },
+            }
+          });
+        }
+
+        // 2. Candlestick Styling: Bullish = Clean Blue #2962FF, Bearish = Solid Black #121212
+        if (candleSeries && typeof candleSeries.applyOptions === 'function') {
+          candleSeries.applyOptions({
+            upColor: '#2962FF',
+            downColor: '#121212',
+            borderUpColor: '#2962FF',
+            borderDownColor: '#121212',
+            wickUpColor: '#2962FF',
+            wickDownColor: '#121212',
+            borderVisible: true,
+          });
+        }
+
+        // 3. Hide all secondary indicators to eliminate visual noise
+        if (ema20Series) ema20Series.applyOptions({ visible: false });
+        if (supportLine) supportLine.applyOptions({ visible: false });
+        if (resistanceLine) resistanceLine.applyOptions({ visible: false });
+        if (volumeSeries) volumeSeries.applyOptions({ visible: false });
+
+        // Hide UT Bot markers from canvas
+        try {
+          if (seriesMarkersPlugin && typeof seriesMarkersPlugin.setMarkers === 'function') {
+            seriesMarkersPlugin.setMarkers([]);
+          } else if (candleSeries && typeof candleSeries.setMarkers === 'function') {
+            candleSeries.setMarkers([]);
+          }
+        } catch (e) {}
+
+      } else {
+        document.body.classList.remove('smc-clean-active');
+        if (darkLabel) darkLabel.classList.add('active');
+        if (lightLabel) lightLabel.classList.remove('active');
+
+        // 1. Chart Background & Grid (Revert to Dark Pro #0d1117)
+        if (chart && typeof chart.applyOptions === 'function') {
+          chart.applyOptions({
+            layout: {
+              background: { type: 'solid', color: '#0d1117' },
+              textColor: '#8b949e',
+            },
+            grid: {
+              vertLines: { visible: true, color: '#21262d' },
+              horzLines: { visible: true, color: '#21262d' },
+            },
+            timeScale: {
+              borderColor: '#30363d',
+            },
+            rightPriceScale: {
+              borderColor: '#30363d',
+            },
+            crosshair: {
+              vertLine: { color: 'rgba(255, 255, 255, 0.2)', style: LightweightCharts.LineStyle.Dashed },
+              horzLine: { color: 'rgba(255, 255, 255, 0.2)', style: LightweightCharts.LineStyle.Dashed },
+            }
+          });
+        }
+
+        // 2. Candlestick Styling (Bullish: #2ea043, Bearish: #f85149)
+        if (candleSeries && typeof candleSeries.applyOptions === 'function') {
+          candleSeries.applyOptions({
+            upColor: '#2ea043',
+            downColor: '#f85149',
+            borderUpColor: '#2ea043',
+            borderDownColor: '#f85149',
+            wickUpColor: '#2ea043',
+            wickDownColor: '#f85149',
+            borderVisible: false,
+          });
+        }
+
+        // 3. Restore secondary indicators based on toggles
+        const emaChecked = document.getElementById('ind-toggle-ema')?.checked ?? true;
+        const srChecked = document.getElementById('ind-toggle-sr')?.checked ?? true;
+        const volChecked = document.getElementById('ind-toggle-vol')?.checked ?? true;
+        const utbotChecked = document.getElementById('ind-toggle-utbot')?.checked ?? true;
+
+        if (ema20Series) ema20Series.applyOptions({ visible: emaChecked });
+        if (supportLine) supportLine.applyOptions({ visible: srChecked });
+        if (resistanceLine) resistanceLine.applyOptions({ visible: srChecked });
+        if (volumeSeries) volumeSeries.applyOptions({ visible: volChecked });
+
+        // Restore UT Bot markers
+        if (utbotChecked && typeof activeMarkers !== 'undefined' && Array.isArray(activeMarkers)) {
+          try {
+            if (seriesMarkersPlugin && typeof seriesMarkersPlugin.setMarkers === 'function') {
+              seriesMarkersPlugin.setMarkers(activeMarkers);
+            } else if (candleSeries && typeof candleSeries.setMarkers === 'function') {
+              candleSeries.setMarkers(activeMarkers);
+            }
+          } catch (e) {}
+        }
+      }
+
+      redrawDrawings();
+    }
+
+    // Initialize session watermark timer
+    updateSessionWatermark();
+    setInterval(updateSessionWatermark, 30000);
+
+    // ==========================================
     function detectSmartMoneyZones(candles) {
-      if (!candles || candles.length < 5) return { fvgList: [], obList: [] };
+      if (!candles || candles.length < 5) return { fvgList: [], obList: [], activeRRSetup: null };
 
       const allBullishFVGs = [];
       const allBearishFVGs = [];
@@ -6330,72 +6595,105 @@
         ? currentLiveSpot 
         : candles[candles.length - 1].close;
 
-      // 1. Fair Value Gap (FVG) Scanner (3-Candle Imbalance)
-      // Only significant unmitigated institutional gaps (minimum $1.00 gap)
+      let detectedRRSetup = null;
+
+      // 1. Fair Value Gap (FVG) Scanner (3-Candle Institutional Imbalance)
+      // Bearish 15M FVG: Candle 1 Low > Candle 3 High during strong drop
+      // Bullish 15M FVG: Candle 3 Low > Candle 1 High during strong rally
       for (let i = 2; i < candles.length; i++) {
         const c1 = candles[i - 2];
         const c2 = candles[i - 1];
         const c3 = candles[i];
 
-        // Bullish FVG: Candle 1 High < Candle 3 Low
+        // --- Bullish 15M FVG ---
         if (c3.low > c1.high) {
           const top = c3.low;
           const bottom = c1.high;
           const gap = Number((top - bottom).toFixed(2));
+          const eqLevel = Number(((top + bottom) / 2).toFixed(2));
 
-          // Check if subsequent price mitigated the gap (> 50% fill)
-          let mitigated = false;
-          const midpoint = bottom + (gap * 0.5);
+          let isMitigated = false;
+          let hasTapped = false;
+          let tapRejectionCandle = null;
+
           for (let j = i + 1; j < candles.length; j++) {
-            if (candles[j].low <= midpoint) {
-              mitigated = true;
-              break;
+            const cj = candles[j];
+            if (cj.low <= top) {
+              hasTapped = true;
+              const lowerWick = Math.min(cj.open, cj.close) - cj.low;
+              const range = cj.high - cj.low;
+              // Lower wick rejection or strong green bounce from FVG
+              if (cj.close > cj.open || (range > 0 && lowerWick / range >= 0.30)) {
+                tapRejectionCandle = cj;
+              }
+            }
+            if (cj.low <= eqLevel) {
+              isMitigated = true;
             }
           }
 
-          if (!mitigated && gap >= 1.00 && Math.abs(currentPrice - top) <= 30) {
+          if (gap >= 0.80 && Math.abs(currentPrice - top) <= 40) {
             allBullishFVGs.push({
               type: 'BULLISH_FVG',
               top,
               bottom,
-              time: c2.time,
               gap,
-              color: 'rgba(46, 160, 67, 0.08)',
-              borderColor: 'rgba(46, 160, 67, 0.55)'
+              eqLevel,
+              time: c2.time,
+              isMitigated,
+              hasTapped,
+              tapRejectionCandle,
+              color: 'rgba(41, 98, 255, 0.22)',
+              borderColor: 'rgba(41, 98, 255, 0.65)'
             });
           }
         }
-        // Bearish FVG: Candle 1 Low > Candle 3 High
+        // --- Bearish 15M FVG ---
         else if (c3.high < c1.low) {
           const top = c1.low;
           const bottom = c3.high;
           const gap = Number((top - bottom).toFixed(2));
+          const eqLevel = Number(((top + bottom) / 2).toFixed(2));
 
-          // Check if subsequent price mitigated the gap (> 50% fill)
-          let mitigated = false;
-          const midpoint = top - (gap * 0.5);
+          let isMitigated = false;
+          let hasTapped = false;
+          let tapRejectionCandle = null;
+
           for (let j = i + 1; j < candles.length; j++) {
-            if (candles[j].high >= midpoint) {
-              mitigated = true;
-              break;
+            const cj = candles[j];
+            if (cj.high >= bottom) {
+              hasTapped = true;
+              const upperWick = cj.high - Math.max(cj.open, cj.close);
+              const range = cj.high - cj.low;
+              // Upper wick rejection or strong red reversal from FVG
+              if (cj.close < cj.open || (range > 0 && upperWick / range >= 0.30)) {
+                tapRejectionCandle = cj;
+              }
+            }
+            if (cj.high >= eqLevel) {
+              isMitigated = true;
             }
           }
 
-          if (!mitigated && gap >= 1.00 && Math.abs(currentPrice - bottom) <= 30) {
+          if (gap >= 0.80 && Math.abs(currentPrice - bottom) <= 40) {
             allBearishFVGs.push({
               type: 'BEARISH_FVG',
               top,
               bottom,
-              time: c2.time,
               gap,
-              color: 'rgba(248, 81, 73, 0.08)',
-              borderColor: 'rgba(248, 81, 73, 0.55)'
+              eqLevel,
+              time: c2.time,
+              isMitigated,
+              hasTapped,
+              tapRejectionCandle,
+              color: 'rgba(255, 82, 82, 0.25)', // Soft red/pink semi-transparent box (#FF5252 at 0.25 opacity)
+              borderColor: 'rgba(255, 82, 82, 0.65)'
             });
           }
         }
       }
 
-      // Merge overlapping/contiguous FVGs to prevent visual clutter
+      // Merge contiguous/overlapping FVGs
       function consolidateFVGs(list) {
         if (!list || list.length === 0) return [];
         const sorted = [...list].sort((a, b) => b.time - a.time);
@@ -6408,6 +6706,10 @@
             existing.top = Math.max(existing.top, item.top);
             existing.bottom = Math.min(existing.bottom, item.bottom);
             existing.gap = Number((existing.top - existing.bottom).toFixed(2));
+            existing.eqLevel = Number(((existing.top + existing.bottom) / 2).toFixed(2));
+            if (item.isMitigated) existing.isMitigated = true;
+            if (item.hasTapped) existing.hasTapped = true;
+            if (item.tapRejectionCandle) existing.tapRejectionCandle = item.tapRejectionCandle;
           } else {
             consolidated.push({ ...item });
           }
@@ -6417,28 +6719,27 @@
 
       const cleanBullish = consolidateFVGs(allBullishFVGs)
         .sort((a, b) => Math.abs(currentPrice - a.top) - Math.abs(currentPrice - b.top))
-        .slice(0, 2); // Keep at most 2 closest key demand FVGs
+        .slice(0, 2);
 
       const cleanBearish = consolidateFVGs(allBearishFVGs)
         .sort((a, b) => Math.abs(currentPrice - a.bottom) - Math.abs(currentPrice - b.bottom))
-        .slice(0, 2); // Keep at most 2 closest key supply FVGs
+        .slice(0, 2);
 
       const fvgList = [...cleanBullish, ...cleanBearish];
 
-      // 2. Order Block (OB) & Demand / Supply Scanner - Only UNBROKEN blocks
+      // 2. Order Block (OB) Scanner
       for (let i = 1; i < candles.length - 1; i++) {
         const prev = candles[i - 1];
         const curr = candles[i];
         const next = candles[i + 1];
 
         const bodySize = Math.abs(curr.close - curr.open);
-        const isDisplacement = bodySize >= 3.5; // Institutional impulse
+        const isDisplacement = bodySize >= 3.5;
 
-        // Bullish Order Block (Demand): Red candle followed by massive green rally
+        // Bullish Demand OB
         if (prev.close < prev.open && next.close > next.open && isDisplacement) {
           const top = Math.max(prev.open, prev.close);
           const bottom = prev.low;
-
           let broken = false;
           for (let j = i + 1; j < candles.length; j++) {
             if (candles[j].close < bottom) {
@@ -6446,7 +6747,6 @@
               break;
             }
           }
-
           if (!broken && Math.abs(currentPrice - top) <= 30) {
             allDemandOBs.push({
               type: 'DEMAND_OB',
@@ -6458,11 +6758,10 @@
             });
           }
         }
-        // Bearish Order Block (Supply): Green candle followed by heavy sell-off
+        // Bearish Supply OB
         else if (prev.close > prev.open && next.close < next.open && isDisplacement) {
           const top = prev.high;
           const bottom = Math.min(prev.open, prev.close);
-
           let broken = false;
           for (let j = i + 1; j < candles.length; j++) {
             if (candles[j].close > top) {
@@ -6470,7 +6769,6 @@
               break;
             }
           }
-
           if (!broken && Math.abs(currentPrice - bottom) <= 30) {
             allSupplyOBs.push({
               type: 'SUPPLY_OB',
@@ -6484,7 +6782,6 @@
         }
       }
 
-      // Keep at most 1 closest unmitigated Demand OB and 1 Supply OB
       const cleanDemandOB = allDemandOBs
         .sort((a, b) => Math.abs(currentPrice - a.top) - Math.abs(currentPrice - b.top))
         .slice(0, 1);
@@ -6494,14 +6791,105 @@
 
       const obList = [...cleanDemandOB, ...cleanSupplyOB];
 
-      return { fvgList, obList };
+      // 3. AUTOMATIC RISK/REWARD POSITION OVERLAY (Short/Long Tool)
+      // When a 15M FVG tap + rejection candle occurs:
+      // Construct the standard TradingView Risk/Reward box
+      for (const zone of fvgList) {
+        if (zone.type === 'BEARISH_FVG' && (zone.hasTapped || zone.isMitigated)) {
+          const rej = zone.tapRejectionCandle || candles[candles.length - 1];
+          const entry = rej.close;
+          const sl = Number((zone.top + 1.20).toFixed(2)); // Stop Loss: Soft pink/red box above the FVG high
+          const risk = Math.max(1.80, Number((sl - entry).toFixed(2)));
+          const reward = Number((risk * 3.5).toFixed(2)); // 1:3.5 RR
+          const tp = Number((entry - reward).toFixed(2)); // Take Profit down to recent liquidity low
+
+          detectedRRSetup = {
+            type: 'SHORT',
+            entry,
+            sl,
+            tp,
+            risk,
+            reward,
+            rrRatio: '3.5',
+            time: rej.time,
+            fvgTop: zone.top,
+            fvgBottom: zone.bottom
+          };
+          break;
+        } else if (zone.type === 'BULLISH_FVG' && (zone.hasTapped || zone.isMitigated)) {
+          const rej = zone.tapRejectionCandle || candles[candles.length - 1];
+          const entry = rej.close;
+          const sl = Number((zone.bottom - 1.20).toFixed(2));
+          const risk = Math.max(1.80, Number((entry - sl).toFixed(2)));
+          const reward = Number((risk * 3.5).toFixed(2));
+          const tp = Number((entry + reward).toFixed(2));
+
+          detectedRRSetup = {
+            type: 'LONG',
+            entry,
+            sl,
+            tp,
+            risk,
+            reward,
+            rrRatio: '3.5',
+            time: rej.time,
+            fvgTop: zone.top,
+            fvgBottom: zone.bottom
+          };
+          break;
+        }
+      }
+
+      // Fallback: If no tap yet, project setup from the closest Bearish/Bullish FVG so position tool is ready
+      if (!detectedRRSetup && fvgList.length > 0) {
+        const primary = fvgList[0];
+        if (primary.type === 'BEARISH_FVG') {
+          const entry = primary.bottom;
+          const sl = Number((primary.top + 1.20).toFixed(2));
+          const risk = Math.max(1.80, Number((sl - entry).toFixed(2)));
+          const reward = Number((risk * 3.5).toFixed(2));
+          const tp = Number((entry - reward).toFixed(2));
+          detectedRRSetup = {
+            type: 'SHORT',
+            entry,
+            sl,
+            tp,
+            risk,
+            reward,
+            rrRatio: '3.5',
+            time: primary.time,
+            fvgTop: primary.top,
+            fvgBottom: primary.bottom
+          };
+        } else {
+          const entry = primary.top;
+          const sl = Number((primary.bottom - 1.20).toFixed(2));
+          const risk = Math.max(1.80, Number((entry - sl).toFixed(2)));
+          const reward = Number((risk * 3.5).toFixed(2));
+          const tp = Number((entry + reward).toFixed(2));
+          detectedRRSetup = {
+            type: 'LONG',
+            entry,
+            sl,
+            tp,
+            risk,
+            reward,
+            rrRatio: '3.5',
+            time: primary.time,
+            fvgTop: primary.top,
+            fvgBottom: primary.bottom
+          };
+        }
+      }
+
+      return { fvgList, obList, activeRRSetup: detectedRRSetup };
     }
 
     // Professional Lightweight Canvas SMC Zone Renderer (Clean & Concise)
     function drawSMCZonesOnCanvas(smcData) {
       if (!smcEnabled || !drawingCtx || !drawingCanvas || !candleSeries || !smcData) return;
 
-      // 1. Draw Active Fair Value Gaps (FVG)
+      // 1. Draw Active 15M Fair Value Gaps (FVG)
       if (Array.isArray(smcData.fvgList)) {
         smcData.fvgList.forEach(zone => {
           const yTop = candleSeries.priceToCoordinate(zone.top);
@@ -6510,7 +6898,7 @@
           if (yTop !== null && yBottom !== null) {
             const topY = Math.min(yTop, yBottom);
             const botY = Math.max(yTop, yBottom);
-            const height = Math.max(3, botY - topY);
+            const height = Math.max(4, botY - topY);
 
             let startX = 0;
             if (chart && chart.timeScale && zone.time) {
@@ -6521,32 +6909,27 @@
             }
             const width = Math.max(50, canvasCssWidth - startX - 70);
 
-            // Shaded Box (Subtle institutional fill)
-            drawingCtx.fillStyle = zone.color;
+            // Shaded FVG Box (Bearish FVG: soft red/pink semi-transparent box #FF5252 with opacity 0.25)
+            drawingCtx.fillStyle = zone.color || (zone.type === 'BEARISH_FVG' ? 'rgba(255, 82, 82, 0.25)' : 'rgba(41, 98, 255, 0.22)');
             drawingCtx.fillRect(startX, topY, width, height);
 
             // Subtle Dashed Border
-            drawingCtx.strokeStyle = zone.borderColor;
+            drawingCtx.strokeStyle = zone.borderColor || (zone.type === 'BEARISH_FVG' ? 'rgba(255, 82, 82, 0.65)' : 'rgba(41, 98, 255, 0.65)');
             drawingCtx.lineWidth = 1;
-            drawingCtx.setLineDash([4, 4]);
+            drawingCtx.setLineDash([4, 3]);
             drawingCtx.strokeRect(startX, topY, width, height);
             drawingCtx.setLineDash([]);
 
-            // Clean, Concise Institutional Badge
-            const labelText = zone.type === 'BULLISH_FVG'
-              ? `Bullish FVG · $${zone.bottom.toFixed(1)} - $${zone.top.toFixed(1)}`
-              : `Bearish FVG · $${zone.bottom.toFixed(1)} - $${zone.top.toFixed(1)}`;
-
-            drawingCtx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            // Label inside the box: "15m FVG" in crisp, small typography
+            const labelText = "15m FVG";
+            drawingCtx.font = '700 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
             const metrics = drawingCtx.measureText(labelText);
-            const badgeW = Math.round(metrics.width + 12);
-            const badgeH = 18;
-            // Position badge cleanly near right edge so it never obscures candlesticks
-            const badgeX = Math.max(startX + 14, canvasCssWidth - badgeW - 80);
-            const badgeY = Math.max(4, Math.min(canvasCssHeight - badgeH - 4, topY + (height / 2) - (badgeH / 2)));
+            const badgeW = Math.round(metrics.width + 10);
+            const badgeH = 16;
+            const badgeX = startX + 8;
+            const badgeY = topY + 4;
 
-            // Subtle Dark Pill
-            drawingCtx.fillStyle = 'rgba(10, 14, 23, 0.88)';
+            drawingCtx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.88)' : 'rgba(10, 14, 23, 0.88)';
             drawingCtx.beginPath();
             if (drawingCtx.roundRect) drawingCtx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
             else drawingCtx.rect(badgeX, badgeY, badgeW, badgeH);
@@ -6556,10 +6939,33 @@
             drawingCtx.lineWidth = 1;
             drawingCtx.stroke();
 
-            drawingCtx.fillStyle = zone.type === 'BULLISH_FVG' ? '#3fb950' : '#f85149';
+            drawingCtx.fillStyle = zone.type === 'BEARISH_FVG' ? '#ff5252' : '#2962ff';
             drawingCtx.textAlign = 'left';
             drawingCtx.textBaseline = 'middle';
-            drawingCtx.fillText(labelText, badgeX + 6, badgeY + (badgeH / 2));
+            drawingCtx.fillText(labelText, badgeX + 5, badgeY + (badgeH / 2));
+
+            // When price pulls back into the FVG (Mitigation):
+            // Draw a fine horizontal midline (50% Equilibrium level).
+            if (zone.isMitigated || zone.hasTapped) {
+              const eq = zone.eqLevel || Number(((zone.top + zone.bottom) / 2).toFixed(2));
+              const eqY = candleSeries.priceToCoordinate(eq);
+              if (eqY !== null) {
+                drawingCtx.save();
+                drawingCtx.strokeStyle = zone.type === 'BEARISH_FVG' ? 'rgba(255, 82, 82, 0.85)' : 'rgba(41, 98, 255, 0.85)';
+                drawingCtx.lineWidth = 1;
+                drawingCtx.setLineDash([3, 3]);
+                drawingCtx.beginPath();
+                drawingCtx.moveTo(startX, eqY);
+                drawingCtx.lineTo(startX + width, eqY);
+                drawingCtx.stroke();
+
+                // Small 50% EQ label
+                drawingCtx.font = '600 9px monospace';
+                drawingCtx.fillStyle = zone.type === 'BEARISH_FVG' ? '#ff5252' : '#2962ff';
+                drawingCtx.fillText(`50% EQ · $${eq.toFixed(2)}`, startX + badgeW + 16, eqY - 3);
+                drawingCtx.restore();
+              }
+            }
           }
         });
       }
@@ -6636,6 +7042,136 @@
       redrawDrawings();
     }
 
+
+    // ==========================================
+    // 3. AUTOMATIC RISK/REWARD POSITION OVERLAY (TradingView Short/Long Tool)
+    // ==========================================
+    function drawRiskRewardOverlay(ctx, setup) {
+      if (!smcEnabled || !setup || !ctx || !candleSeries || !chart || !chart.timeScale) return;
+
+      const yEntry = candleSeries.priceToCoordinate(setup.entry);
+      const ySL = candleSeries.priceToCoordinate(setup.sl);
+      const yTP = candleSeries.priceToCoordinate(setup.tp);
+
+      if (yEntry === null || ySL === null || yTP === null) return;
+
+      let startX = 0;
+      if (setup.time) {
+        const coordX = chart.timeScale().timeToCoordinate(setup.time);
+        if (coordX !== null && coordX >= 0) {
+          startX = Math.max(30, coordX);
+        }
+      }
+      if (!startX || startX <= 0) {
+        startX = Math.max(50, canvasCssWidth - 280);
+      }
+
+      // Width of Risk/Reward box
+      const boxW = Math.max(140, Math.min(220, canvasCssWidth - startX - 75));
+      const endX = startX + boxW;
+      const isShort = setup.type === 'SHORT';
+
+      ctx.save();
+
+      // --- 1. RISK BOX (Stop Loss) ---
+      // Short: SL is higher price (ySL < yEntry in canvas pixels)
+      // Long: SL is lower price (ySL > yEntry in canvas pixels)
+      const riskTopY = isShort ? Math.min(ySL, yEntry) : Math.min(yEntry, ySL);
+      const riskBotY = isShort ? Math.max(ySL, yEntry) : Math.max(yEntry, ySL);
+      const riskHeight = Math.max(2, riskBotY - riskTopY);
+
+      // Soft pink/red box above FVG high (#FF5252 with opacity 0.25)
+      ctx.fillStyle = 'rgba(255, 82, 82, 0.25)';
+      ctx.fillRect(startX, riskTopY, boxW, riskHeight);
+
+      ctx.strokeStyle = 'rgba(255, 82, 82, 0.85)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(startX, riskTopY, boxW, riskHeight);
+
+      // --- 2. REWARD BOX (Take Profit) ---
+      // Short: TP is lower price (yEntry < yTP)
+      // Long: TP is higher price (yTP < yEntry)
+      const rewardTopY = isShort ? Math.min(yEntry, yTP) : Math.min(yTP, yEntry);
+      const rewardBotY = isShort ? Math.max(yEntry, yTP) : Math.max(yTP, yEntry);
+      const rewardHeight = Math.max(2, rewardBotY - rewardTopY);
+
+      // Soft blue box extending down to recent liquidity low (minimum 1:3 to 1:5 RR)
+      ctx.fillStyle = 'rgba(41, 98, 255, 0.25)';
+      ctx.fillRect(startX, rewardTopY, boxW, rewardHeight);
+
+      ctx.strokeStyle = 'rgba(41, 98, 255, 0.85)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(startX, rewardTopY, boxW, rewardHeight);
+
+      // --- 3. ENTRY LEVEL MIDLINE ---
+      ctx.strokeStyle = isSMCInstitutionalClean ? '#121212' : '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(startX, yEntry);
+      ctx.lineTo(endX, yEntry);
+      ctx.stroke();
+
+      // --- 4. TEXT LABELS & BADGES ---
+      ctx.font = '700 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+
+      // Stop Loss text
+      ctx.fillStyle = '#ff5252';
+      ctx.fillText(`🛑 Stop: $${setup.sl.toFixed(2)} (-$${setup.risk.toFixed(2)})`, startX + 6, riskTopY + 10);
+
+      // Take Profit text
+      ctx.fillStyle = '#2962ff';
+      ctx.fillText(`🎯 Target: $${setup.tp.toFixed(2)} (1:${setup.rrRatio} RR)`, startX + 6, rewardBotY - 10);
+
+      // Entry text
+      ctx.fillStyle = isSMCInstitutionalClean ? '#121212' : '#ffffff';
+      ctx.fillText(`Entry: $${setup.entry.toFixed(2)}`, startX + 6, yEntry - (isShort ? 7 : -7));
+
+      // Central TradingView-style RR badge
+      const rrBadgeText = `1 : ${setup.rrRatio} RR`;
+      ctx.font = '700 9.5px monospace';
+      const badgeW = ctx.measureText(rrBadgeText).width + 12;
+      const badgeH = 16;
+      const badgeX = endX - badgeW - 6;
+      const badgeY = yEntry - (badgeH / 2);
+
+      ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(13, 17, 23, 0.92)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
+      else ctx.rect(badgeX, badgeY, badgeW, badgeH);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(41, 98, 255, 0.85)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#2962ff';
+      ctx.fillText(rrBadgeText, badgeX + 6, badgeY + (badgeH / 2));
+
+      // --- 5. TARGET LINE EXTENDING HORIZONTALLY ACROSS CHART ---
+      ctx.strokeStyle = 'rgba(41, 98, 255, 0.85)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(endX, yTP);
+      ctx.lineTo(canvasCssWidth - 65, yTP);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Target Pin on Right Edge
+      const targetTag = `🎯 $${setup.tp.toFixed(2)}`;
+      ctx.font = '700 10px monospace';
+      const tTagW = ctx.measureText(targetTag).width + 8;
+      const tTagX = canvasCssWidth - tTagW - 68;
+      ctx.fillStyle = '#2962ff';
+      ctx.fillRect(tTagX, yTP - 8, tTagW, 16);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(targetTag, tTagX + 4, yTP);
+
+      ctx.restore();
+    }
+
     function redrawDrawings() {
       if (!drawingCtx || !drawingCanvas) return;
       drawingCtx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
@@ -6643,6 +7179,10 @@
       // 1. Draw Smart Money Concept (SMC) Zones
       if (currentSMCZones && smcEnabled) {
         drawSMCZonesOnCanvas(currentSMCZones);
+        // Automatic Risk/Reward Position Overlay (Short/Long Tool)
+        if (currentSMCZones.activeRRSetup) {
+          drawRiskRewardOverlay(drawingCtx, currentSMCZones.activeRRSetup);
+        }
       }
 
       // 1.5 Draw Quantitative Breakout & Retest Dashed Glow Line
@@ -6968,7 +7508,7 @@
     let lastProcessedCandleTime = null;
 
     function applyMarkersToChart(markers) {
-      if (!utBotEnabled) {
+      if (!utBotEnabled || isSMCInstitutionalClean) {
         if (seriesMarkersPlugin) {
           try { seriesMarkersPlugin.setMarkers([]); } catch (e) {}
         }
