@@ -2497,7 +2497,9 @@
     }
     .tv-indicators-dropdown {
       min-width: 320px !important;
-      max-width: 340px;
+      max-width: 350px;
+      max-height: 480px;
+      overflow-y: auto;
       padding: 8px 10px;
     }
     .tv-ind-row {
@@ -4252,10 +4254,58 @@
           <div id="tvIndicatorsMenu" class="tv-dropdown-menu tv-indicators-dropdown" onclick="event.stopPropagation()">
             <div class="tv-dd-group-title" style="margin-bottom: 6px;">TECHNICAL INDICATORS &amp; SMC</div>
 
-            <!-- UT Bot Signals Toggle -->
+            <!-- 1. SMC Supply & Demand Zones -->
+            <div class="tv-ind-row" onclick="clickToggle('smc', event)">
+              <div class="tv-ind-info">
+                <b style="color: #58a6ff;">🏛️ SMC Key Zones (FVG &amp; OB)</b>
+                <small>15M institutional Key Supply &amp; Demand zones</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-smc" checked onchange="toggleIndicator('smc')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- 2. Institutional Liquidity Pools -->
+            <div class="tv-ind-row" onclick="clickToggle('liquidity', event)">
+              <div class="tv-ind-info">
+                <b style="color: #ffd700;">💧 Liquidity Pools (ASH/LSH/EQH)</b>
+                <small>Asia/London High &amp; Low, EQH/EQL, PDH/PDL</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-liquidity" checked onchange="toggleIndicator('liquidity')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- 3. Risk / Reward Position Tool -->
+            <div class="tv-ind-row" onclick="clickToggle('rr', event)">
+              <div class="tv-ind-info">
+                <b style="color: #2ea043;">🎯 Risk / Reward Position Tool</b>
+                <small>1:3.5 Target &amp; Stop Loss projection box</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-rr" onchange="toggleIndicator('rr')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- 4. Liquidity Sweep Alerts -->
+            <div class="tv-ind-row" onclick="clickToggle('sweeps', event)">
+              <div class="tv-ind-info">
+                <b style="color: #f0883e;">⚡ Liquidity Sweep Alerts</b>
+                <small>Session raid confirmation &amp; absorption badge</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-sweeps" checked onchange="toggleIndicator('sweeps')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- 5. UT Bot Signals -->
             <div class="tv-ind-row" onclick="clickToggle('utbot', event)">
               <div class="tv-ind-info">
-                <b style="color: #ffd700;">⚡ UT Bot Signals</b>
+                <b style="color: #e3b341;">⚡ UT Bot Signals</b>
                 <small>Buy/Sell algorithmic arrows &amp; ATR trailing</small>
               </div>
               <label class="toggle-switch" onclick="event.stopPropagation()">
@@ -4264,22 +4314,10 @@
               </label>
             </div>
 
-            <!-- SMC Zones Toggle -->
-            <div class="tv-ind-row" onclick="clickToggle('smc', event)">
-              <div class="tv-ind-info">
-                <b style="color: #58a6ff;">⚡ SMC Zones (FVG &amp; OB)</b>
-                <small>Unmitigated Fair Value Gaps &amp; Order Blocks</small>
-              </div>
-              <label class="toggle-switch" onclick="event.stopPropagation()">
-                <input type="checkbox" id="ind-toggle-smc" checked onchange="toggleIndicator('smc')">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
-            <!-- EMA 20 Trend Structure -->
+            <!-- 6. EMA 20 Trend Structure -->
             <div class="tv-ind-row" onclick="clickToggle('ema', event)">
               <div class="tv-ind-info">
-                <b style="color: #388bfd;">EMA 20 Trend Structure</b>
+                <b style="color: #388bfd;">📈 EMA 20 Trend Structure</b>
                 <small>20-period dynamic EMA trend baseline</small>
               </div>
               <label class="toggle-switch" onclick="event.stopPropagation()">
@@ -4288,10 +4326,10 @@
               </label>
             </div>
 
-            <!-- Support & Resistance -->
+            <!-- 7. Support & Resistance -->
             <div class="tv-ind-row" onclick="clickToggle('sr', event)">
               <div class="tv-ind-info">
-                <b style="color: #3fb950;">Support &amp; Resistance (S1 / R1)</b>
+                <b style="color: #3fb950;">📊 Support &amp; Resistance (S1 / R1)</b>
                 <small>Dynamic liquidity bands &amp; key pivot boundaries</small>
               </div>
               <label class="toggle-switch" onclick="event.stopPropagation()">
@@ -4300,10 +4338,10 @@
               </label>
             </div>
 
-            <!-- Volume Histogram -->
+            <!-- 8. Volume Histogram -->
             <div class="tv-ind-row" onclick="clickToggle('vol', event)">
               <div class="tv-ind-info">
-                <b style="color: #2ea043;">Volume Histogram Panel</b>
+                <b style="color: #2ea043;">📶 Volume Histogram Panel</b>
                 <small>Buyer vs seller pressure histogram</small>
               </div>
               <label class="toggle-switch" onclick="event.stopPropagation()">
@@ -4312,10 +4350,10 @@
               </label>
             </div>
 
-            <!-- Ghost Candle Projection -->
+            <!-- 9. Ghost Candle Projection -->
             <div class="tv-ind-row" onclick="clickToggle('ghost', event)">
               <div class="tv-ind-info">
-                <b style="color: #bc8cff;">Ghost Candle AI Projection</b>
+                <b style="color: #bc8cff;">🔮 Ghost Candle AI Projection</b>
                 <small>Predictive 3-bar institutional target path</small>
               </div>
               <label class="toggle-switch" onclick="event.stopPropagation()">
@@ -5730,7 +5768,10 @@
     // ==========================================
     let currentSMCZones = { fvgList: [], obList: [] };
     var currentLiquidityPools = null;
-    let smcEnabled = true;
+    var smcEnabled = true;
+    var liquidityPoolsEnabled = true;
+    var sweepAlertsEnabled = true;
+    var showRROverlay = false;
     let currentTool = 'cursor';
     let drawings = [];
     let customPriceLines = []; // [{ id, price, lineRef }]
@@ -6079,13 +6120,28 @@
         smcEnabled = isChecked;
         const smcBtn = document.getElementById('btn-toggle-smc');
         if (smcBtn) {
-          smcBtn.innerText = isChecked ? '⚡ SMC Zones: ON' : '⚡ SMC Zones: OFF';
+          smcBtn.innerText = isChecked ? '🏛️ SMC Zones: ON' : '🏛️ SMC Zones: OFF';
           smcBtn.classList.toggle('active', isChecked);
         }
         const toolSmc = document.getElementById('tool-smc');
         if (toolSmc) toolSmc.classList.toggle('active', isChecked);
         redrawDrawings();
-        showSignalToast(`SMC Zones: ${isChecked ? 'ON' : 'OFF'}`);
+        showSignalToast(`SMC Key Zones: ${isChecked ? 'ON' : 'OFF'}`);
+        return;
+      } else if (ind === 'liquidity') {
+        liquidityPoolsEnabled = isChecked;
+        redrawDrawings();
+        showSignalToast(`Liquidity Pools: ${isChecked ? 'ON' : 'OFF'}`);
+        return;
+      } else if (ind === 'rr') {
+        showRROverlay = isChecked;
+        redrawDrawings();
+        showSignalToast(`Risk/Reward Tool: ${isChecked ? 'ON' : 'OFF'}`);
+        return;
+      } else if (ind === 'sweeps') {
+        sweepAlertsEnabled = isChecked;
+        redrawDrawings();
+        showSignalToast(`Liquidity Sweep Alerts: ${isChecked ? 'ON' : 'OFF'}`);
         return;
       } else if (ind === 'vol' && volumeSeries) {
         volumeSeries.applyOptions({ visible: isChecked });
@@ -7019,93 +7075,149 @@
       return { allowed: true };
     }
 
-    // 4. CANVAS OVERLAY FOR INSTITUTIONAL LIQUIDITY POOLS (Clean, Subtle Dotted Lines & Tags)
+    // 4. CANVAS OVERLAY FOR INSTITUTIONAL LIQUIDITY POOLS (Aligned, Staggered & Collision-Free)
     function drawInstitutionalLiquidityOverlay(ctx, pools, activeSweep) {
-      if (!pools || !ctx || !candleSeries || !chart) return;
+      if (!liquidityPoolsEnabled || !pools || !ctx || !candleSeries || !chart) return;
 
       ctx.save();
 
-      const levelsToDraw = [
-        { label: 'Asia High (ASH)', desc: 'Asia High', price: pools.asiaHigh, color: 'rgba(255, 215, 0, 0.50)', textColor: '#ffd700' },
-        { label: 'Asia Low (ASL)', desc: 'Asia Low', price: pools.asiaLow, color: 'rgba(88, 166, 255, 0.50)', textColor: '#58a6ff' },
-      ];
+      const levelsToDraw = [];
 
-      if (pools.londonHigh) {
-        levelsToDraw.push({ label: 'London High (LSH)', desc: 'London High', price: pools.londonHigh, color: 'rgba(240, 140, 0, 0.50)', textColor: '#f08c00' });
+      // Asian Session Levels
+      if (pools.asiaHigh && pools.asiaHigh > 0) {
+        levelsToDraw.push({ label: 'Asia High (ASH)', desc: 'Asia High', price: pools.asiaHigh, color: 'rgba(255, 215, 0, 0.45)', textColor: '#ffd700' });
       }
-      if (pools.londonLow) {
-        levelsToDraw.push({ label: 'London Low (LSL)', desc: 'London Low', price: pools.londonLow, color: 'rgba(0, 180, 216, 0.50)', textColor: '#00b4d8' });
-      }
-      if (pools.pdh) {
-        levelsToDraw.push({ label: 'PDH', desc: 'Prev Day High', price: pools.pdh, color: 'rgba(163, 113, 247, 0.50)', textColor: '#a371f7' });
-      }
-      if (pools.pdl) {
-        levelsToDraw.push({ label: 'PDL', desc: 'Prev Day Low', price: pools.pdl, color: 'rgba(163, 113, 247, 0.50)', textColor: '#a371f7' });
-      }
-      if (pools.eqh) {
-        levelsToDraw.push({ label: 'Equal Highs (EQH)', desc: 'Buy-Side Liquidity', price: pools.eqh, color: 'rgba(248, 81, 73, 0.55)', textColor: '#f85149' });
-      }
-      if (pools.eql) {
-        levelsToDraw.push({ label: 'Equal Lows (EQL)', desc: 'Sell-Side Liquidity', price: pools.eql, color: 'rgba(63, 185, 80, 0.55)', textColor: '#3fb950' });
+      if (pools.asiaLow && pools.asiaLow > 0) {
+        levelsToDraw.push({ label: 'Asia Low (ASL)', desc: 'Asia Low', price: pools.asiaLow, color: 'rgba(88, 166, 255, 0.45)', textColor: '#58a6ff' });
       }
 
+      // London Session Levels
+      if (pools.londonHigh && pools.londonHigh > 0) {
+        levelsToDraw.push({ label: 'London High (LSH)', desc: 'London High', price: pools.londonHigh, color: 'rgba(240, 140, 0, 0.45)', textColor: '#f08c00' });
+      }
+      if (pools.londonLow && pools.londonLow > 0) {
+        levelsToDraw.push({ label: 'London Low (LSL)', desc: 'London Low', price: pools.londonLow, color: 'rgba(0, 180, 216, 0.45)', textColor: '#00b4d8' });
+      }
+
+      // Higher Timeframe (PDH / PDL)
+      if (pools.pdh && pools.pdh > 0) {
+        levelsToDraw.push({ label: 'PDH', desc: 'Prev Day High', price: pools.pdh, color: 'rgba(163, 113, 247, 0.45)', textColor: '#a371f7' });
+      }
+      if (pools.pdl && pools.pdl > 0) {
+        levelsToDraw.push({ label: 'PDL', desc: 'Prev Day Low', price: pools.pdl, color: 'rgba(163, 113, 247, 0.45)', textColor: '#a371f7' });
+      }
+
+      // Equal Highs / Equal Lows (EQH / EQL)
+      if (pools.eqh && pools.eqh > 0) {
+        levelsToDraw.push({ label: 'Equal Highs (EQH)', desc: 'Buy-Side Liquidity', price: pools.eqh, color: 'rgba(248, 81, 73, 0.50)', textColor: '#f85149' });
+      }
+      if (pools.eql && pools.eql > 0) {
+        levelsToDraw.push({ label: 'Equal Lows (EQL)', desc: 'Sell-Side Liquidity', price: pools.eql, color: 'rgba(63, 185, 80, 0.50)', textColor: '#3fb950' });
+      }
+
+      // Compute screen Y coordinates for each visible level
+      const visibleLevels = [];
       levelsToDraw.forEach(lvl => {
-        if (!lvl.price || lvl.price <= 0) return;
         const y = candleSeries.priceToCoordinate(lvl.price);
-        if (y === null || y < 0 || y > canvasCssHeight) return;
+        if (y !== null && y >= 10 && y <= canvasCssHeight - 15) {
+          visibleLevels.push({ ...lvl, y: Math.round(y) });
+        }
+      });
 
-        // Subtle, fine dotted line
+      // Sort from top to bottom (ascending y coordinate)
+      visibleLevels.sort((a, b) => a.y - b.y);
+
+      // Smart Collision Avoidance: Stagger tags into columns if lines are close
+      ctx.font = '600 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+      let prevY = -999;
+      let colTier = 0;
+
+      visibleLevels.forEach(lvl => {
+        // Draw fine horizontal dashed line
         ctx.strokeStyle = lvl.color;
         ctx.lineWidth = 1;
-        ctx.setLineDash([2, 4]);
+        ctx.setLineDash([3, 4]);
         ctx.beginPath();
-        ctx.moveTo(15, y);
-        ctx.lineTo(canvasCssWidth - 65, y);
+        ctx.moveTo(15, lvl.y);
+        ctx.lineTo(canvasCssWidth - 65, lvl.y);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Small clean tag badge on the right
+        // Text & dimensions
         const txt = `${lvl.label} · $${lvl.price.toFixed(1)} [Liquidity Pool]`;
-        ctx.font = '600 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-        const w = ctx.measureText(txt).width + 8;
-        const tagX = canvasCssWidth - w - 70;
+        const textWidth = ctx.measureText(txt).width;
+        const badgeW = Math.round(textWidth + 10);
+        const badgeH = 15;
 
-        ctx.fillStyle = 'rgba(13, 17, 23, 0.88)';
-        ctx.fillRect(tagX, y - 7, w, 14);
+        // If distance from previous badge is less than 17px, stagger inward to Column 1
+        if (lvl.y - prevY < 17) {
+          colTier = (colTier === 0) ? 1 : 0;
+        } else {
+          colTier = 0; // Plenty of room, place in primary right margin
+        }
+        prevY = lvl.y;
+
+        const tagX = (colTier === 0)
+          ? Math.round(canvasCssWidth - badgeW - 72)
+          : Math.round(canvasCssWidth - badgeW - 72 - 180);
+
+        // If staggered inward, draw a fine connecting tick
+        if (colTier === 1) {
+          ctx.strokeStyle = lvl.color;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(tagX + badgeW, lvl.y);
+          ctx.lineTo(canvasCssWidth - 72, lvl.y);
+          ctx.stroke();
+        }
+
+        // Crisp pill badge
+        ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.94)';
+        ctx.fillRect(tagX, lvl.y - Math.floor(badgeH / 2), badgeW, badgeH);
+
         ctx.strokeStyle = lvl.color;
-        ctx.strokeRect(tagX, y - 7, w, 14);
+        ctx.strokeRect(tagX, lvl.y - Math.floor(badgeH / 2), badgeW, badgeH);
 
         ctx.fillStyle = lvl.textColor;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(txt, tagX + 4, y);
+        ctx.fillText(txt, tagX + 5, lvl.y);
       });
 
-      // Flash subtle "⚡ Liquidity Swept" marker when a sweep is confirmed
-      if (activeSweep && activeSweep.sweepLowest || (activeSweep && activeSweep.sweptPrice)) {
+      // 5. Institutional Liquidity Sweep Confirmation Banner (Moved to TOP-LEFT so candles are NEVER covered!)
+      if (sweepAlertsEnabled && activeSweep && (activeSweep.sweepLowest || activeSweep.sweptPrice)) {
         const sweepPrice = activeSweep.sweptPrice || activeSweep.sweepLowest;
         const sweepY = candleSeries.priceToCoordinate(sweepPrice);
+
+        // A. Sleek Non-Intrusive Floating Banner at Top-Left (Safe open space)
+        const bannerTxt = `⚡ LIQUIDITY SWEPT: ${activeSweep.levelName} (${activeSweep.type === 'BUY' ? 'Demand Absorption' : 'Supply Defense'})`;
+        ctx.font = '800 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        const bannerW = Math.round(ctx.measureText(bannerTxt).width + 18);
+        const bannerH = 22;
+        const bannerX = 24;
+        const bannerY = 22;
+
+        ctx.fillStyle = activeSweep.type === 'BUY' ? 'rgba(46, 160, 67, 0.92)' : 'rgba(248, 81, 73, 0.92)';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 4);
+        else ctx.rect(bannerX, bannerY, bannerW, bannerH);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(bannerTxt, bannerX + (bannerW / 2), bannerY + (bannerH / 2));
+
+        // B. Subtle, minimal target pip at the exact swept wick coordinate (Unobtrusive)
         if (sweepY !== null && sweepY >= 0 && sweepY <= canvasCssHeight) {
-          const bannerTxt = `⚡ Liquidity Swept: ${activeSweep.levelName} (${activeSweep.type === 'BUY' ? 'Demand Absorption' : 'Supply Defense'})`;
-          ctx.font = '800 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-          const bannerW = ctx.measureText(bannerTxt).width + 16;
-          const bannerX = Math.round(canvasCssWidth / 2 - (bannerW / 2));
-          const bannerY = Math.max(10, Math.min(canvasCssHeight - 25, sweepY - 12));
-
-          ctx.fillStyle = activeSweep.type === 'BUY' ? 'rgba(46, 160, 67, 0.95)' : 'rgba(248, 81, 73, 0.95)';
+          ctx.fillStyle = activeSweep.type === 'BUY' ? '#3fb950' : '#f85149';
           ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, 22, 5);
-          else ctx.rect(bannerX, bannerY, bannerW, 22);
+          ctx.arc(35, sweepY, 3, 0, Math.PI * 2);
           ctx.fill();
-
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-
-          ctx.fillStyle = '#ffffff';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(bannerTxt, bannerX + (bannerW / 2), bannerY + 11);
         }
       }
 
@@ -7362,7 +7474,7 @@
       return { fvgList: consolidatedZones, obList: [], activeRRSetup: activeRR };
     }
 
-    // Professional Lightweight Canvas SMC Zone Renderer (Clean & Concise)
+    // Professional Lightweight Canvas SMC Zone Renderer (Clean & Left-Aligned)
     function drawSMCZonesOnCanvas(smcData) {
       if (!smcEnabled || !drawingCtx || !drawingCanvas || !candleSeries || !smcData) return;
 
@@ -7382,7 +7494,7 @@
           const botY = Math.max(yTop, yBottom);
           const height = Math.max(6, botY - topY);
 
-          // Span cleanly from 40px to near price axis
+          // Span cleanly across chart
           const startX = 20;
           const width = Math.max(60, canvasCssWidth - startX - 70);
 
@@ -7397,21 +7509,21 @@
           drawingCtx.strokeRect(startX, topY, width, height);
           drawingCtx.setLineDash([]);
 
-          // 3. Crisp single badge on the RIGHT margin
+          // 3. Crisp single badge on the LEFT margin (Completely avoids right-side liquidity collisions!)
           const isSupply = zone.type === 'BEARISH_FVG';
           const labelText = `${isSupply ? '🔴 15M Supply' : '🔵 15M Demand'} · $${zone.bottom.toFixed(1)} - $${zone.top.toFixed(1)}`;
           
-          drawingCtx.font = '600 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          drawingCtx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
           const metrics = drawingCtx.measureText(labelText);
-          const badgeW = Math.round(metrics.width + 14);
-          const badgeH = 18;
-          const badgeX = Math.max(startX + 10, canvasCssWidth - badgeW - 75);
-          const badgeY = Math.max(4, Math.min(canvasCssHeight - badgeH - 4, topY + (height / 2) - (badgeH / 2)));
+          const badgeW = Math.round(metrics.width + 12);
+          const badgeH = 16;
+          const badgeX = startX + 10; // LEFT ALIGNED INSIDE ZONE
+          const badgeY = Math.max(4, Math.min(canvasCssHeight - badgeH - 4, topY + 3));
 
           // Dark pill background so text NEVER collides with grid or candles
           drawingCtx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
           drawingCtx.beginPath();
-          if (drawingCtx.roundRect) drawingCtx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+          if (drawingCtx.roundRect) drawingCtx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
           else drawingCtx.rect(badgeX, badgeY, badgeW, badgeH);
           drawingCtx.fill();
 
@@ -7419,10 +7531,10 @@
           drawingCtx.lineWidth = 1;
           drawingCtx.stroke();
 
-          drawingCtx.fillStyle = isSupply ? '#ff5252' : '#2962ff';
+          drawingCtx.fillStyle = isSupply ? '#ff5252' : '#388bfd';
           drawingCtx.textAlign = 'left';
           drawingCtx.textBaseline = 'middle';
-          drawingCtx.fillText(labelText, badgeX + 7, badgeY + (badgeH / 2));
+          drawingCtx.fillText(labelText, badgeX + 6, badgeY + (badgeH / 2));
 
           // 4. Draw 50% Equilibrium midline ONLY if price is actively near the zone (within $8.0)
           const distToZone = Math.min(Math.abs(currentPrice - zone.top), Math.abs(currentPrice - zone.bottom));
@@ -7431,12 +7543,12 @@
             const eqY = candleSeries.priceToCoordinate(eq);
             if (eqY !== null && eqY >= topY && eqY <= botY) {
               drawingCtx.save();
-              drawingCtx.strokeStyle = isSupply ? 'rgba(255, 82, 82, 0.75)' : 'rgba(41, 98, 255, 0.75)';
+              drawingCtx.strokeStyle = isSupply ? 'rgba(255, 82, 82, 0.70)' : 'rgba(41, 98, 255, 0.70)';
               drawingCtx.lineWidth = 1;
               drawingCtx.setLineDash([3, 3]);
               drawingCtx.beginPath();
               drawingCtx.moveTo(startX, eqY);
-              drawingCtx.lineTo(badgeX - 8, eqY);
+              drawingCtx.lineTo(canvasCssWidth - 75, eqY);
               drawingCtx.stroke();
               drawingCtx.restore();
             }
@@ -7522,7 +7634,8 @@
     // ==========================================
     // 3. AUTOMATIC RISK/REWARD POSITION OVERLAY (TradingView Short/Long Tool)
     // ==========================================
-    let showRROverlay = true;
+    // showRROverlay hoisted to top
+    showRROverlay = false;
 
     function toggleRROverlay() {
       showRROverlay = !showRROverlay;
@@ -7531,7 +7644,7 @@
     }
 
     function drawRiskRewardOverlay(ctx, setup) {
-      if (!smcEnabled || !showRROverlay || !setup || !ctx || !candleSeries || !chart || !chart.timeScale) return;
+      if (!showRROverlay || !setup || !ctx || !candleSeries || !chart || !chart.timeScale) return;
 
       const yEntry = candleSeries.priceToCoordinate(setup.entry);
       const ySL = candleSeries.priceToCoordinate(setup.sl);
@@ -7644,18 +7757,22 @@
       if (!drawingCtx || !drawingCanvas) return;
       drawingCtx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
 
-      // 1. Draw Smart Money Concept (SMC) Zones
+      // 1. Smart Money Concept (SMC) Key Supply & Demand Zones
       if (currentSMCZones && smcEnabled) {
         drawSMCZonesOnCanvas(currentSMCZones);
-        // Automatic Risk/Reward Position Overlay (Short/Long Tool)
-        if (currentSMCZones.activeRRSetup) {
-          drawRiskRewardOverlay(drawingCtx, currentSMCZones.activeRRSetup);
-        }
-        // Institutional Liquidity Pools & Sweep Alerts (ASH, ASL, EQH, EQL)
+      }
+
+      // 2. Institutional Liquidity Pools (Asian/London High/Low, EQH/EQL, PDH/PDL)
+      if (liquidityPoolsEnabled) {
         const actLiquidityPools = (typeof currentLiquidityPools !== 'undefined' && currentLiquidityPools) ? currentLiquidityPools : (window.currentLiquidityPools || null);
         if (actLiquidityPools) {
           drawInstitutionalLiquidityOverlay(drawingCtx, actLiquidityPools, window.latestLiquiditySweep);
         }
+      }
+
+      // 3. Automatic Risk/Reward Position Tool (Short/Long Tool)
+      if (showRROverlay && currentSMCZones && currentSMCZones.activeRRSetup) {
+        drawRiskRewardOverlay(drawingCtx, currentSMCZones.activeRRSetup);
       }
 
       // 1.5 Draw Quantitative Breakout Line (Only when SMC is off to avoid collision)
