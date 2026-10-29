@@ -3252,6 +3252,74 @@
 </style>
   <script src="/supabase.min.js"></script>
   <script>if (typeof window.supabase === 'undefined') { document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>'); }</script>
+  <script>
+    // ==========================================
+    // INSTANT GLOBAL VIEW SWITCHER & ROUTER (EARLY LOAD)
+    // ==========================================
+    function switchView(viewName) {
+      var dashView = document.getElementById('view-dashboard');
+      var termView = document.getElementById('view-terminal');
+      var btnDash = document.getElementById('nav-btn-dashboard');
+      var btnTerm = document.getElementById('nav-btn-terminal');
+
+      if (viewName === 'terminal') {
+        if (dashView) dashView.style.display = 'none';
+        if (termView) {
+          termView.style.display = 'flex';
+          termView.style.visibility = 'visible';
+        }
+        if (btnDash) btnDash.classList.remove('active');
+        if (btnTerm) btnTerm.classList.add('active');
+        try {
+          history.replaceState(null, null, '#terminal');
+        } catch (e) {
+          window.location.hash = 'terminal';
+        }
+        [30, 80, 200, 450, 1000].forEach(function(delay) {
+          setTimeout(function() {
+            window.dispatchEvent(new Event('resize'));
+            var chartElem = document.getElementById('chart');
+            if (chartElem && typeof window.chart !== 'undefined' && window.chart && window.chart.resize) {
+              var nw = chartElem.clientWidth || (window.innerWidth - 380);
+              var nh = chartElem.clientHeight || (window.innerHeight - 124);
+              if (nw > 50 && nh > 50) {
+                window.chart.resize(nw, nh);
+                if (window.chart.timeScale) window.chart.timeScale().fitContent();
+              }
+            }
+            if (typeof window.syncCanvasSize === 'function') window.syncCanvasSize();
+            if (typeof window.redrawDrawings === 'function') window.redrawDrawings();
+          }, delay);
+        });
+      } else {
+        if (dashView) dashView.style.display = 'block';
+        if (termView) termView.style.display = 'none';
+        if (btnDash) btnDash.classList.add('active');
+        if (btnTerm) btnTerm.classList.remove('active');
+        try {
+          history.replaceState(null, null, window.location.pathname + window.location.search);
+        } catch (e) {
+          window.location.hash = '';
+        }
+      }
+    }
+    window.switchView = switchView;
+
+    function checkUrlForTerminal() {
+      var hash = (window.location.hash || '').toLowerCase();
+      var path = (window.location.pathname || '').toLowerCase();
+      var search = (window.location.search || '').toLowerCase();
+      if (hash === '#terminal' || hash.indexOf('terminal') !== -1 || search.indexOf('terminal') !== -1 || path.indexOf('deep') !== -1) {
+        switchView('terminal');
+      }
+    }
+    window.addEventListener('hashchange', checkUrlForTerminal);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', checkUrlForTerminal);
+    } else {
+      checkUrlForTerminal();
+    }
+  </script>
 </head>
 <body>
 
@@ -4606,6 +4674,11 @@
             <div id="stNoteVal" class="clean-signal-note" style="font-size: 10.5px; padding: 6px 9px;">
               Safe-haven capital flow breaking through local supply.
             </div>
+
+            <!-- 1-Line Liquidity Sweep Confirmation Badge -->
+            <div id="stLiquidityBadge" class="clean-signal-note" style="display: none; margin-top: 6px; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 5px; text-align: center; border: 1px solid rgba(255, 215, 0, 0.35); background: rgba(255, 215, 0, 0.08); color: #ffd700;">
+              Confirmed: Asia Low Swept + Demand Absorption
+            </div>
           </div>
 
           <!-- TAB 2: SWING / TREND (1H - 4H) -->
@@ -5583,6 +5656,7 @@
         pinch: true,
       },
     });
+    window.chart = chart;
 
     if (container) {
       container.addEventListener('dblclick', resetChartZoom);
@@ -5607,6 +5681,7 @@
       wickUpColor: '#2ea043',
       wickDownColor: '#f85149',
     });
+    window.candleSeries = candleSeries;
 
     const ghostCandleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
       upColor: 'rgba(46, 160, 67, 0.40)',
@@ -5661,6 +5736,7 @@
     // ZERO-LAG CANVAS DRAWING TOOLS SYSTEM (TV-GRADE HI-DPI & DRAGGABLE)
     // ==========================================
     let currentSMCZones = { fvgList: [], obList: [] };
+    var currentLiquidityPools = null;
     let smcEnabled = true;
     let currentTool = 'cursor';
     let drawings = [];
@@ -5717,6 +5793,7 @@
     }
 
     // Initialize canvas size immediately & observe resize
+    window.syncCanvasSize = syncCanvasSize;
     syncCanvasSize();
     requestAnimationFrame(syncCanvasSize);
     setTimeout(syncCanvasSize, 150);
@@ -6603,10 +6680,11 @@
     // ==========================================
 
     // ==========================================
-    // COMPLETE SMC INSTITUTIONAL LIQUIDITY SWEEP ENGINE
-    // (Session High/Low, EQH/EQL, Trendline, & Old High/Low)
+    // COMPREHENSIVE INSTITUTIONAL LIQUIDITY ENGINE
+    // (Session High/Low, PDH/PDL, EQH/EQL, Trendline Sweeps & Magnet Targets)
     // ==========================================
-    let currentLiquidityPools = null;
+    var currentLiquidityPools = currentLiquidityPools || null;
+    window.currentLiquidityPools = currentLiquidityPools;
     window.latestLiquiditySweep = null;
 
     function trackInstitutionalLiquidity(candles) {
@@ -6616,54 +6694,97 @@
         ? currentLiveSpot 
         : candles[candles.length - 1].close;
 
-      // 1. Asian Session Range (00:00 to 07:00 UTC)
+      const currentBar = candles[candles.length - 1];
+      const curDt = new Date(currentBar.time * 1000);
+      const currentUtcDate = curDt.toISOString().slice(0, 10);
+
+      // 1. Asian Session (00:00 - 07:00 UTC) & London Session (07:00 - 13:00 UTC)
       const todayAsianCandles = [];
+      const todayLondonCandles = [];
+      const prevDayCandles = [];
+
+      let prevUtcDate = null;
       for (let i = candles.length - 1; i >= 0; i--) {
-        const c = candles[i];
-        const dt = new Date(c.time * 1000);
-        const utcHours = dt.getUTCHours();
-        if (utcHours >= 0 && utcHours < 7) {
-          todayAsianCandles.push(c);
-          if (todayAsianCandles.length >= 28) break; // 7h * 4 bars/h = 28 bars
-        } else if (todayAsianCandles.length > 0) {
-          break; // reached prior day
+        const dStr = new Date(candles[i].time * 1000).toISOString().slice(0, 10);
+        if (dStr < currentUtcDate) {
+          prevUtcDate = dStr;
+          break;
         }
       }
 
-      let asianHigh = 0;
-      let asianLow = 0;
+      for (let i = candles.length - 1; i >= 0; i--) {
+        const c = candles[i];
+        const dt = new Date(c.time * 1000);
+        const dStr = dt.toISOString().slice(0, 10);
+        const h = dt.getUTCHours();
+
+        if (dStr === currentUtcDate) {
+          if (h >= 0 && h < 7) todayAsianCandles.push(c);
+          else if (h >= 7 && h < 13) todayLondonCandles.push(c);
+        } else if (prevUtcDate && dStr === prevUtcDate) {
+          prevDayCandles.push(c);
+        }
+      }
+
+      // Asian Session High / Low (ASH / ASL)
+      let asianHigh = 0, asianLow = 0;
       if (todayAsianCandles.length > 0) {
         asianHigh = Math.max(...todayAsianCandles.map(c => c.high));
         asianLow = Math.min(...todayAsianCandles.map(c => c.low));
       } else {
-        const s = candles.slice(-28, -6);
-        if (s.length) {
+        const recentAsia = candles.filter(c => {
+          const h = new Date(c.time * 1000).getUTCHours();
+          return h >= 0 && h < 7;
+        }).slice(-28);
+        if (recentAsia.length) {
+          asianHigh = Math.max(...recentAsia.map(c => c.high));
+          asianLow = Math.min(...recentAsia.map(c => c.low));
+        } else {
+          const s = candles.slice(-28, -6);
           asianHigh = Math.max(...s.map(c => c.high));
           asianLow = Math.min(...s.map(c => c.low));
         }
       }
 
-      // 2. Higher Timeframe Pool: Previous Day High/Low (PDH / PDL)
-      let pdh = 0;
-      let pdl = 0;
-      const prevDaySlice = candles.slice(-96, -24);
-      if (prevDaySlice.length > 10) {
-        pdh = Math.max(...prevDaySlice.map(c => c.high));
-        pdl = Math.min(...prevDaySlice.map(c => c.low));
+      // London Session High / Low (LSH / LSL)
+      let londonHigh = 0, londonLow = 0;
+      if (todayLondonCandles.length > 0) {
+        londonHigh = Math.max(...todayLondonCandles.map(c => c.high));
+        londonLow = Math.min(...todayLondonCandles.map(c => c.low));
       } else {
-        const s = candles.slice(-45, -12);
-        pdh = Math.max(...s.map(c => c.high));
-        pdl = Math.min(...s.map(c => c.low));
+        const recentLondon = candles.filter(c => {
+          const h = new Date(c.time * 1000).getUTCHours();
+          return h >= 7 && h < 13;
+        }).slice(-24);
+        if (recentLondon.length) {
+          londonHigh = Math.max(...recentLondon.map(c => c.high));
+          londonLow = Math.min(...recentLondon.map(c => c.low));
+        }
       }
 
-      // Previous 4H High/Low (P4HH / P4HL)
+      // Previous Day High / Low (PDH / PDL)
+      let pdh = 0, pdl = 0;
+      if (prevDayCandles.length > 5) {
+        pdh = Math.max(...prevDayCandles.map(c => c.high));
+        pdl = Math.min(...prevDayCandles.map(c => c.low));
+      } else {
+        const prevDaySlice = candles.slice(-96, -24);
+        if (prevDaySlice.length > 10) {
+          pdh = Math.max(...prevDaySlice.map(c => c.high));
+          pdl = Math.min(...prevDaySlice.map(c => c.low));
+        } else {
+          pdh = Math.max(...candles.slice(-48, -12).map(c => c.high));
+          pdl = Math.min(...candles.slice(-48, -12).map(c => c.low));
+        }
+      }
+
+      // Previous 4H High / Low (P4HH / P4HL)
       const prev4HSlice = candles.slice(-32, -16);
       const p4hh = prev4HSlice.length ? Math.max(...prev4HSlice.map(c => c.high)) : (pdh - 2.0);
       const p4hl = prev4HSlice.length ? Math.min(...prev4HSlice.map(c => c.low)) : (pdl + 2.0);
 
-      // 3. Equal Highs (EQH) & Equal Lows (EQL) (Swing points within $0.80 of each other)
-      let eqh = null;
-      let eql = null;
+      // Equal Highs (EQH) / Equal Lows (EQL): 2 or more swing points within 0.30 USD
+      let eqh = null, eql = null;
       const swingHighs = [];
       const swingLows = [];
 
@@ -6679,10 +6800,10 @@
         }
       }
 
-      // Find Equal Highs within $0.80
+      // Detect Equal Highs within 0.30 USD
       for (let i = swingHighs.length - 1; i >= 1; i--) {
-        for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
-          if (Math.abs(swingHighs[i].price - swingHighs[j].price) <= 0.80) {
+        for (let j = i - 1; j >= Math.max(0, i - 6); j--) {
+          if (Math.abs(swingHighs[i].price - swingHighs[j].price) <= 0.30) {
             eqh = Number(((swingHighs[i].price + swingHighs[j].price) / 2).toFixed(2));
             break;
           }
@@ -6690,10 +6811,10 @@
         if (eqh) break;
       }
 
-      // Find Equal Lows within $0.80
+      // Detect Equal Lows within 0.30 USD
       for (let i = swingLows.length - 1; i >= 1; i--) {
-        for (let j = i - 1; j >= Math.max(0, i - 4); j--) {
-          if (Math.abs(swingLows[i].price - swingLows[j].price) <= 0.80) {
+        for (let j = i - 1; j >= Math.max(0, i - 6); j--) {
+          if (Math.abs(swingLows[i].price - swingLows[j].price) <= 0.30) {
             eql = Number(((swingLows[i].price + swingLows[j].price) / 2).toFixed(2));
             break;
           }
@@ -6701,192 +6822,159 @@
         if (eql) break;
       }
 
-      // 4. Old High / Old Low (Major liquidity boundaries)
+      // Trendline Liquidity
+      let trendlineLowLiquidity = null;
+      let trendlineHighLiquidity = null;
+      if (swingLows.length >= 2) {
+        const l1 = swingLows[swingLows.length - 1];
+        const l2 = swingLows[swingLows.length - 2];
+        if (l1.price > l2.price) trendlineLowLiquidity = Number(l2.price.toFixed(2));
+      }
+      if (swingHighs.length >= 2) {
+        const h1 = swingHighs[swingHighs.length - 1];
+        const h2 = swingHighs[swingHighs.length - 2];
+        if (h1.price < h2.price) trendlineHighLiquidity = Number(h2.price.toFixed(2));
+      }
+
       const oldHighSlice = candles.slice(-40, -8);
       const oldHigh = oldHighSlice.length ? Math.max(...oldHighSlice.map(c => c.high)) : (currentPrice + 12);
       const oldLow = oldHighSlice.length ? Math.min(...oldHighSlice.map(c => c.low)) : (currentPrice - 12);
 
       return {
+        asiaHigh: Number(asianHigh.toFixed(2)),
+        asiaLow: Number(asianLow.toFixed(2)),
         asianHigh: Number(asianHigh.toFixed(2)),
         asianLow: Number(asianLow.toFixed(2)),
+        londonHigh: (londonHigh > 0) ? Number(londonHigh.toFixed(2)) : null,
+        londonLow: (londonLow > 0) ? Number(londonLow.toFixed(2)) : null,
         pdh: Number(pdh.toFixed(2)),
         pdl: Number(pdl.toFixed(2)),
         p4hh: Number(p4hh.toFixed(2)),
         p4hl: Number(p4hl.toFixed(2)),
         eqh,
         eql,
+        trendlineLowLiquidity,
+        trendlineHighLiquidity,
         oldHigh: Number(oldHigh.toFixed(2)),
         oldLow: Number(oldLow.toFixed(2)),
         currentPrice
       };
     }
 
-    // 2. LIQUIDITY SWEEP DETECTION STATE MACHINE (The 4 Institutional Raids)
+    // 2. LIQUIDITY SWEEP & RAID DETECTION LOGIC
     function detectInstitutionalLiquiditySweeps(candles, pools) {
       if (!candles || candles.length < 5 || !pools) return null;
 
       const current = candles[candles.length - 1];
       const prev = candles[candles.length - 2];
-      const prev2 = candles[candles.length - 3];
+      const range = Math.max(0.001, current.high - current.low);
+      const lowerWick = Math.min(current.open, current.close) - current.low;
+      const upperWick = current.high - Math.max(current.open, current.close);
+      const lowerWickRatio = lowerWick / range;
+      const upperWickRatio = upperWick / range;
 
-      const nowUTC = new Date(current.time * 1000);
-      const utcHours = nowUTC.getUTCHours() + (nowUTC.getUTCMinutes() / 60);
-      const isLondonOrNY = (utcHours >= 7.0 && utcHours <= 21.0);
+      // Rejection Wick Quality: Lower or Upper wick >= 40% of total candle range
+      const isQualityBullWick = lowerWickRatio >= 0.40;
+      const isQualityBearWick = upperWickRatio >= 0.40;
 
-      const curRange = Math.max(0.001, current.high - current.low);
-      const isBullWick = (Math.min(current.open, current.close) - current.low) / curRange >= 0.35;
-      const isBearWick = (current.high - Math.max(current.open, current.close)) / curRange >= 0.35;
+      // 1. BULLISH LIQUIDITY SWEEP (LONG TRIGGERS): Pierces below level & closes back ABOVE
+      const bullSweepCandidates = [
+        { name: "Equal Lows (EQL)", price: pools.eql, code: "EQL" },
+        { name: "Asia Session Low (ASL)", price: pools.asiaLow, code: "ASL" },
+        { name: "London Session Low (LSL)", price: pools.londonLow, code: "LSL" },
+        { name: "Previous Day Low (PDL)", price: pools.pdl, code: "PDL" },
+        { name: "Trendline Low", price: pools.trendlineLowLiquidity, code: "TL_LOW" },
+        { name: "Old Low", price: pools.oldLow, code: "OLD_LOW" }
+      ];
 
-      // RAID A: Session High / Low Raid (Asian Low swept by London/NY Session -> Mandatory Bullish Setup)
-      if (isLondonOrNY && pools.asianLow && pools.asianLow > 0) {
-        const sweptAsianLow = (prev.low < pools.asianLow && current.close > pools.asianLow) ||
-                              (current.low < pools.asianLow && current.close > pools.asianLow && isBullWick);
-        if (sweptAsianLow) {
+      for (const cand of bullSweepCandidates) {
+        if (!cand.price || cand.price <= 0) continue;
+        const swept = (current.low < cand.price && current.close > cand.price && isQualityBullWick) ||
+                      (prev.low < cand.price && current.close > cand.price);
+        if (swept) {
           const sweepLowest = Math.min(current.low, prev.low);
           const entry = Number(current.close.toFixed(2));
-          const sl = Number((sweepLowest - 1.20).toFixed(2));
-          const risk = Math.max(1.80, entry - sl);
-          const tp = Number(pools.asianHigh.toFixed(2));
+          const sl = Number((sweepLowest - 1.50).toFixed(2));
+          const risk = Math.max(2.0, entry - sl);
+
+          // MAGNET EFFECT: Set primary TP to opposing liquidity pool above (EQH, ASH, LSH, PDH)
+          const targetPool = (pools.eqh && pools.eqh > entry) ? pools.eqh :
+                             (pools.asiaHigh && pools.asiaHigh > entry) ? pools.asiaHigh :
+                             (pools.londonHigh && pools.londonHigh > entry) ? pools.londonHigh :
+                             (pools.pdh && pools.pdh > entry) ? pools.pdh :
+                             Number((entry + (risk * 3.5)).toFixed(2));
+          const tp = Number(targetPool.toFixed(2));
+          const gain = Math.abs(tp - entry);
+          const rr = `1 : ${(gain / risk).toFixed(1)}`;
+
           return {
             type: "BUY",
-            setup: "ASIAN LOW LIQUIDITY RAID",
-            sweepLevel: pools.asianLow,
+            verdict: "BUY-SIDE LIQUIDITY EXPANSION / STOP HUNT CONFIRMED",
+            levelName: cand.name,
+            levelCode: cand.code,
+            sweptPrice: cand.price,
+            sweepLowest,
+            entryPrice: entry,
             entry,
             sl,
             tp,
-            rr: "1 : 3.5",
-            reason: `Confirmed after London Session swept Asian Low ($${pools.asianLow.toFixed(2)}) (Sell-Side Liquidity Raid).`,
-            markerText: "⚡ SSL SWEPT (ASIAN LOW)"
+            takeProfit: tp,
+            gainPts: Number(gain.toFixed(1)),
+            rr,
+            badgeText: `Confirmed: ${cand.name} Swept + Demand Absorption`,
+            reason: `${cand.name} ($${cand.price.toFixed(2)}) swept with ${Math.round(lowerWickRatio * 100)}% rejection wick. Smart Money stop hunt complete -> Target opposing liquidity ($${tp.toFixed(1)}).`,
+            markerText: `⚡ ${cand.code} SWEPT`
           };
         }
+      }
 
-        // Asian High Swept by London/NY -> Mandatory Bearish Setup
-        const sweptAsianHigh = (prev.high > pools.asianHigh && current.close < pools.asianHigh) ||
-                               (current.high > pools.asianHigh && current.close < pools.asianHigh && isBearWick);
-        if (sweptAsianHigh) {
+      // 2. BEARISH LIQUIDITY SWEEP (SHORT TRIGGERS): Spikes above level & closes back BELOW
+      const bearSweepCandidates = [
+        { name: "Equal Highs (EQH)", price: pools.eqh, code: "EQH" },
+        { name: "Asia Session High (ASH)", price: pools.asiaHigh, code: "ASH" },
+        { name: "London Session High (LSH)", price: pools.londonHigh, code: "LSH" },
+        { name: "Previous Day High (PDH)", price: pools.pdh, code: "PDH" },
+        { name: "Trendline High", price: pools.trendlineHighLiquidity, code: "TL_HIGH" },
+        { name: "Old High", price: pools.oldHigh, code: "OLD_HIGH" }
+      ];
+
+      for (const cand of bearSweepCandidates) {
+        if (!cand.price || cand.price <= 0) continue;
+        const swept = (current.high > cand.price && current.close < cand.price && isQualityBearWick) ||
+                      (prev.high > cand.price && current.close < cand.price);
+        if (swept) {
           const sweepHighest = Math.max(current.high, prev.high);
           const entry = Number(current.close.toFixed(2));
-          const sl = Number((sweepHighest + 1.20).toFixed(2));
-          const risk = Math.max(1.80, sl - entry);
-          const tp = Number(pools.asianLow.toFixed(2));
+          const sl = Number((sweepHighest + 1.50).toFixed(2));
+          const risk = Math.max(2.0, sl - entry);
+
+          // MAGNET EFFECT: Set primary TP to opposing liquidity pool below (EQL, ASL, LSL, PDL)
+          const targetPool = (pools.eql && pools.eql < entry) ? pools.eql :
+                             (pools.asiaLow && pools.asiaLow < entry) ? pools.asiaLow :
+                             (pools.londonLow && pools.londonLow < entry) ? pools.londonLow :
+                             (pools.pdl && pools.pdl < entry) ? pools.pdl :
+                             Number((entry - (risk * 3.5)).toFixed(2));
+          const tp = Number(targetPool.toFixed(2));
+          const gain = Math.abs(entry - tp);
+          const rr = `1 : ${(gain / risk).toFixed(1)}`;
+
           return {
             type: "SELL",
-            setup: "ASIAN HIGH LIQUIDITY RAID",
-            sweepLevel: pools.asianHigh,
+            verdict: "SELL-SIDE LIQUIDITY EXPANSION / HIGH RAID CONFIRMED",
+            levelName: cand.name,
+            levelCode: cand.code,
+            sweptPrice: cand.price,
+            sweepHighest,
+            entryPrice: entry,
             entry,
             sl,
             tp,
-            rr: "1 : 3.5",
-            reason: `Confirmed after London Session swept Asian High ($${pools.asianHigh.toFixed(2)}) (Buy-Side Liquidity Raid).`,
-            markerText: "⚡ BSL SWEPT (ASIAN HIGH)"
-          };
-        }
-      }
-
-      // RAID B: Equal Highs (EQH) / Equal Lows (EQL) Hunt
-      if (pools.eql) {
-        // Price pierces EQL with a wick and closes back ABOVE -> Bullish Reversal
-        const sweptEQL = (prev.low <= pools.eql && current.close > pools.eql) ||
-                         (current.low < pools.eql && current.close > pools.eql && isBullWick);
-        if (sweptEQL) {
-          const sweepLowest = Math.min(current.low, prev.low);
-          const entry = Number(current.close.toFixed(2));
-          const sl = Number((sweepLowest - 1.20).toFixed(2));
-          const risk = Math.max(1.80, entry - sl);
-          const tp = Number((pools.eqh || (entry + (risk * 3.5))).toFixed(2));
-          return {
-            type: "BUY",
-            setup: "BUY-SIDE LIQUIDITY RAID (EQL SWEPT)",
-            sweepLevel: pools.eql,
-            entry,
-            sl,
-            tp,
-            rr: "1 : 3.5",
-            reason: `Confirmed after Smart Money swept retail sell-stops below Equal Lows ($${pools.eql.toFixed(2)}).`,
-            markerText: "⚡ EQL SWEPT"
-          };
-        }
-      }
-
-      if (pools.eqh) {
-        // Price pierces EQH by $1.00-$2.50 with a wick and closes back INSIDE -> Bearish Reversal
-        const sweptEQH = (prev.high >= pools.eqh && current.close < pools.eqh) ||
-                         (current.high > pools.eqh && current.close < pools.eqh && isBearWick);
-        if (sweptEQH) {
-          const sweepHighest = Math.max(current.high, prev.high);
-          const entry = Number(current.close.toFixed(2));
-          const sl = Number((sweepHighest + 1.20).toFixed(2));
-          const risk = Math.max(1.80, sl - entry);
-          const tp = Number((pools.eql || (entry - (risk * 3.5))).toFixed(2));
-          return {
-            type: "SELL",
-            setup: "SELL-SIDE LIQUIDITY RAID (EQH SWEPT)",
-            sweepLevel: pools.eqh,
-            entry,
-            sl,
-            tp,
-            rr: "1 : 3.5",
-            reason: `Confirmed after Smart Money swept retail buy-stops above Equal Highs ($${pools.eqh.toFixed(2)}).`,
-            markerText: "⚡ EQH SWEPT"
-          };
-        }
-      }
-
-      // RAID C: Old High / Old Low Sweep (Turtle Soup)
-      if (pools.oldHigh && current.high >= pools.oldHigh && current.close < pools.oldHigh && isBearWick) {
-        const entry = Number(current.close.toFixed(2));
-        const sl = Number((current.high + 1.20).toFixed(2));
-        const risk = Math.max(1.80, sl - entry);
-        const tp = Number((entry - (risk * 3.5)).toFixed(2));
-        return {
-          type: "SELL",
-          setup: "OLD HIGH TURTLE SOUP RAID",
-          sweepLevel: pools.oldHigh,
-          entry,
-          sl,
-          tp,
-          rr: "1 : 3.5",
-          reason: `Confirmed Turtle Soup raid above Old High ($${pools.oldHigh.toFixed(2)}). Reversal initiated.`,
-          markerText: "⚡ OLD HIGH SWEPT"
-        };
-      }
-
-      if (pools.oldLow && current.low <= pools.oldLow && current.close > pools.oldLow && isBullWick) {
-        const entry = Number(current.close.toFixed(2));
-        const sl = Number((current.low - 1.20).toFixed(2));
-        const risk = Math.max(1.80, entry - sl);
-        const tp = Number((entry + (risk * 3.5)).toFixed(2));
-        return {
-          type: "BUY",
-          setup: "OLD LOW TURTLE SOUP RAID",
-          sweepLevel: pools.oldLow,
-          entry,
-          sl,
-          tp,
-          rr: "1 : 3.5",
-          reason: `Confirmed Turtle Soup raid below Old Low ($${pools.oldLow.toFixed(2)}). Reversal initiated.`,
-          markerText: "⚡ OLD LOW SWEPT"
-        };
-      }
-
-      // RAID D: Trendline Liquidity Fake-Break + Marubozu Expansion
-      if (current.close > current.open && (current.close - current.open) >= 2.5) {
-        const lowPrev = Math.min(prev.low, prev2.low);
-        if (pools.asianLow && lowPrev < pools.asianLow && current.close > pools.asianLow) {
-          const entry = Number(current.close.toFixed(2));
-          const sl = Number((lowPrev - 1.20).toFixed(2));
-          const risk = Math.max(1.80, entry - sl);
-          const tp = Number((entry + (risk * 3.5)).toFixed(2));
-          return {
-            type: "BUY",
-            setup: "TRENDLINE LIQUIDITY SWEEP BUY",
-            sweepLevel: lowPrev,
-            entry,
-            sl,
-            tp,
-            rr: "1 : 3.5",
-            reason: "Fake-break below retail trendline swept stops. Institutional expansion candle confirmed.",
-            markerText: "⚡ TRENDLINE SWEPT"
+            takeProfit: tp,
+            gainPts: Number(gain.toFixed(1)),
+            rr,
+            badgeText: `Confirmed: ${cand.name} Swept + Supply Defense`,
+            reason: `${cand.name} ($${cand.price.toFixed(2)}) swept with ${Math.round(upperWickRatio * 100)}% rejection wick. Buy-stops purged -> Target opposing liquidity ($${tp.toFixed(1)}).`,
+            markerText: `⚡ ${cand.code} SWEPT`
           };
         }
       }
@@ -6894,65 +6982,77 @@
       return null;
     }
 
-    // 3. EXECUTION RULE 0.1: THE LIQUIDITY SHIELD (FORBIDDEN TRADES)
+    // 3. THE LIQUIDITY SHIELD: INSTANTLY KILLS COUNTER-TREND TRADES INTO UN-SWEPT POOLS
     function applyLiquidityShield(proposedAction, currentPrice, pools) {
       if (!pools) return { allowed: true };
 
-      // Rule 0.1A: NEVER Buy just above an un-swept EQL or Asian Low
       if (proposedAction === 'BUY') {
-        if (pools.asianLow && currentPrice > pools.asianLow && (currentPrice - pools.asianLow) <= 4.0) {
-          return {
-            allowed: false,
-            reason: `Rule 0.1 Liquidity Shield: Un-swept Asian Low at $${pools.asianLow.toFixed(2)} nearby. Smart Money will hunt stops first before rally.`,
-            poolLevel: pools.asianLow
-          };
-        }
-        if (pools.eql && currentPrice > pools.eql && (currentPrice - pools.eql) <= 3.2) {
-          return {
-            allowed: false,
-            reason: `Rule 0.1 Liquidity Shield: Un-swept Equal Lows at $${pools.eql.toFixed(2)} nearby. Sell-stops will be raided first.`,
-            poolLevel: pools.eql
-          };
+        const unsweptLows = [
+          { name: "Equal Lows (EQL)", price: pools.eql },
+          { name: "Asia Low (ASL)", price: pools.asiaLow },
+          { name: "London Low (LSL)", price: pools.londonLow },
+          { name: "Previous Day Low (PDL)", price: pools.pdl }
+        ];
+        for (const l of unsweptLows) {
+          if (l.price && currentPrice > l.price && (currentPrice - l.price) <= 3.20) {
+            return {
+              allowed: false,
+              reason: `Rule 0.1 Liquidity Shield: Un-swept ${l.name} at $${l.price.toFixed(2)} nearby. Smart Money will hunt sell-stops first before rally.`,
+              poolLevel: l.price
+            };
+          }
         }
       }
 
-      // Rule 0.1B: NEVER Sell just below an un-swept EQH or Asian High
       if (proposedAction === 'SELL') {
-        if (pools.asianHigh && currentPrice < pools.asianHigh && (pools.asianHigh - currentPrice) <= 4.0) {
-          return {
-            allowed: false,
-            reason: `Rule 0.1 Liquidity Shield: Un-swept Asian High at $${pools.asianHigh.toFixed(2)} nearby. Smart Money will hunt buy-stops first before drop.`,
-            poolLevel: pools.asianHigh
-          };
-        }
-        if (pools.eqh && currentPrice < pools.eqh && (pools.eqh - currentPrice) <= 3.2) {
-          return {
-            allowed: false,
-            reason: `Rule 0.1 Liquidity Shield: Un-swept Equal Highs at $${pools.eqh.toFixed(2)} nearby. Buy-stops will be raided first.`,
-            poolLevel: pools.eqh
-          };
+        const unsweptHighs = [
+          { name: "Equal Highs (EQH)", price: pools.eqh },
+          { name: "Asia High (ASH)", price: pools.asiaHigh },
+          { name: "London High (LSH)", price: pools.londonHigh },
+          { name: "Previous Day High (PDH)", price: pools.pdh }
+        ];
+        for (const h of unsweptHighs) {
+          if (h.price && currentPrice < h.price && (h.price - currentPrice) <= 3.20) {
+            return {
+              allowed: false,
+              reason: `Rule 0.1 Liquidity Shield: Un-swept ${h.name} at $${h.price.toFixed(2)} nearby. Smart Money will raid buy-stops first before drop.`,
+              poolLevel: h.price
+            };
+          }
         }
       }
 
       return { allowed: true };
     }
 
-    // 4. CANVAS OVERLAY FOR INSTITUTIONAL LIQUIDITY POOLS (Clean & Non-Cluttering)
+    // 4. CANVAS OVERLAY FOR INSTITUTIONAL LIQUIDITY POOLS (Clean, Subtle Dotted Lines & Tags)
     function drawInstitutionalLiquidityOverlay(ctx, pools, activeSweep) {
-      if (!smcEnabled || !pools || !ctx || !candleSeries || !chart) return;
+      if (!pools || !ctx || !candleSeries || !chart) return;
 
       ctx.save();
 
       const levelsToDraw = [
-        { label: 'ASH 🎯 ($)', price: pools.asianHigh, color: 'rgba(255, 215, 0, 0.45)', textColor: '#ffd700' },
-        { label: 'ASL 🎯 ($)', price: pools.asianLow, color: 'rgba(56, 139, 253, 0.45)', textColor: '#58a6ff' },
+        { label: 'Asia High (ASH)', desc: 'Asia High', price: pools.asiaHigh, color: 'rgba(255, 215, 0, 0.50)', textColor: '#ffd700' },
+        { label: 'Asia Low (ASL)', desc: 'Asia Low', price: pools.asiaLow, color: 'rgba(88, 166, 255, 0.50)', textColor: '#58a6ff' },
       ];
 
+      if (pools.londonHigh) {
+        levelsToDraw.push({ label: 'London High (LSH)', desc: 'London High', price: pools.londonHigh, color: 'rgba(240, 140, 0, 0.50)', textColor: '#f08c00' });
+      }
+      if (pools.londonLow) {
+        levelsToDraw.push({ label: 'London Low (LSL)', desc: 'London Low', price: pools.londonLow, color: 'rgba(0, 180, 216, 0.50)', textColor: '#00b4d8' });
+      }
+      if (pools.pdh) {
+        levelsToDraw.push({ label: 'PDH', desc: 'Prev Day High', price: pools.pdh, color: 'rgba(163, 113, 247, 0.50)', textColor: '#a371f7' });
+      }
+      if (pools.pdl) {
+        levelsToDraw.push({ label: 'PDL', desc: 'Prev Day Low', price: pools.pdl, color: 'rgba(163, 113, 247, 0.50)', textColor: '#a371f7' });
+      }
       if (pools.eqh) {
-        levelsToDraw.push({ label: 'EQH ($)', price: pools.eqh, color: 'rgba(248, 81, 73, 0.45)', textColor: '#f85149' });
+        levelsToDraw.push({ label: 'Equal Highs (EQH)', desc: 'Buy-Side Liquidity', price: pools.eqh, color: 'rgba(248, 81, 73, 0.55)', textColor: '#f85149' });
       }
       if (pools.eql) {
-        levelsToDraw.push({ label: 'EQL ($)', price: pools.eql, color: 'rgba(63, 185, 80, 0.45)', textColor: '#3fb950' });
+        levelsToDraw.push({ label: 'Equal Lows (EQL)', desc: 'Sell-Side Liquidity', price: pools.eql, color: 'rgba(63, 185, 80, 0.55)', textColor: '#3fb950' });
       }
 
       levelsToDraw.forEach(lvl => {
@@ -6960,23 +7060,23 @@
         const y = candleSeries.priceToCoordinate(lvl.price);
         if (y === null || y < 0 || y > canvasCssHeight) return;
 
-        // Subtle, fine dashed line
+        // Subtle, fine dotted line
         ctx.strokeStyle = lvl.color;
         ctx.lineWidth = 1;
-        ctx.setLineDash([3, 4]);
+        ctx.setLineDash([2, 4]);
         ctx.beginPath();
-        ctx.moveTo(20, y);
+        ctx.moveTo(15, y);
         ctx.lineTo(canvasCssWidth - 65, y);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Clean small badge at the right edge
-        const txt = `${lvl.label} · $${lvl.price.toFixed(1)}`;
-        ctx.font = '600 9px monospace';
+        // Small clean tag badge on the right
+        const txt = `${lvl.label} · $${lvl.price.toFixed(1)} [Liquidity Pool]`;
+        ctx.font = '600 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
         const w = ctx.measureText(txt).width + 8;
         const tagX = canvasCssWidth - w - 70;
 
-        ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.90)' : 'rgba(10, 14, 23, 0.88)';
+        ctx.fillStyle = 'rgba(13, 17, 23, 0.88)';
         ctx.fillRect(tagX, y - 7, w, 14);
         ctx.strokeStyle = lvl.color;
         ctx.strokeRect(tagX, y - 7, w, 14);
@@ -6987,20 +7087,21 @@
         ctx.fillText(txt, tagX + 4, y);
       });
 
-      // Flash subtle "⚡ LIQUIDITY SWEPT" marker if sweep is active
-      if (activeSweep && activeSweep.sweepLevel) {
-        const sweepY = candleSeries.priceToCoordinate(activeSweep.sweepLevel);
+      // Flash subtle "⚡ Liquidity Swept" marker when a sweep is confirmed
+      if (activeSweep && activeSweep.sweepLowest || (activeSweep && activeSweep.sweptPrice)) {
+        const sweepPrice = activeSweep.sweptPrice || activeSweep.sweepLowest;
+        const sweepY = candleSeries.priceToCoordinate(sweepPrice);
         if (sweepY !== null && sweepY >= 0 && sweepY <= canvasCssHeight) {
-          const bannerTxt = activeSweep.markerText || "⚡ LIQUIDITY SWEPT";
+          const bannerTxt = `⚡ Liquidity Swept: ${activeSweep.levelName} (${activeSweep.type === 'BUY' ? 'Demand Absorption' : 'Supply Defense'})`;
           ctx.font = '800 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
           const bannerW = ctx.measureText(bannerTxt).width + 16;
           const bannerX = Math.round(canvasCssWidth / 2 - (bannerW / 2));
-          const bannerY = Math.max(10, Math.min(canvasCssHeight - 25, sweepY - 10));
+          const bannerY = Math.max(10, Math.min(canvasCssHeight - 25, sweepY - 12));
 
           ctx.fillStyle = activeSweep.type === 'BUY' ? 'rgba(46, 160, 67, 0.95)' : 'rgba(248, 81, 73, 0.95)';
           ctx.beginPath();
-          if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, 20, 4);
-          else ctx.rect(bannerX, bannerY, bannerW, 20);
+          if (ctx.roundRect) ctx.roundRect(bannerX, bannerY, bannerW, 22, 5);
+          else ctx.rect(bannerX, bannerY, bannerW, 22);
           ctx.fill();
 
           ctx.strokeStyle = '#ffffff';
@@ -7010,7 +7111,7 @@
           ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(bannerTxt, bannerX + (bannerW / 2), bannerY + 10);
+          ctx.fillText(bannerTxt, bannerX + (bannerW / 2), bannerY + 11);
         }
       }
 
@@ -7351,7 +7452,7 @@
     }
 
     // Legacy OB stub (merged into primary zones)
-    function drawLegacyOBStub() {}
+    function drawLegacyOBStub(smcData) {
       if (Array.isArray(smcData.obList)) {
         smcData.obList.forEach(ob => {
           const yTop = candleSeries.priceToCoordinate(ob.top);
@@ -7545,6 +7646,7 @@
     }
 
     function redrawDrawings() {
+    window.redrawDrawings = redrawDrawings;
       if (!drawingCtx || !drawingCanvas) return;
       drawingCtx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
 
@@ -7556,8 +7658,9 @@
           drawRiskRewardOverlay(drawingCtx, currentSMCZones.activeRRSetup);
         }
         // Institutional Liquidity Pools & Sweep Alerts (ASH, ASL, EQH, EQL)
-        if (currentLiquidityPools) {
-          drawInstitutionalLiquidityOverlay(drawingCtx, currentLiquidityPools, window.latestLiquiditySweep);
+        const actLiquidityPools = (typeof currentLiquidityPools !== 'undefined' && currentLiquidityPools) ? currentLiquidityPools : (window.currentLiquidityPools || null);
+        if (actLiquidityPools) {
+          drawInstitutionalLiquidityOverlay(drawingCtx, actLiquidityPools, window.latestLiquiditySweep);
         }
       }
 
@@ -8036,16 +8139,26 @@
       // Priority 0: CONFIRMED INSTITUTIONAL LIQUIDITY SWEEP (MANDATORY EXECUTION)
       if (activeSweep) {
         if (activeSweep.type === 'BUY') {
-          buyVotes += 4.5;
+          buyVotes += 5.0;
           institutionalBuyTrigger = true;
           agent1Bias = 'LIQUIDITY_RAID_BUY';
           agent1Desc = activeSweep.reason;
         } else {
-          sellVotes += 4.5;
+          sellVotes += 5.0;
           supplyRejectionWarning = true;
           agent1Bias = 'LIQUIDITY_RAID_SELL';
           agent1Desc = activeSweep.reason;
         }
+      }
+
+      // RULE 0.1: THE LIQUIDITY SHIELD (Instantly kill counter-trend trades approaching un-swept liquidity)
+      const shieldCheckBuy = applyLiquidityShield('BUY', currentPrice, currentLiquidityPools);
+      const shieldCheckSell = applyLiquidityShield('SELL', currentPrice, currentLiquidityPools);
+      if (!shieldCheckBuy.allowed && !activeSweep) {
+        buyVotes = 0; // KILL COUNTER-TREND BUY!
+      }
+      if (!shieldCheckSell.allowed && !activeSweep) {
+        sellVotes = 0; // KILL COUNTER-TREND SELL!
       }
 
       // Priority 1: Institutional Demand / FVG Inflow
@@ -8601,6 +8714,56 @@
           c1_open = currentPrice; c1_close = c1_open - (atr * 0.35); c1_low = c1_close - (atr * 0.2); c1_high = c1_open + (atr * 0.15);
           c2_open = c1_close; c2_close = c2_open - (atr * 0.35); c2_low = c2_close - (atr * 0.25); c2_high = c2_open + (atr * 0.15);
           c3_open = c2_close; c3_close = Math.max(supportLevel, c3_open - (atr * 0.30)); c3_low = c3_close - (atr * 0.25); c3_high = c3_open + (atr * 0.15);
+        }
+      }
+
+            // INSTITUTIONAL LIQUIDITY SWEEP TRAJECTORY CONFLUENCE (Priority Magnet Target)
+      if (window.latestLiquiditySweep) {
+        const sw = window.latestLiquiditySweep;
+        isUp = (sw.type === 'BUY');
+        const tpVal = Number(sw.tp);
+        targetLabel = `🎯 Opposing Pool $${tpVal.toFixed(1)} (${sw.levelCode || 'Sweep'})`;
+        targetColor = isUp ? '#2ea043' : '#f85149';
+
+        if (isUp) {
+          c1_open = currentPrice;
+          c1_close = c1_open + (atr * 1.2);
+          c1_high = c1_close + (atr * 0.35);
+          c1_low = c1_open - (atr * 0.15);
+          c2_open = c1_close;
+          c2_close = c2_open + (atr * 1.4);
+          c2_high = c2_close + (atr * 0.40);
+          c2_low = c2_open - (atr * 0.15);
+          c3_open = c2_close;
+          c3_close = tpVal;
+          c3_high = c3_close + (atr * 0.35);
+          c3_low = c3_open - (atr * 0.20);
+        } else {
+          c1_open = currentPrice;
+          c1_close = c1_open - (atr * 1.2);
+          c1_low = c1_close - (atr * 0.35);
+          c1_high = c1_open + (atr * 0.15);
+          c2_open = c1_close;
+          c2_close = c2_open - (atr * 1.4);
+          c2_low = c2_close - (atr * 0.40);
+          c2_high = c2_open + (atr * 0.15);
+          c3_open = c2_close;
+          c3_close = tpVal;
+          c3_low = c3_close - (atr * 0.35);
+          c3_high = c3_open + (atr * 0.20);
+        }
+
+        // STRICT SYNC TO CARD
+        if (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock) {
+          shortTermSignalLock.tp1 = tpVal;
+          shortTermSignalLock.gainPts = Number(Math.abs(tpVal - shortTermSignalLock.entryPrice).toFixed(1));
+          const risk = Math.max(2.0, Math.abs(shortTermSignalLock.entryPrice - shortTermSignalLock.sl));
+          shortTermSignalLock.rrText = `1 : ${(shortTermSignalLock.gainPts / risk).toFixed(1)} (+${shortTermSignalLock.gainPts.toFixed(1)} pts)`;
+
+          const stTp = document.getElementById('stTpVal');
+          const stRr = document.getElementById('stRrVal');
+          if (stTp) stTp.innerText = '$' + tpVal.toFixed(2);
+          if (stRr) stRr.innerText = shortTermSignalLock.rrText;
         }
       }
 
@@ -9276,7 +9439,11 @@ const ghostCandles = [
       const now = Date.now();
 
       // 0. REAL-TIME INSTITUTIONAL LIQUIDITY SWEEP PRIORITY UPDATE
-      if (window.latestLiquiditySweep && (!shortTermSignalLock.active || shortTermSignalLock.status !== 'ACTIVE_HOLD')) {
+      const curLock = (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock) 
+        ? shortTermSignalLock 
+        : (window.shortTermSignalLock || null);
+
+      if (window.latestLiquiditySweep && (!curLock || !curLock.active || curLock.status !== 'ACTIVE_HOLD')) {
         const sw = window.latestLiquiditySweep;
         shortTermSignalLock = {
           active: true,
@@ -9294,8 +9461,8 @@ const ghostCandles = [
           maxLockDurationMs: 60 * 60 * 1000,
           status: 'ACTIVE_HOLD',
           completedAt: null,
-          lastCompletedType: shortTermSignalLock.lastCompletedType,
-          lastCompletedStatus: shortTermSignalLock.lastCompletedStatus
+          lastCompletedType: curLock ? curLock.lastCompletedType : null,
+          lastCompletedStatus: curLock ? curLock.lastCompletedStatus : null
         };
         window.shortTermSignalLock = shortTermSignalLock;
       }
@@ -9747,6 +9914,27 @@ const ghostCandles = [
         } else {
           stNote.innerText = shortTermSignalLock.reason;
           stNote.style.color = '';
+        }
+      }
+
+      // Update 1-Line Liquidity Sweep Confirmation Badge
+      const stLiqBadge = document.getElementById('stLiquidityBadge');
+      if (stLiqBadge) {
+        const currentLock = (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock) ? shortTermSignalLock : window.shortTermSignalLock;
+        if (window.latestLiquiditySweep && currentLock && (currentLock.status === 'ACTIVE_HOLD' || currentLock.status === 'RUNNER_ACTIVE')) {
+          stLiqBadge.innerText = window.latestLiquiditySweep.badgeText || `Confirmed: ${window.latestLiquiditySweep.levelName} Swept + Absorption`;
+          stLiqBadge.style.display = 'block';
+          if (window.latestLiquiditySweep.type === 'BUY') {
+            stLiqBadge.style.background = 'rgba(46, 160, 67, 0.12)';
+            stLiqBadge.style.color = '#3fb950';
+            stLiqBadge.style.borderColor = 'rgba(46, 160, 67, 0.35)';
+          } else {
+            stLiqBadge.style.background = 'rgba(248, 81, 73, 0.12)';
+            stLiqBadge.style.color = '#f85149';
+            stLiqBadge.style.borderColor = 'rgba(248, 81, 73, 0.35)';
+          }
+        } else {
+          stLiqBadge.style.display = 'none';
         }
       }
 
