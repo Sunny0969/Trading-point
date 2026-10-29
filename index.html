@@ -4205,15 +4205,7 @@
           </div>
         </div>
 
-        <!-- Quick Access Timeframe Pills -->
-        <div class="timeframe-group">
-          <button id="btn-5m" class="tf-btn" onclick="switchTimeframe('5m')">5M</button>
-          <button id="btn-15m" class="tf-btn active" onclick="switchTimeframe('15m')">15M</button>
-          <button id="btn-1h" class="tf-btn" onclick="switchTimeframe('1h')">1H</button>
-          <button id="btn-4h" class="tf-btn" onclick="switchTimeframe('4h')">4H</button>
-          <button id="btn-1d" class="tf-btn" onclick="switchTimeframe('1d')">1D</button>
-          <button id="btn-fit" class="tf-btn" onclick="resetChartZoom()" style="color: var(--gold); border-color: rgba(255,215,0,.3);">Fit</button>
-        </div>
+
 
         <span style="color: #30363d;">|</span>
 
@@ -4343,6 +4335,7 @@
           <span class="smc-mode-sep">|</span>
           <span id="smcModeLight" class="smc-mode-label">Clean SMC Light</span>
         </button>
+        <button id="btn-fit" class="btn-engine" onclick="resetChartZoom()" title="Reset Zoom / Fit All Candles" style="color: var(--gold); border-color: rgba(255, 215, 0, 0.35);">Fit</button>
         <button id="soundToggleBtn" class="btn-engine" onclick="openAlertModal()">🔔 Alert</button>
       </div>
     </div>
@@ -5824,7 +5817,8 @@
     function selectTimeframe(tf) {
       closeAllDropdowns();
       const label = document.getElementById('currentTfLabel');
-      if (label) label.innerText = tf.toUpperCase();
+      const displayMap = { '1m': '1m', '5m': '5m', '15m': '15m', '1h': '1H', '4h': '4H', '1d': '1D', '1w': '1W' };
+      if (label) label.innerText = displayMap[tf] || tf;
 
       document.querySelectorAll('#tvTimeframeMenu .tv-dd-item').forEach(item => {
         item.classList.toggle('active', item.getAttribute('data-tf') === tf);
@@ -10480,9 +10474,14 @@ const ghostCandles = [
         }
       }
 
-      ['btn-5m', 'btn-15m', 'btn-1h', 'btn-4h', 'btn-1d', 'btn-1w'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.classList.toggle('active', id === `btn-${tf}`);
+      // Update dropdown button label & active dropdown item
+      const tfLabel = document.getElementById('currentTfLabel');
+      if (tfLabel) {
+        const displayMap = { '1m': '1m', '5m': '5m', '15m': '15m', '1h': '1H', '4h': '4H', '1d': '1D', '1w': '1W' };
+        tfLabel.innerText = displayMap[tf] || tf;
+      }
+      document.querySelectorAll('#tvTimeframeMenu .tv-dd-item').forEach(item => {
+        item.classList.toggle('active', item.getAttribute('data-tf') === tf);
       });
 
       if (currentEngine === 'tradingview') {
