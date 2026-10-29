@@ -4387,6 +4387,21 @@
               </label>
             </div>
 
+            <!-- Indicator 7: Ghost Candle & AI Target Predictor -->
+            <div class="tv-ind-row" onclick="clickModularToggle('ghost', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #79c0ff;">👻 Ghost Candle &amp; Target Predictor</b>
+                  <span style="font-size: 9px; background: rgba(121,192,255,0.18); color: #79c0ff; padding: 1px 4px; border-radius: 4px; font-weight: 700;">AI Forecast</span>
+                </div>
+                <small>Forward 3-Candle AI Trajectory &amp; 🎯 Target $ Markers</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-ghost" checked onchange="toggleGhostPrediction()">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
             <div style="display: flex; justify-content: space-between; gap: 6px; margin-top: 10px; padding-top: 6px; border-top: 1px solid #21262d;">
               <button type="button" class="btn-engine" onclick="selectAllModularIndicators(true)" style="flex: 1; padding: 3px 6px; font-size: 10px;">Select All</button>
               <button type="button" class="btn-engine" onclick="resetDefaultModularIndicators()" style="flex: 1; padding: 3px 6px; font-size: 10px; color: #8b949e;">Reset Defaults</button>
@@ -4438,6 +4453,14 @@
             <rect x="3" y="3" width="18" height="7" rx="1" fill="rgba(255,82,82,0.3)" stroke="#ff5252"/>
             <rect x="3" y="11" width="18" height="10" rx="1" fill="rgba(41,98,255,0.3)" stroke="#2962ff"/>
             <line x1="2" y1="11" x2="22" y2="11" stroke="#ffffff" stroke-width="2"/>
+          </svg>
+        </button>
+        <!-- Ghost Projection Tool -->
+        <button class="tv-tool-btn active" id="tool-ghost" title="Ghost Candle &amp; Target Predictor (AI Forward Forecast)" onclick="toggleGhostPrediction()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 2a8 8 0 00-8 8v9l3-2 3 2 2-2 2 2 3-2 3 2V10a8 8 0 00-8-8z" fill="rgba(121,192,255,0.25)" stroke="#79c0ff"/>
+            <circle cx="9" cy="10" r="1.5" fill="#79c0ff"/>
+            <circle cx="15" cy="10" r="1.5" fill="#79c0ff"/>
           </svg>
         </button>
         <!-- Brush / Pen Annotation -->
@@ -5866,6 +5889,13 @@
         return saved !== null ? saved === 'true' : true;
       } catch (e) { return true; }
     })();
+    var ghostEnabled = (() => {
+      try {
+        const saved = localStorage.getItem('active_indicators_ghost');
+        return saved !== null ? saved === 'true' : true;
+      } catch (e) { return true; }
+    })();
+    window.ghostEnabled = ghostEnabled;
     var currentEMA50 = null;
     var latestPriceActionPattern = null;
     let currentTool = 'cursor';
@@ -6162,6 +6192,10 @@
         toggleRROverlay();
         return;
       }
+      if (moduleName === 'ghost') {
+        toggleGhostPrediction();
+        return;
+      }
       const chk = document.getElementById(`ind-toggle-${moduleName}`);
       const newVal = chk ? !chk.checked : !indicatorSettings[moduleName];
       toggleModularIndicator(moduleName, newVal);
@@ -6218,6 +6252,8 @@
         });
         applyModularVisuals(k, enableAll);
       });
+      toggleRROverlay(enableAll);
+      toggleGhostPrediction(enableAll);
       updateModularIndicatorsBadge();
       if (typeof evaluateSignals === 'function' && rawCandleData && rawCandleData.length) {
         evaluateSignals(rawCandleData, currentLiveSpot, false);
@@ -6240,6 +6276,8 @@
         });
         applyModularVisuals(k, DEFAULT_INDICATOR_CONFIG[k]);
       });
+      toggleRROverlay(true);
+      toggleGhostPrediction(true);
       updateModularIndicatorsBadge();
       if (typeof evaluateSignals === 'function' && rawCandleData && rawCandleData.length) {
         evaluateSignals(rawCandleData, currentLiveSpot, false);
@@ -6283,6 +6321,43 @@
       }
     }
 
+    function toggleGhostPrediction(explicitVal) {
+      ghostEnabled = explicitVal !== undefined ? !!explicitVal : !ghostEnabled;
+      try {
+        localStorage.setItem('active_indicators_ghost', ghostEnabled ? 'true' : 'false');
+      } catch (e) {}
+
+      ['ind-toggle-ghost', 'modal-toggle-ghost'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.checked = ghostEnabled;
+      });
+
+      const railBtn = document.getElementById('tool-ghost');
+      if (railBtn) railBtn.classList.toggle('active', ghostEnabled);
+
+      if (ghostCandleSeries) {
+        ghostCandleSeries.applyOptions({ visible: ghostEnabled });
+        if (!ghostEnabled) {
+          try { ghostCandleSeries.setData([]); } catch (e) {}
+        }
+      }
+
+      if (!ghostEnabled && ghostSeriesMarkersPlugin) {
+        try { ghostSeriesMarkersPlugin.setMarkers([]); } catch (e) {}
+      }
+
+      if (ghostEnabled && rawCandleData && rawCandleData.length) {
+        try {
+          if (typeof evaluateSignals === 'function') {
+            evaluateSignals(rawCandleData, currentLiveSpot, false);
+          }
+        } catch (e) {}
+      }
+
+      showSignalToast(`Ghost Candle & Target Predictor: ${ghostEnabled ? 'ON' : 'OFF'}`);
+    }
+    window.toggleGhostPrediction = toggleGhostPrediction;
+
     window.toggleModularIndicator = toggleModularIndicator;
     window.clickModularToggle = clickModularToggle;
     window.selectAllModularIndicators = selectAllModularIndicators;
@@ -6309,6 +6384,24 @@
       });
       const railBtn = document.getElementById('tool-rr');
       if (railBtn) railBtn.classList.toggle('active', showRROverlay);
+
+      // Synchronize Ghost Prediction Tool
+      ['ind-toggle-ghost', 'modal-toggle-ghost'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.checked = ghostEnabled;
+      });
+      const railGhost = document.getElementById('tool-ghost');
+      if (railGhost) railGhost.classList.toggle('active', ghostEnabled);
+
+      if (ghostCandleSeries) {
+        ghostCandleSeries.applyOptions({ visible: ghostEnabled });
+        if (!ghostEnabled) {
+          try { ghostCandleSeries.setData([]); } catch (e) {}
+          if (ghostSeriesMarkersPlugin) {
+            try { ghostSeriesMarkersPlugin.setMarkers([]); } catch (e) {}
+          }
+        }
+      }
 
       // Apply saved SMC institutional theme if active
       if (isSMCInstitutionalClean) {
@@ -6359,10 +6452,8 @@
         const v = explicitVal !== undefined ? explicitVal : true;
         volumeSeries.applyOptions({ visible: v });
         showSignalToast(`Volume Panel: ${v ? 'ON' : 'OFF'}`);
-      } else if (ind === 'ghost' && ghostCandleSeries) {
-        const v = explicitVal !== undefined ? explicitVal : true;
-        ghostCandleSeries.applyOptions({ visible: v });
-        showSignalToast(`Ghost Candle: ${v ? 'ON' : 'OFF'}`);
+      } else if (ind === 'ghost') {
+        toggleGhostPrediction(explicitVal);
       } else if (ind === 'utbot') {
         utBotEnabled = explicitVal !== undefined ? explicitVal : !utBotEnabled;
         if (candleSeries && typeof candleSeries.setMarkers === 'function') {
@@ -9476,6 +9567,16 @@
     function generateNext3CandlesPrediction(lastCandle, ema20Val, supportLevel, resistanceLevel, candleData, confluence) {
       if (!lastCandle) return;
 
+      if (!ghostEnabled) {
+        if (ghostCandleSeries) {
+          try { ghostCandleSeries.setData([]); } catch (e) {}
+        }
+        if (ghostSeriesMarkersPlugin) {
+          try { ghostSeriesMarkersPlugin.setMarkers([]); } catch (e) {}
+        }
+        return;
+      }
+
       let stepSec = 900;
       if (currentTf === '5m') stepSec = 300;
       else if (currentTf === '15m') stepSec = 900;
@@ -9754,8 +9855,19 @@ const ghostCandles = [
         }
       }
 
-      ghostCandleSeries.setData(ghostCandles);
+      if (ghostEnabled) {
+        ghostCandleSeries.setData(ghostCandles);
+      } else {
+        ghostCandleSeries.setData([]);
+      }
       } catch (err) {}
+
+      if (!ghostEnabled) {
+        if (ghostSeriesMarkersPlugin) {
+          try { ghostSeriesMarkersPlugin.setMarkers([]); } catch (e) {}
+        }
+        return;
+      }
 
       const ghostMarkers = [{
         time: ghostCandles[2].time,
@@ -13078,6 +13190,20 @@ window.addEventListener('resize', () => {
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="modal-toggle-momentumSuite" onchange="toggleModularIndicator('momentumSuite')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="indicator-row">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #79c0ff;">👻 Ghost Candle &amp; Target Predictor</b>
+              <span style="font-size: 9px; background: rgba(121,192,255,0.18); color: #79c0ff; padding: 1px 4px; border-radius: 4px; font-weight: 700;">AI Forecast</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">Forward 3-Candle AI Trajectory &amp; 🎯 Target $ Markers</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="modal-toggle-ghost" checked onchange="toggleGhostPrediction()">
             <span class="toggle-slider"></span>
           </label>
         </div>
