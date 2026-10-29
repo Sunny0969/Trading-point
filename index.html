@@ -1551,6 +1551,45 @@
       border: 1px solid rgba(248, 81, 73, 0.4);
       box-shadow: 0 0 8px rgba(248, 81, 73, 0.25);
     }
+    .exec-dir-pill.standby, .exec-dir-pill.conflict {
+      background: rgba(234, 179, 8, 0.2);
+      color: #eab308;
+      border: 1px solid rgba(234, 179, 8, 0.4);
+      box-shadow: 0 0 8px rgba(234, 179, 8, 0.25);
+    }
+    .pipe-step-pill {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(22, 27, 34, 0.85);
+      border: 1px solid #30363d;
+      color: #8b949e;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .pipe-step-pill.active {
+      background: rgba(46, 160, 67, 0.15);
+      border-color: rgba(46, 160, 67, 0.4);
+      color: #3fb950;
+    }
+    .pipe-step-pill.bearish {
+      background: rgba(248, 81, 73, 0.15);
+      border-color: rgba(248, 81, 73, 0.4);
+      color: #f85149;
+    }
+    .pipe-step-pill.conflict {
+      background: rgba(234, 179, 8, 0.15);
+      border-color: rgba(234, 179, 8, 0.4);
+      color: #eab308;
+    }
+    .pipe-step-pill.disabled {
+      opacity: 0.35;
+      text-decoration: line-through;
+      border-style: dashed;
+    }
 
     .clean-signal-history {
       display: flex;
@@ -4244,122 +4283,98 @@
 
         <span style="color: #30363d;">|</span>
 
-        <!-- 3. INDICATORS DROPDOWN (Inline with UT Bot & SMC) -->
+        <!-- 3. QUANT COMPRESSED MODULAR INDICATORS DROPDOWN -->
         <div class="tv-dropdown-container" id="tvIndicatorsContainer">
-          <button id="btn-indicators-dropdown" class="tv-header-btn" onclick="toggleIndicatorsDropdown(event)" title="Technical Indicators & SMC Overlays">
+          <button id="btn-indicators-dropdown" class="tv-header-btn" onclick="toggleIndicatorsDropdown(event)" title="5 Core Compressed Modular Indicators">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 16l4-8 4 6 5-10"/></svg>
             <span>Indicators</span>
+            <span id="activeIndCountBadge" style="font-size: 10px; background: rgba(88,166,255,0.22); color: #58a6ff; border: 1px solid rgba(88,166,255,0.4); padding: 0px 5px; border-radius: 9px; margin-left: 3px; font-weight: 700;">4/5</span>
             <svg class="tv-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
           </button>
-          <div id="tvIndicatorsMenu" class="tv-dropdown-menu tv-indicators-dropdown" onclick="event.stopPropagation()">
-            <div class="tv-dd-group-title" style="margin-bottom: 6px;">TECHNICAL INDICATORS &amp; SMC</div>
+          <div id="tvIndicatorsMenu" class="tv-dropdown-menu tv-indicators-dropdown" style="min-width: 325px;" onclick="event.stopPropagation()">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #21262d; padding-bottom: 6px;">
+              <span class="tv-dd-group-title" style="margin: 0; font-size: 10px; letter-spacing: 0.5px;">5 CORE MODULAR INDICATORS</span>
+              <span id="totalActiveWeightBadge" style="font-size: 10px; color: #3fb950; font-weight: 700;">85% Weight Active</span>
+            </div>
 
-            <!-- 1. SMC Supply & Demand Zones -->
-            <div class="tv-ind-row" onclick="clickToggle('smc', event)">
+            <!-- Indicator 1: Smart Money Structure (SMC Zones) -->
+            <div class="tv-ind-row" onclick="clickModularToggle('smcZones', event)">
               <div class="tv-ind-info">
-                <b style="color: #58a6ff;">🏛️ SMC Key Zones (FVG &amp; OB)</b>
-                <small>15M institutional Key Supply &amp; Demand zones</small>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #58a6ff;">🏛️ SMC Zones (OB &amp; FVG)</b>
+                  <span style="font-size: 9px; background: rgba(88,166,255,0.18); color: #58a6ff; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 25%</span>
+                </div>
+                <small>Fair Value Gaps &amp; Key Supply / Demand Order Blocks</small>
               </div>
               <label class="toggle-switch" onclick="event.stopPropagation()">
-                <input type="checkbox" id="ind-toggle-smc" checked onchange="toggleIndicator('smc')">
+                <input type="checkbox" id="ind-toggle-smcZones" checked onchange="toggleModularIndicator('smcZones')">
                 <span class="toggle-slider"></span>
               </label>
             </div>
 
-            <!-- 2. Institutional Liquidity Pools -->
-            <div class="tv-ind-row" onclick="clickToggle('liquidity', event)">
+            <!-- Indicator 2: Liquidity & Order Flow Hunter -->
+            <div class="tv-ind-row" onclick="clickModularToggle('liquidityHunter', event)">
               <div class="tv-ind-info">
-                <b style="color: #ffd700;">💧 Liquidity Pools (ASH/LSH/EQH)</b>
-                <small>Asia/London High &amp; Low, EQH/EQL, PDH/PDL</small>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #ffd700;">💧 Liquidity &amp; Order Flow Hunter</b>
+                  <span style="font-size: 9px; background: rgba(255,215,0,0.18); color: #ffd700; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 25%</span>
+                </div>
+                <small>Session High/Low (ASH/ASL), EQH/EQL &amp; CVD Flow Sweeps</small>
               </div>
               <label class="toggle-switch" onclick="event.stopPropagation()">
-                <input type="checkbox" id="ind-toggle-liquidity" checked onchange="toggleIndicator('liquidity')">
+                <input type="checkbox" id="ind-toggle-liquidityHunter" checked onchange="toggleModularIndicator('liquidityHunter')">
                 <span class="toggle-slider"></span>
               </label>
             </div>
 
-            <!-- 3. Risk / Reward Position Tool -->
-            <div class="tv-ind-row" onclick="clickToggle('rr', event)">
+            <!-- Indicator 3: Auto Fibonacci Golden Pocket -->
+            <div class="tv-ind-row" onclick="clickModularToggle('autoFib', event)">
               <div class="tv-ind-info">
-                <b style="color: #2ea043;">🎯 Risk / Reward Position Tool</b>
-                <small>1:3.5 Target &amp; Stop Loss projection box</small>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #3fb950;">🎯 Auto Fib Golden Pocket</b>
+                  <span style="font-size: 9px; background: rgba(63,185,80,0.18); color: #3fb950; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 20%</span>
+                </div>
+                <small>0.50 - 0.618 Golden Pocket retracement &amp; Deep Discount</small>
               </div>
               <label class="toggle-switch" onclick="event.stopPropagation()">
-                <input type="checkbox" id="ind-toggle-rr" onchange="toggleIndicator('rr')">
+                <input type="checkbox" id="ind-toggle-autoFib" checked onchange="toggleModularIndicator('autoFib')">
                 <span class="toggle-slider"></span>
               </label>
             </div>
 
-            <!-- 4. Liquidity Sweep Alerts -->
-            <div class="tv-ind-row" onclick="clickToggle('sweeps', event)">
+            <!-- Indicator 4: Price Action & Pattern Scanner -->
+            <div class="tv-ind-row" onclick="clickModularToggle('priceAction', event)">
               <div class="tv-ind-info">
-                <b style="color: #f0883e;">⚡ Liquidity Sweep Alerts</b>
-                <small>Session raid confirmation &amp; absorption badge</small>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #f0883e;">🕯️ Price Action &amp; Pattern Scanner</b>
+                  <span style="font-size: 9px; background: rgba(240,136,62,0.18); color: #f0883e; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 15%</span>
+                </div>
+                <small>Hammer, Shooting Star, Marubozu, Double Top/Bottom</small>
               </div>
               <label class="toggle-switch" onclick="event.stopPropagation()">
-                <input type="checkbox" id="ind-toggle-sweeps" checked onchange="toggleIndicator('sweeps')">
+                <input type="checkbox" id="ind-toggle-priceAction" checked onchange="toggleModularIndicator('priceAction')">
                 <span class="toggle-slider"></span>
               </label>
             </div>
 
-            <!-- 5. UT Bot Signals -->
-            <div class="tv-ind-row" onclick="clickToggle('utbot', event)">
+            <!-- Indicator 5: Momentum & Trend Suite -->
+            <div class="tv-ind-row" onclick="clickModularToggle('momentumSuite', event)">
               <div class="tv-ind-info">
-                <b style="color: #e3b341;">⚡ UT Bot Signals</b>
-                <small>Buy/Sell algorithmic arrows &amp; ATR trailing</small>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #a371f7;">⚡ Momentum &amp; Trend Suite</b>
+                  <span style="font-size: 9px; background: rgba(163,113,247,0.18); color: #a371f7; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 15%</span>
+                </div>
+                <small>EMA 20/50 Ribbon, RSI 14 Oversold/Overbought &amp; MACD</small>
               </div>
               <label class="toggle-switch" onclick="event.stopPropagation()">
-                <input type="checkbox" id="ind-toggle-utbot" checked onchange="toggleIndicator('utbot')">
+                <input type="checkbox" id="ind-toggle-momentumSuite" onchange="toggleModularIndicator('momentumSuite')">
                 <span class="toggle-slider"></span>
               </label>
             </div>
 
-            <!-- 6. EMA 20 Trend Structure -->
-            <div class="tv-ind-row" onclick="clickToggle('ema', event)">
-              <div class="tv-ind-info">
-                <b style="color: #388bfd;">📈 EMA 20 Trend Structure</b>
-                <small>20-period dynamic EMA trend baseline</small>
-              </div>
-              <label class="toggle-switch" onclick="event.stopPropagation()">
-                <input type="checkbox" id="ind-toggle-ema" checked onchange="toggleIndicator('ema')">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
-            <!-- 7. Support & Resistance -->
-            <div class="tv-ind-row" onclick="clickToggle('sr', event)">
-              <div class="tv-ind-info">
-                <b style="color: #3fb950;">📊 Support &amp; Resistance (S1 / R1)</b>
-                <small>Dynamic liquidity bands &amp; key pivot boundaries</small>
-              </div>
-              <label class="toggle-switch" onclick="event.stopPropagation()">
-                <input type="checkbox" id="ind-toggle-sr" checked onchange="toggleIndicator('sr')">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
-            <!-- 8. Volume Histogram -->
-            <div class="tv-ind-row" onclick="clickToggle('vol', event)">
-              <div class="tv-ind-info">
-                <b style="color: #2ea043;">📶 Volume Histogram Panel</b>
-                <small>Buyer vs seller pressure histogram</small>
-              </div>
-              <label class="toggle-switch" onclick="event.stopPropagation()">
-                <input type="checkbox" id="ind-toggle-vol" checked onchange="toggleIndicator('vol')">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
-            <!-- 9. Ghost Candle Projection -->
-            <div class="tv-ind-row" onclick="clickToggle('ghost', event)">
-              <div class="tv-ind-info">
-                <b style="color: #bc8cff;">🔮 Ghost Candle AI Projection</b>
-                <small>Predictive 3-bar institutional target path</small>
-              </div>
-              <label class="toggle-switch" onclick="event.stopPropagation()">
-                <input type="checkbox" id="ind-toggle-ghost" checked onchange="toggleIndicator('ghost')">
-                <span class="toggle-slider"></span>
-              </label>
+            <div style="display: flex; justify-content: space-between; gap: 6px; margin-top: 10px; padding-top: 6px; border-top: 1px solid #21262d;">
+              <button type="button" class="btn-engine" onclick="selectAllModularIndicators(true)" style="flex: 1; padding: 3px 6px; font-size: 10px;">Select All</button>
+              <button type="button" class="btn-engine" onclick="resetDefaultModularIndicators()" style="flex: 1; padding: 3px 6px; font-size: 10px; color: #8b949e;">Reset Defaults</button>
             </div>
           </div>
         </div>
@@ -4709,6 +4724,15 @@
             <!-- 1-Line Liquidity Sweep Confirmation Badge -->
             <div id="stLiquidityBadge" class="clean-signal-note" style="display: none; margin-top: 6px; font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 5px; text-align: center; border: 1px solid rgba(255, 215, 0, 0.35); background: rgba(255, 215, 0, 0.08); color: #ffd700;">
               Confirmed: Asia Low Swept + Demand Absorption
+            </div>
+
+            <!-- Step-by-Step Modular Pipeline Checklist -->
+            <div id="stModularPipelineGrid" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+              <span id="pipeSMC" class="pipe-step-pill active" title="Step 1: SMC Key Zones">🏛️ SMC: Demand</span>
+              <span id="pipeLiq" class="pipe-step-pill active" title="Step 2: Liquidity Hunter">💧 Liq: ASL Swept</span>
+              <span id="pipeFib" class="pipe-step-pill active" title="Step 3: Auto Fib Golden Pocket">🎯 Fib: 0.618 Pocket</span>
+              <span id="pipePA" class="pipe-step-pill active" title="Step 4: Price Action Scanner">🕯️ PA: Hammer</span>
+              <span id="pipeMom" class="pipe-step-pill disabled" title="Step 5: Momentum Suite">⚡ Mom: EMA 20/50</span>
             </div>
           </div>
 
@@ -5732,6 +5756,13 @@
       title: 'EMA 20',
     });
 
+    const ema50Series = chart.addSeries(LightweightCharts.LineSeries, {
+      color: '#ff9800',
+      lineWidth: 1.5,
+      title: 'EMA 50',
+    });
+    window.ema50Series = ema50Series;
+
     const supportLine = chart.addSeries(LightweightCharts.LineSeries, {
       color: '#3fb950',
       lineWidth: 1,
@@ -5766,12 +5797,49 @@
     // ==========================================
     // ZERO-LAG CANVAS DRAWING TOOLS SYSTEM (TV-GRADE HI-DPI & DRAGGABLE)
     // ==========================================
+    // ==========================================
+    // 5 CORE COMPRESSED MODULAR INDICATORS CONFIG
+    // ==========================================
+    const DEFAULT_INDICATOR_CONFIG = {
+      smcZones: true,        // Module 1: SMC Zones (FVG & Order Blocks) - Weight: 25
+      liquidityHunter: true, // Module 2: Liquidity & Order Flow Hunter (Session Sweeps, EQH/EQL) - Weight: 25
+      autoFib: true,         // Module 3: Auto Fibonacci Golden Pocket (0.50 - 0.618) - Weight: 20
+      priceAction: true,     // Module 4: Price Action & Candlestick Scanner - Weight: 15
+      momentumSuite: false   // Module 5: Momentum & Trend Suite (EMA 20/50, RSI, MACD) - Weight: 15
+    };
+
+    const MODULE_WEIGHTS = {
+      smcZones: 25,
+      liquidityHunter: 25,
+      autoFib: 20,
+      priceAction: 15,
+      momentumSuite: 15
+    };
+
+    var indicatorSettings = (() => {
+      try {
+        const saved = localStorage.getItem('active_indicators_config');
+        if (saved) {
+          return Object.assign({}, DEFAULT_INDICATOR_CONFIG, JSON.parse(saved));
+        }
+      } catch (e) {
+        console.warn('Error reading active_indicators_config:', e);
+      }
+      return Object.assign({}, DEFAULT_INDICATOR_CONFIG);
+    })();
+    window.indicatorSettings = indicatorSettings;
+
     let currentSMCZones = { fvgList: [], obList: [] };
     var currentLiquidityPools = null;
-    var smcEnabled = true;
-    var liquidityPoolsEnabled = true;
-    var sweepAlertsEnabled = true;
+    var smcEnabled = !!indicatorSettings.smcZones;
+    var liquidityPoolsEnabled = !!indicatorSettings.liquidityHunter;
+    var sweepAlertsEnabled = !!indicatorSettings.liquidityHunter;
+    var fibActive = !!indicatorSettings.autoFib;
+    var priceActionEnabled = !!indicatorSettings.priceAction;
+    var momentumSuiteEnabled = !!indicatorSettings.momentumSuite;
     var showRROverlay = false;
+    var currentEMA50 = null;
+    var latestPriceActionPattern = null;
     let currentTool = 'cursor';
     let drawings = [];
     let customPriceLines = []; // [{ id, price, lineRef }]
@@ -5786,7 +5854,6 @@
     let trendlines = [];
     let brushStrokes = [];
     let textNotes = [];
-    let fibActive = false;
     let magnetActive = false;
     let trendlineStart = null;
     let isDrawingBrush = false;
@@ -6043,7 +6110,7 @@
     }
     document.addEventListener('click', () => closeAllDropdowns());
 
-    // --- INDICATORS DROPDOWN HANDLERS (Inline TradingView Dropdown) ---
+    // --- 5 CORE COMPRESSED MODULAR INDICATORS HANDLERS ---
     function toggleIndicatorsDropdown(e) {
       if (e) e.stopPropagation();
       const menu = document.getElementById('tvIndicatorsMenu');
@@ -6053,18 +6120,160 @@
       if (!isShowing && menu && container) {
         menu.classList.add('show');
         container.classList.add('open');
+        updateModularIndicatorsBadge();
       }
     }
 
-    function clickToggle(ind, event) {
-      if (event && (event.target.tagName === 'INPUT' || event.target.closest('.tv-switch') || event.target.closest('.toggle-switch'))) {
+    function clickModularToggle(moduleName, event) {
+      if (event && (event.target.tagName === 'INPUT' || event.target.closest('.toggle-switch'))) {
         return;
       }
-      const chk = document.getElementById(`ind-toggle-${ind}`);
-      if (chk) {
-        chk.checked = !chk.checked;
-        toggleIndicator(ind, chk.checked);
+      const chk = document.getElementById(`ind-toggle-${moduleName}`);
+      const newVal = chk ? !chk.checked : !indicatorSettings[moduleName];
+      toggleModularIndicator(moduleName, newVal);
+    }
+
+    function toggleModularIndicator(moduleName, explicitVal) {
+      const cur = !!indicatorSettings[moduleName];
+      const newVal = explicitVal !== undefined ? !!explicitVal : !cur;
+      indicatorSettings[moduleName] = newVal;
+
+      try {
+        localStorage.setItem('active_indicators_config', JSON.stringify(indicatorSettings));
+      } catch (e) {}
+
+      // Synchronize DOM inputs in both dropdown and modal
+      ['ind-toggle-', 'modal-toggle-'].forEach(prefix => {
+        const el = document.getElementById(`${prefix}${moduleName}`);
+        if (el) el.checked = newVal;
+      });
+
+      // Apply specific visual side-effects
+      applyModularVisuals(moduleName, newVal);
+
+      // Refresh badges & weights in UI
+      updateModularIndicatorsBadge();
+
+      // Immediately re-evaluate signals & ghost candles
+      if (typeof evaluateSignals === 'function' && rawCandleData && rawCandleData.length) {
+        evaluateSignals(rawCandleData, currentLiveSpot, false);
       }
+      redrawDrawings();
+
+      const labels = {
+        smcZones: 'SMC Zones (OB & FVG)',
+        liquidityHunter: 'Liquidity & Order Flow Hunter',
+        autoFib: 'Auto Fibonacci Golden Pocket',
+        priceAction: 'Price Action & Pattern Scanner',
+        momentumSuite: 'Momentum & Trend Suite (EMA/RSI/MACD)'
+      };
+      showSignalToast(`${labels[moduleName] || moduleName}: ${newVal ? 'ON (Weight: ' + MODULE_WEIGHTS[moduleName] + '%)' : 'OFF'}`);
+    }
+
+    function selectAllModularIndicators(enableAll = true) {
+      Object.keys(DEFAULT_INDICATOR_CONFIG).forEach(k => {
+        indicatorSettings[k] = enableAll;
+      });
+      try {
+        localStorage.setItem('active_indicators_config', JSON.stringify(indicatorSettings));
+      } catch (e) {}
+      Object.keys(DEFAULT_INDICATOR_CONFIG).forEach(k => {
+        ['ind-toggle-', 'modal-toggle-'].forEach(prefix => {
+          const el = document.getElementById(`${prefix}${k}`);
+          if (el) el.checked = enableAll;
+        });
+        applyModularVisuals(k, enableAll);
+      });
+      updateModularIndicatorsBadge();
+      if (typeof evaluateSignals === 'function' && rawCandleData && rawCandleData.length) {
+        evaluateSignals(rawCandleData, currentLiveSpot, false);
+      }
+      redrawDrawings();
+      showSignalToast(`All Indicators: ${enableAll ? 'ON' : 'OFF'}`);
+    }
+
+    function resetDefaultModularIndicators() {
+      Object.keys(DEFAULT_INDICATOR_CONFIG).forEach(k => {
+        indicatorSettings[k] = DEFAULT_INDICATOR_CONFIG[k];
+      });
+      try {
+        localStorage.setItem('active_indicators_config', JSON.stringify(indicatorSettings));
+      } catch (e) {}
+      Object.keys(DEFAULT_INDICATOR_CONFIG).forEach(k => {
+        ['ind-toggle-', 'modal-toggle-'].forEach(prefix => {
+          const el = document.getElementById(`${prefix}${k}`);
+          if (el) el.checked = DEFAULT_INDICATOR_CONFIG[k];
+        });
+        applyModularVisuals(k, DEFAULT_INDICATOR_CONFIG[k]);
+      });
+      updateModularIndicatorsBadge();
+      if (typeof evaluateSignals === 'function' && rawCandleData && rawCandleData.length) {
+        evaluateSignals(rawCandleData, currentLiveSpot, false);
+      }
+      redrawDrawings();
+      showSignalToast('Indicators reset to default modular configuration.');
+    }
+
+    function updateModularIndicatorsBadge() {
+      const activeKeys = Object.keys(MODULE_WEIGHTS).filter(k => !!indicatorSettings[k]);
+      const activeCount = activeKeys.length;
+      const totalWeight = activeKeys.reduce((acc, k) => acc + MODULE_WEIGHTS[k], 0);
+
+      const countBadge = document.getElementById('activeIndCountBadge');
+      if (countBadge) countBadge.innerText = `${activeCount}/5`;
+
+      const weightBadge = document.getElementById('totalActiveWeightBadge');
+      if (weightBadge) weightBadge.innerText = `${totalWeight}% Weight Active`;
+    }
+
+    function applyModularVisuals(moduleName, isChecked) {
+      if (moduleName === 'smcZones') {
+        smcEnabled = isChecked;
+        const btn = document.getElementById('btn-toggle-smc');
+        if (btn) btn.classList.toggle('active', smcEnabled);
+        const railBtn = document.getElementById('tool-smc');
+        if (railBtn) railBtn.classList.toggle('active', smcEnabled);
+      } else if (moduleName === 'liquidityHunter') {
+        liquidityPoolsEnabled = isChecked;
+        sweepAlertsEnabled = isChecked;
+      } else if (moduleName === 'autoFib') {
+        fibActive = isChecked;
+        const btn = document.getElementById('tool-fib');
+        if (btn) btn.classList.toggle('active', fibActive);
+      } else if (moduleName === 'priceAction') {
+        priceActionEnabled = isChecked;
+      } else if (moduleName === 'momentumSuite') {
+        momentumSuiteEnabled = isChecked;
+        if (ema20Series) ema20Series.applyOptions({ visible: isChecked });
+        if (ema50Series) ema50Series.applyOptions({ visible: isChecked });
+      }
+    }
+
+    window.toggleModularIndicator = toggleModularIndicator;
+    window.clickModularToggle = clickModularToggle;
+    window.selectAllModularIndicators = selectAllModularIndicators;
+    window.resetDefaultModularIndicators = resetDefaultModularIndicators;
+    window.updateModularIndicatorsBadge = updateModularIndicatorsBadge;
+    window.applyModularVisuals = applyModularVisuals;
+    window.indicatorSettings = indicatorSettings;
+
+    // Initialize modular indicators UI state on startup
+    function initModularIndicatorsUI() {
+      Object.keys(DEFAULT_INDICATOR_CONFIG).forEach(k => {
+        const val = !!indicatorSettings[k];
+        ['ind-toggle-', 'modal-toggle-'].forEach(prefix => {
+          const el = document.getElementById(`${prefix}${k}`);
+          if (el) el.checked = val;
+        });
+        applyModularVisuals(k, val);
+      });
+      updateModularIndicatorsBadge();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initModularIndicatorsUI);
+    } else {
+      initModularIndicatorsUI();
     }
 
     function openIndicatorsModal() {
@@ -6077,81 +6286,47 @@
 
     let utBotEnabled = true;
 
+    // Legacy compatibility router
     function toggleIndicator(ind, explicitVal) {
-      if (!chart) return;
-      const chk = document.getElementById(`ind-toggle-${ind}`);
-      const isChecked = explicitVal !== undefined ? explicitVal : (chk ? chk.checked : true);
-
-      document.querySelectorAll(`input[id="ind-toggle-${ind}"]`).forEach(input => {
-        input.checked = isChecked;
-      });
-
-      if (ind === 'ema' && ema20Series) {
-        ema20Series.applyOptions({ visible: isChecked });
-        showSignalToast(`EMA 20 Trend: ${isChecked ? 'ON' : 'OFF'}`);
-      } else if (ind === 'smc') {
-        smcEnabled = isChecked;
-        const btn = document.getElementById('btn-toggle-smc');
-        if (btn) btn.classList.toggle('active', smcEnabled);
-        const railBtn = document.getElementById('tool-smc');
-        if (railBtn) railBtn.classList.toggle('active', smcEnabled);
-        redrawDrawings();
-        showSignalToast(`SMC Zones: ${isChecked ? 'ON' : 'OFF'}`);
-      } else if (ind === 'sr') {
-        if (supportLine) supportLine.applyOptions({ visible: isChecked });
-        if (resistanceLine) resistanceLine.applyOptions({ visible: isChecked });
-        showSignalToast(`Support/Resistance Bands: ${isChecked ? 'ON' : 'OFF'}`);
-      } else if (ind === 'utbot') {
-        utBotEnabled = isChecked;
-        if (seriesMarkersPlugin) {
-          try {
-            seriesMarkersPlugin.setMarkers(isChecked ? activeMarkers : []);
-          } catch (e) {}
-        }
-        if (candleSeries && typeof candleSeries.setMarkers === 'function') {
-          try {
-            candleSeries.setMarkers(isChecked ? activeMarkers : []);
-          } catch (e) {}
-        }
-        const utBtn = document.getElementById('btn-engine-lw');
-        if (utBtn) utBtn.classList.toggle('active', isChecked);
-        showSignalToast(`UT Bot Signals: ${isChecked ? 'ON' : 'OFF'}`);
-      } else if (ind === 'smc') {
-        smcEnabled = isChecked;
-        const smcBtn = document.getElementById('btn-toggle-smc');
-        if (smcBtn) {
-          smcBtn.innerText = isChecked ? '🏛️ SMC Zones: ON' : '🏛️ SMC Zones: OFF';
-          smcBtn.classList.toggle('active', isChecked);
-        }
-        const toolSmc = document.getElementById('tool-smc');
-        if (toolSmc) toolSmc.classList.toggle('active', isChecked);
-        redrawDrawings();
-        showSignalToast(`SMC Key Zones: ${isChecked ? 'ON' : 'OFF'}`);
-        return;
-      } else if (ind === 'liquidity') {
-        liquidityPoolsEnabled = isChecked;
-        redrawDrawings();
-        showSignalToast(`Liquidity Pools: ${isChecked ? 'ON' : 'OFF'}`);
-        return;
+      const map = {
+        smc: 'smcZones',
+        liquidity: 'liquidityHunter',
+        sweeps: 'liquidityHunter',
+        ema: 'momentumSuite',
+        fib: 'autoFib',
+        priceaction: 'priceAction'
+      };
+      if (map[ind]) {
+        toggleModularIndicator(map[ind], explicitVal);
       } else if (ind === 'rr') {
-        showRROverlay = isChecked;
+        showRROverlay = explicitVal !== undefined ? explicitVal : !showRROverlay;
         redrawDrawings();
-        showSignalToast(`Risk/Reward Tool: ${isChecked ? 'ON' : 'OFF'}`);
-        return;
-      } else if (ind === 'sweeps') {
-        sweepAlertsEnabled = isChecked;
-        redrawDrawings();
-        showSignalToast(`Liquidity Sweep Alerts: ${isChecked ? 'ON' : 'OFF'}`);
-        return;
+        showSignalToast(`Risk/Reward Tool: ${showRROverlay ? 'ON' : 'OFF'}`);
+      } else if (ind === 'sr') {
+        const v = explicitVal !== undefined ? explicitVal : true;
+        if (supportLine) supportLine.applyOptions({ visible: v });
+        if (resistanceLine) resistanceLine.applyOptions({ visible: v });
+        showSignalToast(`Support/Resistance: ${v ? 'ON' : 'OFF'}`);
       } else if (ind === 'vol' && volumeSeries) {
-        volumeSeries.applyOptions({ visible: isChecked });
-        showSignalToast(`Volume Panel: ${isChecked ? 'ON' : 'OFF'}`);
+        const v = explicitVal !== undefined ? explicitVal : true;
+        volumeSeries.applyOptions({ visible: v });
+        showSignalToast(`Volume Panel: ${v ? 'ON' : 'OFF'}`);
       } else if (ind === 'ghost' && ghostCandleSeries) {
-        ghostCandleSeries.applyOptions({ visible: isChecked });
-        showSignalToast(`Ghost Projection: ${isChecked ? 'ON' : 'OFF'}`);
+        const v = explicitVal !== undefined ? explicitVal : true;
+        ghostCandleSeries.applyOptions({ visible: v });
+        showSignalToast(`Ghost Candle: ${v ? 'ON' : 'OFF'}`);
+      } else if (ind === 'utbot') {
+        utBotEnabled = explicitVal !== undefined ? explicitVal : !utBotEnabled;
+        if (candleSeries && typeof candleSeries.setMarkers === 'function') {
+          candleSeries.setMarkers(utBotEnabled ? activeMarkers : []);
+        }
+        showSignalToast(`UT Bot Signals: ${utBotEnabled ? 'ON' : 'OFF'}`);
       }
     }
 
+    function clickToggle(ind, event) {
+      clickModularToggle(ind, event);
+    }
     // --- ADVANCED DRAWING TOOLS (Trendline, Fib, Brush, Text, Magnet) ---
     function toggleFibRetracement() {
       fibActive = !fibActive;
@@ -6697,13 +6872,14 @@
           });
         }
 
-        // 3. Restore secondary indicators based on toggles
-        const emaChecked = document.getElementById('ind-toggle-ema')?.checked ?? true;
-        const srChecked = document.getElementById('ind-toggle-sr')?.checked ?? true;
-        const volChecked = document.getElementById('ind-toggle-vol')?.checked ?? true;
-        const utbotChecked = document.getElementById('ind-toggle-utbot')?.checked ?? true;
+        // 3. Restore secondary indicators based on modular settings
+        const momChecked = !!(typeof indicatorSettings !== 'undefined' && indicatorSettings.momentumSuite);
+        const srChecked = true;
+        const volChecked = true;
+        const utbotChecked = typeof utBotEnabled !== 'undefined' ? utBotEnabled : true;
 
-        if (ema20Series) ema20Series.applyOptions({ visible: emaChecked });
+        if (ema20Series) ema20Series.applyOptions({ visible: momChecked });
+        if (ema50Series) ema50Series.applyOptions({ visible: momChecked });
         if (supportLine) supportLine.applyOptions({ visible: srChecked });
         if (resistanceLine) resistanceLine.applyOptions({ visible: srChecked });
         if (volumeSeries) volumeSeries.applyOptions({ visible: volChecked });
@@ -7780,29 +7956,48 @@
         try { drawBreakoutOverlayOnCanvas(drawingCtx); } catch (boDrawErr) {}
       }
 
-      // 2. Draw Fibonacci Retracement Levels
-      if (typeof fibActive !== "undefined" && fibActive && rawCandleData && rawCandleData.length >= 10 && candleSeries) {
-        const slice = rawCandleData.slice(-50);
+      // 2. Module 3: Auto Fibonacci Golden Pocket
+      if (typeof indicatorSettings !== "undefined" && indicatorSettings.autoFib && rawCandleData && rawCandleData.length >= 10 && candleSeries) {
+        const slice = rawCandleData.slice(-60);
         const swingH = Math.max(...slice.map(c => c.high));
         const swingL = Math.min(...slice.map(c => c.low));
         const range = swingH - swingL;
-        if (range > 0) {
+        if (range > 0.5) {
           const fibRatios = [
-            { r: 0.0, label: '0.0% (Swing Low)', color: 'rgba(139, 148, 158, 0.6)' },
-            { r: 0.236, label: '23.6%', color: 'rgba(239, 68, 68, 0.6)' },
+            { r: 0.0, label: '0.0% (Low)', color: 'rgba(139, 148, 158, 0.6)' },
             { r: 0.382, label: '38.2%', color: 'rgba(240, 136, 62, 0.7)' },
-            { r: 0.500, label: '50.0% (Equilibrium)', color: 'rgba(255, 215, 0, 0.85)' },
-            { r: 0.618, label: '61.8% (Golden Pocket)', color: 'rgba(46, 160, 67, 0.85)' },
-            { r: 0.786, label: '78.6%', color: 'rgba(88, 166, 255, 0.7)' },
-            { r: 1.0, label: '100.0% (Swing High)', color: 'rgba(139, 148, 158, 0.6)' }
+            { r: 0.500, label: '50.0% (Equilibrium)', color: 'rgba(255, 215, 0, 0.9)' },
+            { r: 0.618, label: '61.8% (Golden Pocket)', color: 'rgba(46, 160, 67, 0.95)' },
+            { r: 0.786, label: '78.6% (Deep Discount)', color: 'rgba(88, 166, 255, 0.7)' },
+            { r: 1.0, label: '100.0% (High)', color: 'rgba(139, 148, 158, 0.6)' }
           ];
+
+          const p50 = swingL + (range * 0.50);
+          const p618 = swingL + (range * 0.618);
+          const y50 = candleSeries.priceToCoordinate(p50);
+          const y618 = candleSeries.priceToCoordinate(p618);
+
+          // Shaded Golden Pocket Zone Fill
+          if (y50 !== null && y618 !== null) {
+            const topY = Math.min(y50, y618);
+            const boxH = Math.abs(y50 - y618);
+            drawingCtx.fillStyle = 'rgba(255, 215, 0, 0.08)';
+            drawingCtx.fillRect(15, topY, canvasCssWidth - 80, boxH);
+            drawingCtx.strokeStyle = 'rgba(255, 215, 0, 0.35)';
+            drawingCtx.lineWidth = 1;
+            drawingCtx.strokeRect(15, topY, canvasCssWidth - 80, boxH);
+
+            drawingCtx.fillStyle = 'rgba(255, 215, 0, 0.9)';
+            drawingCtx.font = '700 9px "Space Grotesk", sans-serif';
+            drawingCtx.fillText(`🎯 GOLDEN POCKET (0.50 - 0.618)`, 22, topY + 12);
+          }
 
           fibRatios.forEach(fib => {
             const fibPrice = swingL + (range * fib.r);
             const fibY = candleSeries.priceToCoordinate(fibPrice);
             if (fibY !== null) {
               drawingCtx.strokeStyle = fib.color;
-              drawingCtx.lineWidth = fib.r === 0.618 || fib.r === 0.5 ? 1.4 : 1;
+              drawingCtx.lineWidth = (fib.r === 0.618 || fib.r === 0.5) ? 1.4 : 0.8;
               drawingCtx.setLineDash([4, 4]);
               drawingCtx.beginPath();
               drawingCtx.moveTo(0, fibY);
@@ -7811,7 +8006,7 @@
               drawingCtx.setLineDash([]);
 
               // Fib Label
-              drawingCtx.fillStyle = 'rgba(13, 17, 23, 0.85)';
+              drawingCtx.fillStyle = 'rgba(13, 17, 23, 0.88)';
               drawingCtx.font = '600 10px monospace';
               const txt = `${fib.label} · $${fibPrice.toFixed(2)}`;
               const w = drawingCtx.measureText(txt).width + 8;
@@ -7821,6 +8016,34 @@
             }
           });
         }
+      }
+
+      // 2.5 Module 4: Price Action Pattern Marker on Chart
+      if (typeof indicatorSettings !== "undefined" && indicatorSettings.priceAction && latestPriceActionPattern && rawCandleData && rawCandleData.length && candleSeries && chart && chart.timeScale) {
+        try {
+          const lastC = rawCandleData[rawCandleData.length - 1];
+          const px = chart.timeScale().timeToCoordinate(lastC.time);
+          const py = candleSeries.priceToCoordinate(lastC.high);
+          if (px !== null && py !== null) {
+            const patText = `⚡ ${latestPriceActionPattern.name}`;
+            drawingCtx.font = '700 10px "Space Grotesk", sans-serif';
+            const tw = drawingCtx.measureText(patText).width + 12;
+            const bx = Math.max(10, px - (tw / 2));
+            const by = Math.max(25, py - 26);
+
+            drawingCtx.fillStyle = 'rgba(13, 17, 23, 0.9)';
+            drawingCtx.strokeStyle = latestPriceActionPattern.color || '#ffd700';
+            drawingCtx.lineWidth = 1;
+            drawingCtx.beginPath();
+            if (drawingCtx.roundRect) drawingCtx.roundRect(bx, by, tw, 20, 4);
+            else drawingCtx.rect(bx, by, tw, 20);
+            drawingCtx.fill();
+            drawingCtx.stroke();
+
+            drawingCtx.fillStyle = latestPriceActionPattern.color || '#ffd700';
+            drawingCtx.fillText(patText, bx + 6, by + 14);
+          }
+        } catch (e) {}
       }
 
       // 3. Draw Completed Trend Lines
@@ -8158,6 +8381,361 @@
     };
 
     // ==========================================
+    // 5 CORE QUANT MODULAR ENGINES & SEQUENTIAL PIPELINE
+    // ==========================================
+
+    // Step 1: Smart Money Structure (SMC Zones: OB & FVG)
+    function evaluateSMCModule(candles, currentSpot, atr) {
+      if (!candles || candles.length < 5) return { bias: 'NEUTRAL', score: 0, reason: 'Insufficient bars for SMC', summary: 'Neutral' };
+      const smc = (typeof currentSMCZones !== 'undefined' && currentSMCZones && currentSMCZones.fvgList)
+        ? currentSMCZones 
+        : detectSmartMoneyZones(candles);
+      const recentOBs = (smc.obList || []).slice(-4);
+      const recentFVGs = (smc.fvgList || []).slice(-4);
+
+      const demandOB = recentOBs.find(ob => ob.type === 'DEMAND_OB' && currentSpot >= (ob.bottom - 1.2) && currentSpot <= (ob.top + 1.2));
+      const supplyOB = recentOBs.find(ob => ob.type === 'SUPPLY_OB' && currentSpot >= (ob.bottom - 1.2) && currentSpot <= (ob.top + 1.2));
+      const bullishFVG = recentFVGs.find(f => f.type === 'BULLISH_FVG' && currentSpot >= (f.bottom - 0.8) && currentSpot <= (f.top + 0.8));
+      const bearishFVG = recentFVGs.find(f => f.type === 'BEARISH_FVG' && currentSpot >= (f.bottom - 0.8) && currentSpot <= (f.top + 0.8));
+
+      const currentCandle = candles[candles.length - 1];
+      const isRed = currentCandle.close < currentCandle.open;
+
+      if (demandOB || bullishFVG) {
+        const topVal = demandOB ? demandOB.top : bullishFVG.top;
+        const botVal = demandOB ? demandOB.bottom : bullishFVG.bottom;
+        return {
+          bias: 'BUY',
+          score: 25,
+          reason: `15M Demand Zone retest ($${botVal.toFixed(1)} - $${topVal.toFixed(1)})`,
+          summary: 'Demand Retest'
+        };
+      }
+      if (supplyOB || bearishFVG) {
+        const topVal = supplyOB ? supplyOB.top : bearishFVG.top;
+        if (isRed) {
+          return {
+            bias: 'SELL',
+            score: 25,
+            reason: `15M Supply Zone rejection ($${topVal.toFixed(1)})`,
+            summary: 'Supply Rejection'
+          };
+        } else {
+          return {
+            bias: 'NEUTRAL',
+            score: 10,
+            reason: `Testing Supply Zone ($${topVal.toFixed(1)}) with bullish candle`,
+            summary: 'Testing Supply'
+          };
+        }
+      }
+
+      const ema = (typeof currentEMA20 !== 'undefined' && currentEMA20) ? currentEMA20 : currentSpot;
+      if (currentSpot >= ema + 0.5) {
+        return { bias: 'BUY', score: 15, reason: 'Holding above EMA 20 structure', summary: 'Above EMA 20' };
+      } else if (currentSpot <= ema - 0.5) {
+        return { bias: 'SELL', score: 15, reason: 'Holding below EMA 20 structure', summary: 'Below EMA 20' };
+      }
+      return { bias: 'NEUTRAL', score: 0, reason: 'Holding between SMC Zones', summary: 'Between Zones' };
+    }
+
+    // Step 2: Liquidity & Order Flow Hunter
+    function evaluateLiquidityModule(candles, currentSpot, liquidityPools, activeSweep) {
+      if (activeSweep) {
+        if (activeSweep.type === 'BUY') {
+          return {
+            bias: 'BUY',
+            score: 25,
+            reason: activeSweep.reason || 'Buy-Side Liquidity Raid Confirmed',
+            summary: `${activeSweep.levelCode || 'Low'} Swept`
+          };
+        } else {
+          return {
+            bias: 'SELL',
+            score: 25,
+            reason: activeSweep.reason || 'Sell-Side Liquidity Raid Confirmed',
+            summary: `${activeSweep.levelCode || 'High'} Swept`
+          };
+        }
+      }
+
+      if (liquidityPools) {
+        if (liquidityPools.ash && Math.abs(currentSpot - liquidityPools.ash) <= 1.5) {
+          return { bias: 'SELL', score: 18, reason: 'Testing Asian High Liquidity (Overhead stop run)', summary: 'Near ASH' };
+        }
+        if (liquidityPools.asl && Math.abs(currentSpot - liquidityPools.asl) <= 1.5) {
+          return { bias: 'BUY', score: 18, reason: 'Testing Asian Low Liquidity (Discount absorption)', summary: 'Near ASL' };
+        }
+        if (liquidityPools.eqh && Math.abs(currentSpot - liquidityPools.eqh.level) <= 1.2) {
+          return { bias: 'SELL', score: 18, reason: 'Equal Highs (EQH) Liquidity Pool ceiling', summary: 'Near EQH' };
+        }
+        if (liquidityPools.eql && Math.abs(currentSpot - liquidityPools.eql.level) <= 1.2) {
+          return { bias: 'BUY', score: 18, reason: 'Equal Lows (EQL) Liquidity Pool floor', summary: 'Near EQL' };
+        }
+      }
+
+      return { bias: 'NEUTRAL', score: 0, reason: 'Order Flow holding in balanced territory', summary: 'Neutral Flow' };
+    }
+
+    // Step 3: Auto Fibonacci Golden Pocket
+    function evaluateAutoFibModule(candles, currentSpot) {
+      if (!candles || candles.length < 15) return { bias: 'NEUTRAL', score: 0, reason: 'Insufficient candles for Auto Fib', summary: 'Neutral' };
+      const slice = candles.slice(-50);
+      const swingH = Math.max(...slice.map(c => c.high));
+      const swingL = Math.min(...slice.map(c => c.low));
+      const range = swingH - swingL;
+      if (range <= 0.5) return { bias: 'NEUTRAL', score: 0, reason: 'Fib range too narrow', summary: 'Flat Range' };
+
+      const fib50 = swingL + (range * 0.50);
+      const fib618 = swingL + (range * 0.618);
+      const fib786 = swingL + (range * 0.786);
+      const fib382 = swingL + (range * 0.382);
+
+      const idxH = slice.findIndex(c => c.high === swingH);
+      const idxL = slice.findIndex(c => c.low === swingL);
+      const isUpSwing = idxH > idxL;
+
+      if (isUpSwing) {
+        if (currentSpot >= (fib50 - 1.2) && currentSpot <= (fib786 + 1.2)) {
+          return {
+            bias: 'BUY',
+            score: 20,
+            reason: `In 0.50-0.618 Golden Pocket ($${fib50.toFixed(1)} - $${fib618.toFixed(1)})`,
+            summary: '0.618 Pocket'
+          };
+        } else if (currentSpot > fib786) {
+          return { bias: 'NEUTRAL', score: 5, reason: 'Price near swing high (Premium zone)', summary: 'Deep Premium' };
+        } else {
+          return { bias: 'BUY', score: 10, reason: 'Deep discount below 0.786 Fib', summary: 'Deep Discount' };
+        }
+      } else {
+        if (currentSpot >= (fib382 - 1.2) && currentSpot <= (fib618 + 1.2)) {
+          return {
+            bias: 'SELL',
+            score: 20,
+            reason: `Rejecting 0.50-0.618 Fib retracement ($${fib50.toFixed(1)} - $${fib618.toFixed(1)})`,
+            summary: '0.618 Fib Reject'
+          };
+        }
+      }
+
+      return { bias: 'NEUTRAL', score: 0, reason: `Fib equilibrium at $${fib50.toFixed(1)}`, summary: 'Equilibrium' };
+    }
+
+    // Step 4: Price Action & Candlestick Scanner
+    function evaluatePriceActionModule(candles) {
+      if (!candles || candles.length < 3) return { bias: 'NEUTRAL', score: 0, reason: 'No pattern detected', summary: 'No Pattern' };
+      const c = candles[candles.length - 1];
+      const p = candles[candles.length - 2];
+
+      const range = Math.max(0.001, c.high - c.low);
+      const body = Math.abs(c.close - c.open);
+      const upperWick = c.high - Math.max(c.open, c.close);
+      const lowerWick = Math.min(c.open, c.close) - c.low;
+
+      // Bullish Hammer
+      if (lowerWick >= 1.7 * body && upperWick <= 0.22 * range) {
+        latestPriceActionPattern = { name: 'Hammer Rejection', type: 'BUY', color: '#2ea043' };
+        return { bias: 'BUY', score: 15, reason: 'Bullish Hammer rejection wick confirmed', summary: '🔨 Hammer' };
+      }
+      // Bullish Marubozu
+      if (body >= 0.80 * range && c.close > c.open) {
+        latestPriceActionPattern = { name: 'Bullish Marubozu', type: 'BUY', color: '#2ea043' };
+        return { bias: 'BUY', score: 15, reason: 'Strong Bullish Marubozu expansion bar', summary: '⚡ Marubozu' };
+      }
+      // Dragonfly Doji
+      if (body <= 0.10 * range && lowerWick >= 0.65 * range) {
+        latestPriceActionPattern = { name: 'Dragonfly Doji', type: 'BUY', color: '#2ea043' };
+        return { bias: 'BUY', score: 15, reason: 'Dragonfly Doji bullish reversal absorption', summary: '🐉 Dragonfly' };
+      }
+
+      // Bearish Shooting Star
+      if (upperWick >= 1.7 * body && lowerWick <= 0.22 * range) {
+        latestPriceActionPattern = { name: 'Shooting Star', type: 'SELL', color: '#f85149' };
+        return { bias: 'SELL', score: 15, reason: 'Bearish Shooting Star upper wick rejection', summary: '⭐ Shooting Star' };
+      }
+      // Bearish Marubozu
+      if (body >= 0.80 * range && c.close < c.open) {
+        latestPriceActionPattern = { name: 'Bearish Marubozu', type: 'SELL', color: '#f85149' };
+        return { bias: 'SELL', score: 15, reason: 'Strong Bearish Marubozu sell displacement', summary: '⚡ Marubozu' };
+      }
+      // Gravestone Doji
+      if (body <= 0.10 * range && upperWick >= 0.65 * range) {
+        latestPriceActionPattern = { name: 'Gravestone Doji', type: 'SELL', color: '#f85149' };
+        return { bias: 'SELL', score: 15, reason: 'Gravestone Doji bearish exhaustion rejection', summary: '🪦 Gravestone' };
+      }
+
+      // Check for Double Bottom / Double Top
+      const recent10 = candles.slice(-10);
+      const lows = recent10.map(x => x.low);
+      const highs = recent10.map(x => x.high);
+      const minL = Math.min(...lows);
+      const maxH = Math.max(...highs);
+      const lowsNearMin = recent10.filter(x => Math.abs(x.low - minL) <= 0.60);
+      const highsNearMax = recent10.filter(x => Math.abs(x.high - maxH) <= 0.60);
+
+      if (lowsNearMin.length >= 2 && c.close > c.open) {
+        return { bias: 'BUY', score: 12, reason: 'Double Bottom support defense structure', summary: 'W Double Bottom' };
+      }
+      if (highsNearMax.length >= 2 && c.close < c.open) {
+        return { bias: 'SELL', score: 12, reason: 'Double Top supply defense structure', summary: 'M Double Top' };
+      }
+
+      latestPriceActionPattern = null;
+      return { bias: 'NEUTRAL', score: 0, reason: 'Standard consolidation candle', summary: 'Balanced' };
+    }
+
+    // Step 5: Momentum & Trend Suite (EMA / RSI / MACD)
+    function evaluateMomentumModule(candles, currentSpot) {
+      if (!candles || candles.length < 20) return { bias: 'NEUTRAL', score: 0, reason: 'Insufficient history for Momentum', summary: 'Neutral' };
+      const ema20 = (typeof currentEMA20 !== 'undefined' && currentEMA20) ? currentEMA20 : currentSpot;
+      const ema50 = (typeof currentEMA50 !== 'undefined' && currentEMA50) ? currentEMA50 : currentSpot;
+
+      const ribbonBullish = ema20 >= (ema50 - 0.2);
+      const ribbonBearish = ema20 < (ema50 - 0.2);
+
+      // Simple 14-period RSI calculation
+      const rsiPeriod = 14;
+      const slice14 = candles.slice(-rsiPeriod - 1);
+      let gains = 0, losses = 0;
+      for (let i = 1; i < slice14.length; i++) {
+        const diff = slice14[i].close - slice14[i - 1].close;
+        if (diff >= 0) gains += diff;
+        else losses += Math.abs(diff);
+      }
+      const avgGain = gains / rsiPeriod;
+      const avgLoss = losses / rsiPeriod;
+      const rs = avgLoss === 0 ? 100 : (avgGain / avgLoss);
+      const rsi = 100 - (100 / (1 + rs));
+
+      let buyScore = 0;
+      let sellScore = 0;
+
+      if (ribbonBullish) buyScore += 7;
+      if (ribbonBearish) sellScore += 7;
+
+      if (rsi < 35) buyScore += 8;
+      else if (rsi > 65) sellScore += 8;
+      else if (rsi >= 50 && ribbonBullish) buyScore += 5;
+      else if (rsi < 50 && ribbonBearish) sellScore += 5;
+
+      if (buyScore >= sellScore + 4) {
+        return {
+          bias: 'BUY',
+          score: 15,
+          reason: `EMA 20/50 Ribbon Bullish + RSI (${rsi.toFixed(0)}) Support`,
+          summary: `Ribbon Bull (${rsi.toFixed(0)})`
+        };
+      } else if (sellScore >= buyScore + 4) {
+        return {
+          bias: 'SELL',
+          score: 15,
+          reason: `EMA 20/50 Ribbon Bearish + RSI (${rsi.toFixed(0)}) Rejection`,
+          summary: `Ribbon Bear (${rsi.toFixed(0)})`
+        };
+      }
+      return { bias: 'NEUTRAL', score: 0, reason: `Momentum Neutral (RSI ${rsi.toFixed(0)})`, summary: `RSI ${rsi.toFixed(0)}` };
+    }
+
+    // Dynamic Confluence Arbiter across active modular indicators
+    function evaluateActiveConfluence(candles, currentSpot, atr, liquidityPools, activeSweep) {
+      if (!candles || candles.length < 5) return null;
+      const spot = currentSpot || candles[candles.length - 1].close;
+
+      const smcRes = evaluateSMCModule(candles, spot, atr);
+      const liqRes = evaluateLiquidityModule(candles, spot, liquidityPools, activeSweep);
+      const fibRes = evaluateAutoFibModule(candles, spot);
+      const paRes = evaluatePriceActionModule(candles);
+      const momRes = evaluateMomentumModule(candles, spot);
+
+      const modules = {
+        smcZones: { name: 'SMC Zones', weight: 25, active: !!indicatorSettings.smcZones, result: smcRes },
+        liquidityHunter: { name: 'Liquidity Hunter', weight: 25, active: !!indicatorSettings.liquidityHunter, result: liqRes },
+        autoFib: { name: 'Auto Fib Golden Pocket', weight: 20, active: !!indicatorSettings.autoFib, result: fibRes },
+        priceAction: { name: 'Price Action Scanner', weight: 15, active: !!indicatorSettings.priceAction, result: paRes },
+        momentumSuite: { name: 'Momentum Suite', weight: 15, active: !!indicatorSettings.momentumSuite, result: momRes }
+      };
+
+      let totalActiveWeight = 0;
+      let buyWeight = 0;
+      let sellWeight = 0;
+      let buyReasons = [];
+      let sellReasons = [];
+      let activeModuleCount = 0;
+      let buyCount = 0;
+      let sellCount = 0;
+
+      for (const [key, mod] of Object.entries(modules)) {
+        if (!mod.active) continue;
+        activeModuleCount++;
+        totalActiveWeight += mod.weight;
+
+        if (mod.result.bias === 'BUY') {
+          buyWeight += mod.weight;
+          buyCount++;
+          buyReasons.push(mod.result.reason);
+        } else if (mod.result.bias === 'SELL') {
+          sellWeight += mod.weight;
+          sellCount++;
+          sellReasons.push(mod.result.reason);
+        }
+      }
+
+      if (totalActiveWeight === 0) totalActiveWeight = 100;
+      const buyPct = (buyWeight / totalActiveWeight) * 100;
+      const sellPct = (sellWeight / totalActiveWeight) * 100;
+
+      let finalAction = 'WAIT_FOR_CONFLUENCE';
+      let finalDirection = 'NEUTRAL';
+      let isConflict = false;
+      let primaryReason = '';
+
+      if (buyPct >= 35 && sellPct >= 35) {
+        isConflict = true;
+        finalAction = 'STANDBY_CONFLICT';
+        finalDirection = 'CONFLICT';
+        primaryReason = 'STANDBY / CONFLICT DETECTED: Active indicators are conflicting. Wait for clear retest.';
+      } else if (buyPct >= 75) {
+        finalAction = 'HIGH_CONVICTION_BUY';
+        finalDirection = 'BUY';
+        primaryReason = buyReasons.join(' · ');
+      } else if (sellPct >= 75) {
+        finalAction = 'HIGH_CONVICTION_SELL';
+        finalDirection = 'SELL';
+        primaryReason = sellReasons.join(' · ');
+      } else if (buyPct > sellPct && buyPct >= 50) {
+        finalAction = 'MODERATE_BUY';
+        finalDirection = 'BUY';
+        primaryReason = buyReasons.join(' · ');
+      } else if (sellPct > buyPct && sellPct >= 50) {
+        finalAction = 'MODERATE_SELL';
+        finalDirection = 'SELL';
+        primaryReason = sellReasons.join(' · ');
+      } else {
+        finalAction = 'MONITORING';
+        finalDirection = 'NEUTRAL';
+        primaryReason = 'Monitoring active modular zones for clean entry confirmation.';
+      }
+
+      return {
+        action: finalAction,
+        direction: finalDirection,
+        buyPct: Math.round(buyPct),
+        sellPct: Math.round(sellPct),
+        confidencePct: Math.round(Math.max(buyPct, sellPct)),
+        totalActiveWeight,
+        activeModuleCount,
+        buyCount,
+        sellCount,
+        isConflict,
+        modules,
+        primaryReason,
+        buyReasons,
+        sellReasons
+      };
+    }
+
+    // ==========================================
     // MULTI-AGENT ENSEMBLE CONFLUENCE ARBITER
     // ==========================================
     function evaluateHighAccuracySetup(candles, emaMap, support, resistance, macroState, economicState) {
@@ -8185,6 +8763,10 @@
       currentLiquidityPools = trackInstitutionalLiquidity(candles);
       const activeSweep = detectInstitutionalLiquiditySweeps(candles, currentLiquidityPools);
       window.latestLiquiditySweep = activeSweep;
+
+      // 0.5 5 CORE MODULAR SEQUENTIAL CONFLUENCE
+      const activeModularConfluence = evaluateActiveConfluence(candles, currentPrice, 3.5, currentLiquidityPools, activeSweep);
+      window.activeModularConfluence = activeModularConfluence;
 
       // 1. Calculate true 14-period ATR
       const recent14 = candles.slice(-14);
@@ -9075,6 +9657,17 @@ const ghostCandles = [
         currentEMA20 = emaValues[emaValues.length - 1].value;
       }
 
+      const ema50Values = calculateEMA(data, Math.min(50, data.length));
+      if (ema50Series) {
+        ema50Series.setData(ema50Values);
+      }
+      if (ema50Values.length > 0) {
+        currentEMA50 = ema50Values[ema50Values.length - 1].value;
+      }
+      const isMomActive = !!(indicatorSettings && indicatorSettings.momentumSuite);
+      if (ema20Series) ema20Series.applyOptions({ visible: isMomActive });
+      if (ema50Series) ema50Series.applyOptions({ visible: isMomActive });
+
       const recent40 = data.slice(-40);
       let dynamicLow = Math.min(...recent40.map(c => c.low));
       let dynamicHigh = Math.max(...recent40.map(c => c.high));
@@ -9926,6 +10519,12 @@ const ghostCandles = [
           stDirPill.style.background = 'rgba(248, 81, 73, 0.2)';
           stDirPill.style.color = '#f85149';
           stDirPill.style.borderColor = 'rgba(248, 81, 73, 0.5)';
+        } else if (shortTermSignalLock.status === 'CONFLICT_HOLD') {
+          stDirPill.innerText = 'STANDBY ⚠️';
+          stDirPill.className = 'exec-dir-pill standby';
+          stDirPill.style.background = 'rgba(234, 179, 8, 0.2)';
+          stDirPill.style.color = '#eab308';
+          stDirPill.style.borderColor = 'rgba(234, 179, 8, 0.5)';
         } else {
           stDirPill.innerText = isBuy ? 'BUY' : 'SELL';
           stDirPill.className = 'exec-dir-pill ' + (isBuy ? 'buy' : 'sell');
@@ -9933,6 +10532,36 @@ const ghostCandles = [
           stDirPill.style.color = '';
           stDirPill.style.borderColor = '';
         }
+      }
+
+      // Update Step-by-Step Modular Pipeline Checklist
+      if (window.activeModularConfluence && window.activeModularConfluence.modules) {
+        const mods = window.activeModularConfluence.modules;
+        const updateStep = (id, modKey, defaultLabel) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const mod = mods[modKey];
+          if (!mod || !mod.active) {
+            el.className = 'pipe-step-pill disabled';
+            el.innerText = `${defaultLabel}: OFF`;
+            return;
+          }
+          const bias = mod.result.bias;
+          if (bias === 'BUY') {
+            el.className = 'pipe-step-pill active';
+          } else if (bias === 'SELL') {
+            el.className = 'pipe-step-pill bearish';
+          } else {
+            el.className = 'pipe-step-pill';
+          }
+          el.innerText = `${defaultLabel}: ${mod.result.summary || 'Neutral'}`;
+        };
+
+        updateStep('pipeSMC', 'smcZones', '🏛️ SMC');
+        updateStep('pipeLiq', 'liquidityHunter', '💧 Liq');
+        updateStep('pipeFib', 'autoFib', '🎯 Fib');
+        updateStep('pipePA', 'priceAction', '🕯️ PA');
+        updateStep('pipeMom', 'momentumSuite', '⚡ Mom');
       }
       if (stConfPill) {
         if (shortTermSignalLock.status === 'SL_HIT') {
@@ -12168,68 +12797,77 @@ window.addEventListener('resize', () => {
         <button class="tv-modal-close" onclick="closeIndicatorsModal()">&times;</button>
       </div>
       <div class="tv-modal-body">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #21262d;">
+          <span style="font-size: 11px; font-weight: 700; color: #8b949e; letter-spacing: 0.5px;">5 CORE MODULAR ENGINES</span>
+          <span style="font-size: 11px; font-weight: 700; color: #3fb950;">Sequential Weight Confluence</span>
+        </div>
+
         <div class="indicator-row">
           <div>
-            <b style="color: #58a6ff;">EMA 20 Trend Structure</b>
-            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">20-period Exponential Moving Average for trend direction</p>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #58a6ff;">🏛️ SMC Zones (OB &amp; FVG)</b>
+              <span style="font-size: 9px; background: rgba(88,166,255,0.18); color: #58a6ff; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 25%</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">Fair Value Gaps &amp; Key Supply / Demand Order Blocks</p>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="ind-toggle-ema" checked onchange="toggleIndicator('ema')">
+            <input type="checkbox" id="modal-toggle-smcZones" checked onchange="toggleModularIndicator('smcZones')">
             <span class="toggle-slider"></span>
           </label>
         </div>
 
         <div class="indicator-row">
           <div>
-            <b style="color: var(--gold);">Smart Money Concepts (SMC)</b>
-            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">Unmitigated Fair Value Gaps (FVG) and Order Blocks</p>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #ffd700;">💧 Liquidity &amp; Order Flow Hunter</b>
+              <span style="font-size: 9px; background: rgba(255,215,0,0.18); color: #ffd700; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 25%</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">Session High/Low (ASH/ASL), EQH/EQL &amp; CVD Flow Sweeps</p>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="ind-toggle-smc" checked onchange="toggleIndicator('smc')">
+            <input type="checkbox" id="modal-toggle-liquidityHunter" checked onchange="toggleModularIndicator('liquidityHunter')">
             <span class="toggle-slider"></span>
           </label>
         </div>
 
         <div class="indicator-row">
           <div>
-            <b style="color: #3fb950;">Dynamic Support & Resistance (S1 / R1)</b>
-            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">Calculated liquidity boundaries and key pivot bands</p>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #3fb950;">🎯 Auto Fib Golden Pocket</b>
+              <span style="font-size: 9px; background: rgba(63,185,80,0.18); color: #3fb950; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 20%</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">0.50 - 0.618 Golden Pocket retracement &amp; Deep Discount</p>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="ind-toggle-sr" checked onchange="toggleIndicator('sr')">
+            <input type="checkbox" id="modal-toggle-autoFib" checked onchange="toggleModularIndicator('autoFib')">
             <span class="toggle-slider"></span>
           </label>
         </div>
 
         <div class="indicator-row">
           <div>
-            <b style="color: #f0883e;">UT Bot Quantitative Signals</b>
-            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">ATR Trailing stop and algorithmic Buy/Sell arrows</p>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #f0883e;">🕯️ Price Action &amp; Pattern Scanner</b>
+              <span style="font-size: 9px; background: rgba(240,136,62,0.18); color: #f0883e; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 15%</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">Hammer, Shooting Star, Marubozu, Double Top/Bottom</p>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="ind-toggle-utbot" checked onchange="toggleIndicator('utbot')">
+            <input type="checkbox" id="modal-toggle-priceAction" checked onchange="toggleModularIndicator('priceAction')">
             <span class="toggle-slider"></span>
           </label>
         </div>
 
         <div class="indicator-row">
           <div>
-            <b style="color: #26a69a;">Volume Histogram Panel</b>
-            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">Volume bars colored by buyer vs seller pressure</p>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #a371f7;">⚡ Momentum &amp; Trend Suite</b>
+              <span style="font-size: 9px; background: rgba(163,113,247,0.18); color: #a371f7; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 15%</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">EMA 20/50 Ribbon, RSI 14 Oversold/Overbought &amp; MACD</p>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="ind-toggle-vol" checked onchange="toggleIndicator('vol')">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div class="indicator-row">
-          <div>
-            <b style="color: #bc8cff;">Ghost Candle AI Projection</b>
-            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">Predictive 3-bar target projection path</p>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="ind-toggle-ghost" checked onchange="toggleIndicator('ghost')">
+            <input type="checkbox" id="modal-toggle-momentumSuite" onchange="toggleModularIndicator('momentumSuite')">
             <span class="toggle-slider"></span>
           </label>
         </div>
