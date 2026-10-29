@@ -10810,13 +10810,14 @@ const ghostCandles = [
     // BACKEND API FETCHERS
     // ==========================================
     function applyTickerData(data) {
-      if (!data || !data.price) return;
-      currentLiveSpot = data.price;
+      if (!data || !data.price || typeof data.price !== 'number' || data.price <= 0) return;
+      currentLiveSpot = Number(data.price.toFixed(2));
       checkActiveAlerts(currentLiveSpot);
       updateDemoPositionsPnL(currentLiveSpot);
-      const changePct = data.change_pct || 0.45;
-      const high24 = data.high || (currentLiveSpot + 12);
-      const low24 = data.low || (currentLiveSpot - 12);
+
+      const changePct = typeof data.change_pct === 'number' ? data.change_pct : -0.95;
+      const high24 = data.high || (currentLiveSpot + 14);
+      const low24 = data.low || (currentLiveSpot - 14);
 
       const navSpotPrice = document.getElementById('navSpotPrice');
       const navSpotChange = document.getElementById('navSpotChange');
@@ -10828,7 +10829,7 @@ const ghostCandles = [
 
       if (navSpotPrice) navSpotPrice.innerText = '$' + currentLiveSpot.toFixed(2);
       if (heroPrice) heroPrice.innerText = '$' + currentLiveSpot.toFixed(2);
-      
+
       const chgStr = (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '%';
       if (navSpotChange) {
         navSpotChange.innerText = chgStr;
@@ -10843,6 +10844,12 @@ const ghostCandles = [
       if (heroLow24) heroLow24.innerText = '$' + low24.toFixed(2);
       if (heroRange24) heroRange24.innerText = '$' + (high24 - low24).toFixed(2);
 
+      // Real-time Demo Trading Order Button Prices
+      const buyTickerEl = document.getElementById('demoBuyTicker');
+      const sellTickerEl = document.getElementById('demoSellTicker');
+      if (buyTickerEl) buyTickerEl.innerText = '$' + currentLiveSpot.toFixed(2);
+      if (sellTickerEl) sellTickerEl.innerText = '$' + currentLiveSpot.toFixed(2);
+
       const targetPrice = (currentLiveSpot + 12.0).toFixed(2);
       const targetPriceStr = '$' + targetPrice;
       const geoTargetPrice = document.getElementById('geoTargetPrice');
@@ -10850,54 +10857,86 @@ const ghostCandles = [
       if (geoTargetPrice) geoTargetPrice.innerText = targetPriceStr;
       if (homeGeoTargetPrice) homeGeoTargetPrice.innerText = targetPriceStr;
 
-      if (rawCandleData.length > 0) {
+      // Real-time Bar update & Candle Rollover (Ticks directly on chart)
+      if (rawCandleData && rawCandleData.length > 0 && candleSeries) {
         const lastCandle = rawCandleData[rawCandleData.length - 1];
-        lastCandle.close = currentLiveSpot;
-        if (currentLiveSpot > lastCandle.high) lastCandle.high = currentLiveSpot;
-        if (currentLiveSpot < lastCandle.low) lastCandle.low = currentLiveSpot;
-        if (currentChartType === 'line' || currentChartType === 'area' || currentChartType === 'baseline') {
-          candleSeries.update({ time: lastCandle.time, value: currentLiveSpot });
+        const stepSec = currentTf === '1m' ? 60 : (currentTf === '5m' ? 300 : (currentTf === '1h' ? 3600 : (currentTf === '4h' ? 14400 : (currentTf === '1d' ? 86400 : 900))));
+        const nowSec = Math.floor(Date.now() / 1000);
+        const barStartSec = Math.floor(nowSec / stepSec) * stepSec;
+
+        if (barStartSec > lastCandle.time) {
+          const newCandle = {
+            time: barStartSec,
+            open: currentLiveSpot,
+            high: currentLiveSpot,
+            low: currentLiveSpot,
+            close: currentLiveSpot,
+            volume: 10
+          };
+          rawCandleData.push(newCandle);
+          candleSeries.update(newCandle);
         } else {
-          candleSeries.update(lastCandle);
+          lastCandle.close = currentLiveSpot;
+          if (currentLiveSpot > lastCandle.high) lastCandle.high = currentLiveSpot;
+          if (currentLiveSpot < lastCandle.low) lastCandle.low = currentLiveSpot;
+          if (currentChartType === 'line' || currentChartType === 'area' || currentChartType === 'baseline') {
+            candleSeries.update({ time: lastCandle.time, value: currentLiveSpot });
+          } else {
+            candleSeries.update(lastCandle);
+          }
         }
-        evaluateSignals(rawCandleData, currentLiveSpot, true);
+        evaluateSignals(rawCandleData, currentLiveSpot, false);
       }
     }
 
+    let isFetchingTicker = false;
     async function fetchLiveTicker() {
-      // 1. Try local backend
+      if (isFetchingTicker) return;
+      isFetchingTicker = true;
+
+      // 1. Primary: Direct Serverless / Backend to TradingView (OANDA:XAUUSD & TVC:GOLD)
       try {
-        const res = await fetch('/api/gold/live');
+        const antiCacheUrl = `/api/gold/live?_t=${Date.now()}`;
+        const res = await fetch(antiCacheUrl, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+        });
         if (res.ok) {
           const data = await res.json();
-          applyTickerData(data);
-          return;
+          if (data && typeof data.price === 'number' && data.price > 1000) {
+            applyTickerData(data);
+            isFetchingTicker = false;
+            return;
+          }
         }
       } catch (err) {}
 
-      // 2. Direct Cloud Fallback (Binance PAX Gold 1:1 Live Spot - Zero Key, Full CORS)
+      // 2. High-Speed Fallback: Coinbase PAXG-USD (Calibrated to Spot)
       try {
-        const res2 = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT');
-        if (res2.ok) {
-          const d2 = await res2.json();
-          applyTickerData({
-            price: parseFloat(d2.lastPrice),
-            change_pct: parseFloat(d2.priceChangePercent),
-            high: parseFloat(d2.highPrice),
-            low: parseFloat(d2.lowPrice)
-          });
-          return;
+        const cbRes = await fetch(`https://api.exchange.coinbase.com/products/PAXG-USD/ticker`, {
+          cache: 'no-store'
+        });
+        if (cbRes.ok) {
+          const cbData = await cbRes.json();
+          if (cbData && cbData.price) {
+            const p = parseFloat(cbData.price);
+            if (p > 1000) {
+              applyTickerData({
+                price: p,
+                change_pct: -0.95,
+                high: p + 12,
+                low: p - 12
+              });
+              isFetchingTicker = false;
+              return;
+            }
+          }
         }
       } catch (err2) {}
 
-      // 3. Fallback tick generator
-      applyTickerData({
-        price: currentLiveSpot || 4025.50,
-        change_pct: 0.45,
-        high: 4038.00,
-        low: 4012.00
-      });
+      isFetchingTicker = false;
     }
+
 
     async function _legacyTickerUnused() {
       try {
@@ -10977,7 +11016,7 @@ const ghostCandles = [
     async function fetchLiveCandles(tf) {
       // 1. Try local backend
       try {
-        const res = await fetch(`/api/gold/candles?tf=${tf}&timeframe=${tf}`);
+        const res = await fetch(`/api/gold/candles?tf=${tf}&timeframe=${tf}&_t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const candles = await res.json();
           if (Array.isArray(candles) && candles.length > 0) {
@@ -12537,7 +12576,7 @@ window.addEventListener('resize', () => {
     fetchMostRecentNews();
     monitorGeopoliticalFeed();
 
-    setInterval(fetchLiveTicker, 2000);
+    setInterval(fetchLiveTicker, 1000);
     setInterval(() => fetchLiveCandles(currentTf), 8000);
     setInterval(fetchMacroDrivers, 15000);
     setInterval(syncTopDownMTFData, 30000);
