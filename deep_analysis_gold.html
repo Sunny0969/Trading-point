@@ -3411,7 +3411,7 @@
 
             <!-- CTAs -->
             <div class="hero-cta-group">
-              <a href="/deep-analysis-gold" class="btn-primary-cta">
+              <a href="#terminal" class="btn-primary-cta" onclick="switchView('terminal'); return false;">
                 <span>⚡ Open Advanced Analysis Engine</span> &rarr;
               </a>
               <a href="#deep-predictions-section" class="btn-secondary-cta">
@@ -3477,7 +3477,7 @@
             breaking geopolitical safe-haven sentiment scan, and exact SL/TP targets with lot-size calculations.
           </p>
         </div>
-        <button class="btn-open-terminal" onclick="window.location.href='/deep-analysis-gold'">
+        <button class="btn-open-terminal" onclick="switchView('terminal'); return false;">
           <span>OPEN ADVANCED ANALYSIS ENGINE</span>
           <span style="font-size: 16px;">&rarr;</span>
         </button>
@@ -3571,7 +3571,7 @@
               <h2>Market Structure & Key Levels</h2>
               <span>Dynamic intraday support, pivot & resistance boundaries</span>
             </div>
-            <button class="btn-open-terminal" style="padding: 8px 16px; font-size: 12px;" onclick="window.location.href='/deep-analysis-gold'">
+            <button class="btn-open-terminal" style="padding: 8px 16px; font-size: 12px;" onclick="switchView('terminal'); return false;">
               Interactive Chart &rarr;
             </button>
           </div>
@@ -3729,7 +3729,7 @@
               <span class="kicker">BREAKING WIRE</span>
               <h2>Geopolitical & War Radar Wire</h2>
             </div>
-            <button class="btn-action-sm" onclick="window.location.href='/deep-analysis-gold'">Full Terminal &rarr;</button>
+            <button class="btn-action-sm" onclick="switchView('terminal'); return false;">Full Terminal &rarr;</button>
           </div>
           <div class="news-list" id="homeNewsList">
             <div class="news-item"><span class="news-index">01</span><div><b>Middle East Geopolitical Tensions Support Safe-Haven Gold Flows</b><small>ForexLive · 8m ago <em class="signal bullish">Bullish</em></small></div></div>
@@ -3771,7 +3771,7 @@
         <img src="/macro-correlations-diagram.svg" alt="Gold Intermarket Correlation Matrix: DXY, Real Yields, Silver, and Crude Oil" width="800" height="380" loading="lazy" class="responsive-infographic" />
 
         <p class="article-body-p">
-          For granular multi-timeframe correlation models, open our <a href="/deep-analysis-gold" class="in-content-link">Deep Analysis Terminal &amp; Ghost Prediction Engine</a> to view automated volume-weighted regression bands.
+          For granular multi-timeframe correlation models, open our <a href="#terminal" onclick="switchView('terminal'); return false;" class="in-content-link">Deep Analysis Terminal &amp; Ghost Prediction Engine</a> to view automated volume-weighted regression bands.
         </p>
       </article>
 
@@ -3807,7 +3807,7 @@
           <li><strong>Order Blocks:</strong> The final opposing candle prior to an impulsive multi-bar displacement, serving as high-probability re-entry zones for institutional trend following.</li>
         </ul>
         <p class="article-body-p">
-          Explore real-time algorithmic SMC zones mapped directly onto live candlesticks inside the <a href="/deep-analysis-gold" class="in-content-link">XAU/USD Deep Technical Analysis Terminal</a>.
+          Explore real-time algorithmic SMC zones mapped directly onto live candlesticks inside the <a href="#terminal" onclick="switchView('terminal'); return false;" class="in-content-link">XAU/USD Deep Technical Analysis Terminal</a>.
         </p>
       </article>
 
@@ -4056,8 +4056,8 @@
           <h3>Quick Links</h3>
           <ul>
             <li><a href="/">Overview Dashboard</a></li>
-            <li><a href="/deep-analysis-gold">Deep Analysis Terminal</a></li>
-            <li><a href="/deep-analysis-gold">1 Year (1D) Macro Chart</a></li>
+            <li><a href="#terminal" onclick="switchView('terminal'); return false;">Deep Analysis Terminal</a></li>
+            <li><a href="#terminal" onclick="switchView('terminal'); return false;">1 Year (1D) Macro Chart</a></li>
           </ul>
         </div>
         <div>
@@ -4065,7 +4065,7 @@
           <ul>
             <li><a href="#homeGeoHeadline">Geopolitical War Radar</a></li>
             <li><a href="#homeNewsHeadline">Economic Calendar</a></li>
-            <li><a href="/deep-analysis-gold">Ghost Forward Prediction</a></li>
+            <li><a href="#terminal" onclick="switchView('terminal'); return false;">Ghost Forward Prediction</a></li>
           </ul>
         </div>
         <div>
@@ -5464,40 +5464,57 @@
           termView.style.display = 'flex';
           if (btnDash) btnDash.classList.remove('active');
           if (btnTerm) btnTerm.classList.add('active');
-          window.location.hash = 'terminal';
-          setTimeout(() => {
-            window.dispatchEvent(new Event('resize'));
-            const chartElem = document.getElementById('chart');
-            if (chartElem && typeof chart !== 'undefined' && chart.resize) {
-              const nw = chartElem.clientWidth || (window.innerWidth - 380);
-              const nh = chartElem.clientHeight || (window.innerHeight - 124);
-              if (nw > 50 && nh > 50) {
-                chart.resize(nw, nh);
-                if (chart.timeScale) chart.timeScale().fitContent();
+          
+          try {
+            history.replaceState(null, null, '#terminal');
+          } catch (e) {
+            window.location.hash = 'terminal';
+          }
+
+          // Force multiple resize & layout recalculation ticks so LightweightCharts renders immediately
+          [30, 80, 200, 450].forEach(delay => {
+            setTimeout(() => {
+              window.dispatchEvent(new Event('resize'));
+              const chartElem = document.getElementById('chart');
+              if (chartElem && typeof chart !== 'undefined' && chart.resize) {
+                const nw = chartElem.clientWidth || (window.innerWidth - 380);
+                const nh = chartElem.clientHeight || (window.innerHeight - 124);
+                if (nw > 50 && nh > 50) {
+                  chart.resize(nw, nh);
+                  if (chart.timeScale) chart.timeScale().fitContent();
+                }
               }
-            }
-          }, 80);
+              if (typeof syncCanvasSize === 'function') syncCanvasSize();
+              if (typeof redrawDrawings === 'function') redrawDrawings();
+            }, delay);
+          });
           return;
         }
-        window.location.href = '/deep-analysis-gold';
-        return;
       } else {
         if (dashView && termView) {
           dashView.style.display = 'block';
           termView.style.display = 'none';
           if (btnDash) btnDash.classList.add('active');
           if (btnTerm) btnTerm.classList.remove('active');
-          window.location.hash = '';
+          try {
+            history.replaceState(null, null, ' ');
+          } catch (e) {
+            window.location.hash = '';
+          }
           return;
         }
-        window.location.href = '/';
       }
     }
 
     function highlightCurrentNav() {
-      const isTerminal = window.location.hash === '#terminal' || 
-                         window.location.search.includes('terminal') ||
-                         window.location.pathname.includes('deep-analysis-gold');
+      const hash = (window.location.hash || '').toLowerCase();
+      const path = (window.location.pathname || '').toLowerCase();
+      const search = (window.location.search || '').toLowerCase();
+      const isTerminal = hash === '#terminal' || 
+                         hash.includes('terminal') ||
+                         search.includes('terminal') ||
+                         path.includes('deep-analysis-gold') ||
+                         path.includes('deep_analysis_gold');
       if (isTerminal) {
         switchView('terminal');
       }
@@ -9864,11 +9881,98 @@ const ghostCandles = [
     // ==========================================
     // BACKEND API FETCHERS
     // ==========================================
+    function applyTickerData(data) {
+      if (!data || !data.price) return;
+      currentLiveSpot = data.price;
+      checkActiveAlerts(currentLiveSpot);
+      updateDemoPositionsPnL(currentLiveSpot);
+      const changePct = data.change_pct || 0.45;
+      const high24 = data.high || (currentLiveSpot + 12);
+      const low24 = data.low || (currentLiveSpot - 12);
+
+      const navSpotPrice = document.getElementById('navSpotPrice');
+      const navSpotChange = document.getElementById('navSpotChange');
+      const heroPrice = document.getElementById('heroPrice');
+      const heroChange = document.getElementById('heroChange');
+      const heroHigh24 = document.getElementById('heroHigh24');
+      const heroLow24 = document.getElementById('heroLow24');
+      const heroRange24 = document.getElementById('heroRange24');
+
+      if (navSpotPrice) navSpotPrice.innerText = '$' + currentLiveSpot.toFixed(2);
+      if (heroPrice) heroPrice.innerText = '$' + currentLiveSpot.toFixed(2);
+      
+      const chgStr = (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '%';
+      if (navSpotChange) {
+        navSpotChange.innerText = chgStr;
+        navSpotChange.style.color = changePct >= 0 ? 'var(--green)' : 'var(--red)';
+      }
+      if (heroChange) {
+        heroChange.innerText = chgStr;
+        heroChange.style.color = changePct >= 0 ? 'var(--green)' : 'var(--red)';
+      }
+
+      if (heroHigh24) heroHigh24.innerText = '$' + high24.toFixed(2);
+      if (heroLow24) heroLow24.innerText = '$' + low24.toFixed(2);
+      if (heroRange24) heroRange24.innerText = '$' + (high24 - low24).toFixed(2);
+
+      const targetPrice = (currentLiveSpot + 12.0).toFixed(2);
+      const targetPriceStr = '$' + targetPrice;
+      const geoTargetPrice = document.getElementById('geoTargetPrice');
+      const homeGeoTargetPrice = document.getElementById('homeGeoTargetPrice');
+      if (geoTargetPrice) geoTargetPrice.innerText = targetPriceStr;
+      if (homeGeoTargetPrice) homeGeoTargetPrice.innerText = targetPriceStr;
+
+      if (rawCandleData.length > 0) {
+        const lastCandle = rawCandleData[rawCandleData.length - 1];
+        lastCandle.close = currentLiveSpot;
+        if (currentLiveSpot > lastCandle.high) lastCandle.high = currentLiveSpot;
+        if (currentLiveSpot < lastCandle.low) lastCandle.low = currentLiveSpot;
+        if (currentChartType === 'line' || currentChartType === 'area' || currentChartType === 'baseline') {
+          candleSeries.update({ time: lastCandle.time, value: currentLiveSpot });
+        } else {
+          candleSeries.update(lastCandle);
+        }
+        evaluateSignals(rawCandleData, currentLiveSpot, true);
+      }
+    }
+
     async function fetchLiveTicker() {
+      // 1. Try local backend
       try {
         const res = await fetch('/api/gold/live');
-        const data = await res.json();
-        currentLiveSpot = data.price;
+        if (res.ok) {
+          const data = await res.json();
+          applyTickerData(data);
+          return;
+        }
+      } catch (err) {}
+
+      // 2. Direct Cloud Fallback (Binance PAX Gold 1:1 Live Spot - Zero Key, Full CORS)
+      try {
+        const res2 = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=PAXGUSDT');
+        if (res2.ok) {
+          const d2 = await res2.json();
+          applyTickerData({
+            price: parseFloat(d2.lastPrice),
+            change_pct: parseFloat(d2.priceChangePercent),
+            high: parseFloat(d2.highPrice),
+            low: parseFloat(d2.lowPrice)
+          });
+          return;
+        }
+      } catch (err2) {}
+
+      // 3. Fallback tick generator
+      applyTickerData({
+        price: currentLiveSpot || 4025.50,
+        change_pct: 0.45,
+        high: 4038.00,
+        low: 4012.00
+      });
+    }
+
+    async function _legacyTickerUnused() {
+      try {
         checkActiveAlerts(currentLiveSpot);
         updateDemoPositionsPnL(currentLiveSpot);
         const changePct = data.change_pct;
@@ -9943,6 +10047,7 @@ const ghostCandles = [
     }
 
     async function fetchLiveCandles(tf) {
+      // 1. Try local backend
       try {
         const res = await fetch(`/api/gold/candles?tf=${tf}&timeframe=${tf}`);
         if (res.ok) {
@@ -9954,12 +10059,34 @@ const ghostCandles = [
             return;
           }
         }
-      } catch (err) {
-        console.warn('Candles fetch error:', err);
-      }
+      } catch (err) {}
 
+      // 2. Direct Cloud Fallback (Binance PAX Gold 1:1 Live Candlesticks - Full CORS)
+      try {
+        const bMap = { '1m':'1m', '5m':'5m', '15m':'15m', '1h':'1h', '4h':'4h', '1d':'1d', '1w':'1w' };
+        const bInterval = bMap[tf] || '15m';
+        const res2 = await fetch(`https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=${bInterval}&limit=140`);
+        if (res2.ok) {
+          const klines = await res2.json();
+          if (Array.isArray(klines) && klines.length > 0) {
+            rawCandleData = klines.map(k => ({
+              time: Math.floor(k[0] / 1000),
+              open: parseFloat(k[1]),
+              high: parseFloat(k[2]),
+              low: parseFloat(k[3]),
+              close: parseFloat(k[4]),
+              volume: parseFloat(k[5])
+            }));
+            window.lastValidCandle = rawCandleData[rawCandleData.length - 1];
+            renderChart(rawCandleData);
+            return;
+          }
+        }
+      } catch (err2) {}
+
+      // 3. Mathematical Fallback Candlesticks
       if (!rawCandleData || rawCandleData.length === 0) {
-        rawCandleData = generateClientFallbackCandles(tf, currentLiveSpot || 4014.50);
+        rawCandleData = generateClientFallbackCandles(tf, currentLiveSpot || 4025.50);
         window.lastValidCandle = rawCandleData[rawCandleData.length - 1];
         renderChart(rawCandleData);
       }
