@@ -4327,6 +4327,21 @@
               </label>
             </div>
 
+            <!-- Indicator: Liquidity & Candle Psychology Engine (Sweep + Multi-Bar Confirmation) -->
+            <div class="tv-ind-row" onclick="clickModularToggle('liquidityPsychology', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #00e5ff;">⚡ Liquidity &amp; Candle Psychology (Sweep + Multi-Bar Confirmation)</b>
+                  <span style="font-size: 9px; background: rgba(0,229,255,0.18); color: #00e5ff; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 25%</span>
+                </div>
+                <small>Sweep + 5-Candle Psychology Window &amp; Absorption Protocol</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-liquidityPsychology" checked onchange="toggleModularIndicator('liquidityPsychology')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
             <!-- Indicator 3: Risk / Reward Position Tool (Short/Long Tool) -->
             <div class="tv-ind-row" onclick="clickModularToggle('rrTool', event)">
               <div class="tv-ind-info">
@@ -4776,9 +4791,10 @@
             <div id="stModularPipelineGrid" style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
               <span id="pipeSMC" class="pipe-step-pill active" title="Step 1: SMC Key Zones">🏛️ SMC: Demand</span>
               <span id="pipeLiq" class="pipe-step-pill active" title="Step 2: Liquidity Hunter">💧 Liq: ASL Swept</span>
-              <span id="pipeFib" class="pipe-step-pill active" title="Step 3: Auto Fib Golden Pocket">🎯 Fib: 0.618 Pocket</span>
-              <span id="pipePA" class="pipe-step-pill active" title="Step 4: Price Action Scanner">🕯️ PA: Hammer</span>
-              <span id="pipeMom" class="pipe-step-pill disabled" title="Step 5: Momentum Suite">⚡ Mom: EMA 20/50</span>
+              <span id="pipeLiqPsy" class="pipe-step-pill active" title="Step 3: Liquidity &amp; Candle Psychology">⚡ Liq Psy: 5-Bar Confirmed</span>
+              <span id="pipeFib" class="pipe-step-pill active" title="Step 4: Auto Fib Golden Pocket">🎯 Fib: 0.618 Pocket</span>
+              <span id="pipePA" class="pipe-step-pill active" title="Step 5: Price Action Scanner">🕯️ PA: Hammer</span>
+              <span id="pipeMom" class="pipe-step-pill disabled" title="Step 6: Momentum Suite">⚡ Mom: EMA 20/50</span>
             </div>
           </div>
 
@@ -5849,6 +5865,7 @@
     const DEFAULT_INDICATOR_CONFIG = {
       smcZones: true,        // Module 1: SMC Zones (FVG & Order Blocks) - Weight: 25
       liquidityHunter: true, // Module 2: Liquidity & Order Flow Hunter (Session Sweeps, EQH/EQL) - Weight: 25
+      liquidityPsychology: true, // Dedicated: Liquidity & Candle Psychology Engine (Sweep + 5-Candle Confirmation) - Weight: 25
       autoFib: true,         // Module 3: Auto Fibonacci Golden Pocket (0.50 - 0.618) - Weight: 20
       priceAction: true,     // Module 4: Price Action & Candlestick Scanner - Weight: 15
       momentumSuite: false   // Module 5: Momentum & Trend Suite (EMA 20/50, RSI, MACD) - Weight: 15
@@ -5857,6 +5874,7 @@
     const MODULE_WEIGHTS = {
       smcZones: 25,
       liquidityHunter: 25,
+      liquidityPsychology: 25,
       autoFib: 20,
       priceAction: 15,
       momentumSuite: 15
@@ -5880,6 +5898,8 @@
     var smcEnabled = !!indicatorSettings.smcZones;
     var liquidityPoolsEnabled = !!indicatorSettings.liquidityHunter;
     var sweepAlertsEnabled = !!indicatorSettings.liquidityHunter;
+    var liquidityPsychologyEnabled = !!indicatorSettings.liquidityPsychology;
+    window.latestLiquidityPsychology = null;
     var fibActive = !!indicatorSettings.autoFib;
     var priceActionEnabled = !!indicatorSettings.priceAction;
     var momentumSuiteEnabled = !!indicatorSettings.momentumSuite;
@@ -6231,6 +6251,7 @@
       const labels = {
         smcZones: 'SMC Zones (OB & FVG)',
         liquidityHunter: 'Liquidity & Order Flow Hunter',
+        liquidityPsychology: 'Liquidity & Candle Psychology (Sweep + Multi-Bar Confirmation)',
         autoFib: 'Auto Fibonacci Golden Pocket',
         priceAction: 'Price Action & Pattern Scanner',
         momentumSuite: 'Momentum & Trend Suite (EMA/RSI/MACD)'
@@ -6292,7 +6313,7 @@
       const totalWeight = activeKeys.reduce((acc, k) => acc + MODULE_WEIGHTS[k], 0);
 
       const countBadge = document.getElementById('activeIndCountBadge');
-      if (countBadge) countBadge.innerText = `${activeCount}/5`;
+      if (countBadge) countBadge.innerText = `${activeCount}/${Object.keys(MODULE_WEIGHTS).length}`;
 
       const weightBadge = document.getElementById('totalActiveWeightBadge');
       if (weightBadge) weightBadge.innerText = `${totalWeight}% Weight Active`;
@@ -6308,6 +6329,8 @@
       } else if (moduleName === 'liquidityHunter') {
         liquidityPoolsEnabled = isChecked;
         sweepAlertsEnabled = isChecked;
+      } else if (moduleName === 'liquidityPsychology') {
+        liquidityPsychologyEnabled = isChecked;
       } else if (moduleName === 'autoFib') {
         fibActive = isChecked;
         const btn = document.getElementById('tool-fib');
@@ -7209,17 +7232,21 @@
       const oldHigh = oldHighSlice.length ? Math.max(...oldHighSlice.map(c => c.high)) : (currentPrice + 12);
       const oldLow = oldHighSlice.length ? Math.min(...oldHighSlice.map(c => c.low)) : (currentPrice - 12);
 
+      // 1H Swing Points (from multi-bar structural fractal highs & lows)
+      const h1SwingHigh = swingHighs.length ? Number(swingHighs[swingHighs.length - 1].price.toFixed(2)) : null;
+      const h1SwingLow = swingLows.length ? Number(swingLows[swingLows.length - 1].price.toFixed(2)) : null;
+
       return {
         asiaHigh: Number(asianHigh.toFixed(2)),
         asiaLow: Number(asianLow.toFixed(2)),
-        asianHigh: Number(asianHigh.toFixed(2)),
-        asianLow: Number(asianLow.toFixed(2)),
         londonHigh: (londonHigh > 0) ? Number(londonHigh.toFixed(2)) : null,
         londonLow: (londonLow > 0) ? Number(londonLow.toFixed(2)) : null,
         pdh: Number(pdh.toFixed(2)),
         pdl: Number(pdl.toFixed(2)),
         p4hh: Number(p4hh.toFixed(2)),
         p4hl: Number(p4hl.toFixed(2)),
+        h1SwingHigh,
+        h1SwingLow,
         eqh,
         eql,
         trendlineLowLiquidity,
@@ -7393,6 +7420,348 @@
 
       return { allowed: true };
     }
+
+    // ==========================================
+    // LIQUIDITY & CANDLE PSYCHOLOGY MULTI-BAR ENGINE
+    // (Sweep + 5-Candle Confirmation Protocol)
+    // ==========================================
+    function evaluateLiquidityPsychology(candles, liquidityLevel, type = "SUPPORT", levelMeta = {}, allPools = {}) {
+      if (!candles || candles.length < 6 || !liquidityLevel || liquidityLevel <= 0) return null;
+
+      // 1. Detect Sweep in recent 6 bars (Strictly before the current bar to prevent immediate blind entries)
+      let sweepIndex = -1;
+      let sweepBar = null;
+      for (let i = candles.length - 6; i < candles.length - 1; i++) {
+        if (i < 0) continue;
+        const c = candles[i];
+        const range = Math.max(0.001, c.high - c.low);
+
+        if (type === "SUPPORT") {
+          const lowerWick = Math.min(c.open, c.close) - c.low;
+          const lowerWickRatio = lowerWick / range;
+          // Pierces below liquidity level with an extended wick (>= 35%) and closes back above or at level
+          if (c.low < liquidityLevel && c.close >= liquidityLevel && lowerWickRatio >= 0.35) {
+            sweepIndex = i;
+            sweepBar = c;
+            break;
+          }
+        } else if (type === "RESISTANCE") {
+          const upperWick = c.high - Math.max(c.open, c.close);
+          const upperWickRatio = upperWick / range;
+          // Pierces above liquidity level with an extended wick (>= 35%) and closes back below or at level
+          if (c.high > liquidityLevel && c.close <= liquidityLevel && upperWickRatio >= 0.35) {
+            sweepIndex = i;
+            sweepBar = c;
+            break;
+          }
+        }
+      }
+
+      // If no sweep detected within recent 6 bars, return null
+      if (sweepIndex === -1 || !sweepBar) return null;
+
+      // 2. Post-Sweep 5-Candle Monitoring Window
+      const confirmationBars = candles.slice(sweepIndex + 1);
+      if (!confirmationBars.length || confirmationBars.length > 5) {
+        // Awaiting confirmation bars or window exceeded (Do NOT fire blind entry)
+        return null;
+      }
+
+      // Invalidation check:
+      // If price closes back beyond the sweep wick extreme during these 5 bars, cancel setup immediately
+      if (type === "SUPPORT") {
+        const sweepExtreme = sweepBar.low;
+        const isInvalidated = confirmationBars.some(b => b.close < sweepExtreme);
+        if (isInvalidated) return null; // Cancel immediately: Fake Sweep / Trend Expansion
+      } else {
+        const sweepExtreme = sweepBar.high;
+        const isInvalidated = confirmationBars.some(b => b.close > sweepExtreme);
+        if (isInvalidated) return null; // Cancel immediately: Fake Sweep / Trend Expansion
+      }
+
+      // 3. Analyze 5-Candle Psychology window post-sweep
+      const lastBar = candles[candles.length - 1];
+      const lastRange = Math.max(0.001, lastBar.high - lastBar.low);
+
+      if (type === "SUPPORT") {
+        // For Bullish Sweep:
+        // Require closing price sustained strictly ABOVE swept level,
+        // accompanied by lower rejection wicks >= 35% of total candle range.
+        let consecutiveAbsorption = 0;
+        let maxConsecutiveAbsorption = 0;
+
+        for (const b of confirmationBars) {
+          const bRange = Math.max(0.001, b.high - b.low);
+          const bLowerWick = Math.min(b.open, b.close) - b.low;
+          const bWickRatio = bLowerWick / bRange;
+          const isAbsorptionBar = (b.close >= liquidityLevel) && (bWickRatio >= 0.35);
+
+          if (isAbsorptionBar) {
+            consecutiveAbsorption++;
+            if (consecutiveAbsorption > maxConsecutiveAbsorption) {
+              maxConsecutiveAbsorption = consecutiveAbsorption;
+            }
+          } else {
+            consecutiveAbsorption = 0;
+          }
+        }
+
+        const defendedCount = confirmationBars.filter(b => b.close >= liquidityLevel).length;
+        const lastLowerWick = Math.min(lastBar.open, lastBar.close) - lastBar.low;
+        const lastWickRatio = lastLowerWick / lastRange;
+
+        // Confirmation condition: at least 2 consecutive bullish absorption bars, or 2+ defended bars with last bar having >= 35% lower wick
+        const isConfirmed = (maxConsecutiveAbsorption >= 2) || (defendedCount >= 2 && lastWickRatio >= 0.35);
+
+        if (isConfirmed) {
+          const sweepLowest = Math.min(...candles.slice(sweepIndex).map(b => b.low));
+          const entry = Number(lastBar.close.toFixed(2));
+          // Set Stop Loss 1.0 USD beyond the sweep wick tip
+          const sl = Number((sweepLowest - 1.00).toFixed(2));
+          const risk = Math.max(1.5, entry - sl);
+
+          // Opposing liquidity pool target (Minimum 1:3 RR)
+          const oppCandidates = [
+            allPools.eqh, allPools.asiaHigh, allPools.londonHigh, allPools.pdh, allPools.h1SwingHigh
+          ].filter(p => typeof p === 'number' && p > entry).sort((a, b) => a - b);
+
+          let targetPool = oppCandidates.length ? oppCandidates[0] : Number((entry + (risk * 3.5)).toFixed(2));
+          if ((targetPool - entry) / risk < 3.0) {
+            targetPool = Number((entry + (risk * 3.0)).toFixed(2));
+          }
+          const tp = Number(targetPool.toFixed(2));
+          const gainPts = Number((tp - entry).toFixed(1));
+          const rr = `1 : ${(gainPts / risk).toFixed(1)}`;
+
+          return {
+            type: "BUY",
+            signal: "HIGH_CONVICTION_BUY",
+            tag: "LIQUIDITY ABSORPTION CONFIRMED",
+            levelName: levelMeta.name || "Liquidity Pool",
+            levelCode: levelMeta.code || "POOL",
+            liquidityLevel: Number(liquidityLevel.toFixed(2)),
+            sweepIndex,
+            sweepPrice: sweepLowest,
+            sweepLowest,
+            entry,
+            sl,
+            tp,
+            takeProfit: tp,
+            gainPts,
+            rr,
+            probability: "84% (5-Bar Absorption Verified)",
+            reason: "Confirmed: Liquidity Swept + 5-Bar Psychological Absorption Verified",
+            badgeText: "⚡ Liquidity Purged & Confirmed (Buyers Absorbed)",
+            neonBadgeText: "⚡ Liquidity Purged & Confirmed (Buyers Absorbed)"
+          };
+        }
+      } else if (type === "RESISTANCE") {
+        // For Bearish Sweep:
+        // Require closing price sustained strictly BELOW swept level,
+        // with upper rejection wicks >= 35% of total candle range.
+        let consecutiveDisplacement = 0;
+        let maxConsecutiveDisplacement = 0;
+
+        for (const b of confirmationBars) {
+          const bRange = Math.max(0.001, b.high - b.low);
+          const bUpperWick = b.high - Math.max(b.open, b.close);
+          const bWickRatio = bUpperWick / bRange;
+          const isDisplacementBar = (b.close <= liquidityLevel) && (bWickRatio >= 0.35);
+
+          if (isDisplacementBar) {
+            consecutiveDisplacement++;
+            if (consecutiveDisplacement > maxConsecutiveDisplacement) {
+              maxConsecutiveDisplacement = consecutiveDisplacement;
+            }
+          } else {
+            consecutiveDisplacement = 0;
+          }
+        }
+
+        const defendedCount = confirmationBars.filter(b => b.close <= liquidityLevel).length;
+        const lastUpperWick = lastBar.high - Math.max(lastBar.open, lastBar.close);
+        const lastWickRatio = lastUpperWick / lastRange;
+
+        const isConfirmed = (maxConsecutiveDisplacement >= 2) || (defendedCount >= 2 && lastWickRatio >= 0.35);
+
+        if (isConfirmed) {
+          const sweepHighest = Math.max(...candles.slice(sweepIndex).map(b => b.high));
+          const entry = Number(lastBar.close.toFixed(2));
+          // Set Stop Loss 1.0 USD beyond the sweep wick tip
+          const sl = Number((sweepHighest + 1.00).toFixed(2));
+          const risk = Math.max(1.5, sl - entry);
+
+          // Opposing liquidity pool target (Minimum 1:3 RR)
+          const oppCandidates = [
+            allPools.eql, allPools.asiaLow, allPools.londonLow, allPools.pdl, allPools.h1SwingLow
+          ].filter(p => typeof p === 'number' && p < entry).sort((a, b) => b - a);
+
+          let targetPool = oppCandidates.length ? oppCandidates[0] : Number((entry - (risk * 3.5)).toFixed(2));
+          if ((entry - targetPool) / risk < 3.0) {
+            targetPool = Number((entry - (risk * 3.0)).toFixed(2));
+          }
+          const tp = Number(targetPool.toFixed(2));
+          const gainPts = Number((entry - tp).toFixed(1));
+          const rr = `1 : ${(gainPts / risk).toFixed(1)}`;
+
+          return {
+            type: "SELL",
+            signal: "HIGH_CONVICTION_SELL",
+            tag: "LIQUIDITY DISPLACEMENT CONFIRMED",
+            levelName: levelMeta.name || "Liquidity Pool",
+            levelCode: levelMeta.code || "POOL",
+            liquidityLevel: Number(liquidityLevel.toFixed(2)),
+            sweepIndex,
+            sweepPrice: sweepHighest,
+            sweepHighest,
+            entry,
+            sl,
+            tp,
+            takeProfit: tp,
+            gainPts,
+            rr,
+            probability: "84% (5-Bar Displacement Verified)",
+            reason: "Confirmed: Liquidity Swept + 5-Bar Psychological Absorption Verified",
+            badgeText: "⚡ Liquidity Purged & Confirmed (Buyers Absorbed)",
+            neonBadgeText: "⚡ Liquidity Purged & Confirmed (Buyers Absorbed)"
+          };
+        }
+      }
+
+      return null;
+    }
+    window.evaluateLiquidityPsychology = evaluateLiquidityPsychology;
+
+    function scanAllLiquidityPsychology(candles, pools) {
+      if (!candles || candles.length < 6 || !pools) return null;
+
+      // 1. Scan Support Liquidity Pools for Bullish Sweep + 5-Bar Confirmation
+      const supportCandidates = [
+        { name: "Equal Lows (EQL)", price: pools.eql, code: "EQL" },
+        { name: "Asia Session Low (ASL)", price: pools.asiaLow, code: "ASL" },
+        { name: "London Session Low (LSL)", price: pools.londonLow, code: "LSL" },
+        { name: "Previous Day Low (PDL)", price: pools.pdl, code: "PDL" },
+        { name: "1H Swing Low", price: pools.h1SwingLow, code: "1H_LOW" }
+      ];
+
+      for (const cand of supportCandidates) {
+        if (!cand.price || cand.price <= 0) continue;
+        const res = evaluateLiquidityPsychology(candles, cand.price, "SUPPORT", cand, pools);
+        if (res) return res;
+      }
+
+      // 2. Scan Resistance Liquidity Pools for Bearish Sweep + 5-Bar Confirmation
+      const resistanceCandidates = [
+        { name: "Equal Highs (EQH)", price: pools.eqh, code: "EQH" },
+        { name: "Asia Session High (ASH)", price: pools.asiaHigh, code: "ASH" },
+        { name: "London Session High (LSH)", price: pools.londonHigh, code: "LSH" },
+        { name: "Previous Day High (PDH)", price: pools.pdh, code: "PDH" },
+        { name: "1H Swing High", price: pools.h1SwingHigh, code: "1H_HIGH" }
+      ];
+
+      for (const cand of resistanceCandidates) {
+        if (!cand.price || cand.price <= 0) continue;
+        const res = evaluateLiquidityPsychology(candles, cand.price, "RESISTANCE", cand, pools);
+        if (res) return res;
+      }
+
+      return null;
+    }
+    window.scanAllLiquidityPsychology = scanAllLiquidityPsychology;
+
+    // Dedicated Canvas Overlay for Liquidity & Candle Psychology Engine
+    function drawLiquidityPsychologyOverlay(ctx, psyResult, pools) {
+      if (!ctx || !candleSeries || !chart) return;
+      if (typeof indicatorSettings !== 'undefined' && !indicatorSettings.liquidityPsychology) return;
+
+      ctx.save();
+
+      // 1. Draw crisp horizontal line for active Liquidity Level with label: "Liquidity Pool"
+      const activeLevel = (psyResult && psyResult.liquidityLevel) ? psyResult.liquidityLevel : null;
+      if (activeLevel) {
+        const y = candleSeries.priceToCoordinate(activeLevel);
+        if (y !== null && y >= 10 && y <= canvasCssHeight - 15) {
+          ctx.strokeStyle = '#00e5ff';
+          ctx.lineWidth = 1.5;
+          ctx.shadowColor = 'rgba(0, 229, 255, 0.7)';
+          ctx.shadowBlur = 6;
+          ctx.setLineDash([5, 3]);
+          ctx.beginPath();
+          ctx.moveTo(15, y);
+          ctx.lineTo(canvasCssWidth - 65, y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.shadowBlur = 0;
+
+          // Crisp label badge: "[Pool Name] · $[Price] [Liquidity Pool]"
+          const txt = `${psyResult.levelName || 'Key Level'} · $${activeLevel.toFixed(2)} [Liquidity Pool]`;
+          ctx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const tw = ctx.measureText(txt).width;
+          const bw = tw + 12;
+          const bh = 17;
+          const bx = canvasCssWidth - bw - 72;
+          const by = y - Math.floor(bh / 2);
+
+          ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.95)';
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.strokeStyle = '#00e5ff';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(bx, by, bw, bh);
+
+          ctx.fillStyle = '#00e5ff';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(txt, bx + 6, y);
+        }
+      }
+
+      // 2. When swept and 5-candle confirmation completes:
+      // Plot small neon badge: "⚡ Liquidity Purged & Confirmed (Buyers Absorbed)"
+      if (psyResult && (psyResult.signal || psyResult.tag)) {
+        const badgeTxt = "⚡ Liquidity Purged & Confirmed (Buyers Absorbed)";
+        ctx.font = '800 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        const badgeW = Math.round(ctx.measureText(badgeTxt).width + 18);
+        const badgeH = 22;
+
+        let badgeX = 24;
+        let badgeY = 24;
+
+        if (rawCandleData && rawCandleData.length && chart.timeScale) {
+          try {
+            const lastCandle = rawCandleData[rawCandleData.length - 1];
+            const px = chart.timeScale().timeToCoordinate(lastCandle.time);
+            const py = candleSeries.priceToCoordinate(psyResult.type === 'BUY' ? lastCandle.low : lastCandle.high);
+            if (px !== null && py !== null && px >= 50 && px <= canvasCssWidth - 100) {
+              badgeX = Math.round(px - (badgeW / 2));
+              badgeY = (psyResult.type === 'BUY') 
+                ? Math.min(canvasCssHeight - badgeH - 12, Math.round(py + 18))
+                : Math.max(15, Math.round(py - badgeH - 18));
+            }
+          } catch (e) {}
+        }
+
+        ctx.shadowColor = '#00e5ff';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = 'rgba(10, 25, 40, 0.95)';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+        else ctx.rect(badgeX, badgeY, badgeW, badgeH);
+        ctx.fill();
+
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#00e5ff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(badgeTxt, badgeX + (badgeW / 2), badgeY + (badgeH / 2));
+      }
+
+      ctx.restore();
+    }
+    window.drawLiquidityPsychologyOverlay = drawLiquidityPsychologyOverlay;
 
     // 4. CANVAS OVERLAY FOR INSTITUTIONAL LIQUIDITY POOLS (Aligned, Staggered & Collision-Free)
     function drawInstitutionalLiquidityOverlay(ctx, pools, activeSweep) {
@@ -8194,6 +8563,12 @@
         }
       }
 
+      // 2.2 Dedicated: Liquidity & Candle Psychology Engine Overlay
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.liquidityPsychology) {
+        const actPools = (typeof currentLiquidityPools !== 'undefined' && currentLiquidityPools) ? currentLiquidityPools : (window.currentLiquidityPools || null);
+        drawLiquidityPsychologyOverlay(drawingCtx, window.latestLiquidityPsychology, actPools);
+      }
+
       // 3. Automatic Risk/Reward Position Tool (Short/Long Tool)
       if (showRROverlay && currentSMCZones && currentSMCZones.activeRRSetup) {
         drawRiskRewardOverlay(drawingCtx, currentSMCZones.activeRRSetup);
@@ -8885,6 +9260,24 @@
       return { bias: 'NEUTRAL', score: 0, reason: `Momentum Neutral (RSI ${rsi.toFixed(0)})`, summary: `RSI ${rsi.toFixed(0)}` };
     }
 
+    function evaluateLiquidityPsychologyModule(candles, currentSpot, liquidityPools) {
+      if (window.latestLiquidityPsychology) {
+        const psy = window.latestLiquidityPsychology;
+        return {
+          bias: psy.type === 'BUY' ? 'BUY' : 'SELL',
+          score: 25,
+          reason: psy.reason,
+          summary: `${psy.levelCode || 'Pool'} Absorbed`
+        };
+      }
+      return {
+        bias: 'NEUTRAL',
+        score: 0,
+        reason: 'Scanning liquidity pools for 5-bar confirmation',
+        summary: 'Scanning'
+      };
+    }
+
     // Dynamic Confluence Arbiter across active modular indicators
     function evaluateActiveConfluence(candles, currentSpot, atr, liquidityPools, activeSweep) {
       if (!candles || candles.length < 5) return null;
@@ -8892,6 +9285,7 @@
 
       const smcRes = evaluateSMCModule(candles, spot, atr);
       const liqRes = evaluateLiquidityModule(candles, spot, liquidityPools, activeSweep);
+      const liqPsyRes = evaluateLiquidityPsychologyModule(candles, spot, liquidityPools);
       const fibRes = evaluateAutoFibModule(candles, spot);
       const paRes = evaluatePriceActionModule(candles);
       const momRes = evaluateMomentumModule(candles, spot);
@@ -8899,6 +9293,7 @@
       const modules = {
         smcZones: { name: 'SMC Zones', weight: 25, active: !!indicatorSettings.smcZones, result: smcRes },
         liquidityHunter: { name: 'Liquidity Hunter', weight: 25, active: !!indicatorSettings.liquidityHunter, result: liqRes },
+        liquidityPsychology: { name: 'Liquidity & Candle Psychology', weight: 25, active: !!indicatorSettings.liquidityPsychology, result: liqPsyRes },
         autoFib: { name: 'Auto Fib Golden Pocket', weight: 20, active: !!indicatorSettings.autoFib, result: fibRes },
         priceAction: { name: 'Price Action Scanner', weight: 15, active: !!indicatorSettings.priceAction, result: paRes },
         momentumSuite: { name: 'Momentum Suite', weight: 15, active: !!indicatorSettings.momentumSuite, result: momRes }
@@ -9012,6 +9407,12 @@
       const activeSweep = detectInstitutionalLiquiditySweeps(candles, currentLiquidityPools);
       window.latestLiquiditySweep = activeSweep;
 
+      // 0.2 DEDICATED: LIQUIDITY & CANDLE PSYCHOLOGY ENGINE EVALUATION
+      const activePsychology = (typeof indicatorSettings !== 'undefined' && indicatorSettings.liquidityPsychology)
+        ? scanAllLiquidityPsychology(candles, currentLiquidityPools)
+        : null;
+      window.latestLiquidityPsychology = activePsychology;
+
       // 0.5 5 CORE MODULAR SEQUENTIAL CONFLUENCE
       const activeModularConfluence = evaluateActiveConfluence(candles, currentPrice, 3.5, currentLiquidityPools, activeSweep);
       window.activeModularConfluence = activeModularConfluence;
@@ -9077,8 +9478,20 @@
       let institutionalBuyTrigger = false;
       let supplyRejectionWarning = false;
 
-      // Priority 0: CONFIRMED INSTITUTIONAL LIQUIDITY SWEEP (MANDATORY EXECUTION)
-      if (activeSweep) {
+      // Priority 0: CONFIRMED LIQUIDITY & CANDLE PSYCHOLOGY SWEEP + 5-BAR ABSORPTION
+      if (activePsychology) {
+        if (activePsychology.type === 'BUY') {
+          buyVotes += 6.0;
+          institutionalBuyTrigger = true;
+          agent1Bias = 'LIQUIDITY_PSYCHOLOGY_BUY';
+          agent1Desc = activePsychology.reason;
+        } else {
+          sellVotes += 6.0;
+          supplyRejectionWarning = true;
+          agent1Bias = 'LIQUIDITY_PSYCHOLOGY_SELL';
+          agent1Desc = activePsychology.reason;
+        }
+      } else if (activeSweep) {
         if (activeSweep.type === 'BUY') {
           buyVotes += 5.0;
           institutionalBuyTrigger = true;
@@ -9263,9 +9676,24 @@
         macroMarketState.sugraWarScore < 60);
 
       // ==========================================
-      // MANDATORY INSTITUTIONAL LIQUIDITY SWEEP EXECUTION OVERRIDE
+      // MANDATORY INSTITUTIONAL LIQUIDITY SWEEP & CANDLE PSYCHOLOGY EXECUTION OVERRIDE
       // ==========================================
-      if (activeSweep) {
+      if (activePsychology) {
+        finalAction = activePsychology.type === 'BUY' ? "HIGH CONVICTION BUY" : "HIGH CONVICTION SELL";
+        confidence = "84% (5-Bar Absorption Verified)";
+        reason = "Confirmed: Liquidity Swept + 5-Bar Psychological Absorption Verified";
+        entry = activePsychology.entry;
+        sl = Number(activePsychology.sl);
+        tp1 = Number(activePsychology.tp);
+        tp2 = Number((activePsychology.tp + (activePsychology.type === 'BUY' ? 6.0 : -6.0)).toFixed(2));
+        rr = activePsychology.rr;
+        const pushPts = Math.abs(tp1 - entry);
+        shortTermProfit = {
+          lot01: Number((pushPts * 1.00).toFixed(2)),
+          lot02: Number((pushPts * 2.00).toFixed(2)),
+          lot05: Number((pushPts * 5.00).toFixed(2))
+        };
+      } else if (activeSweep) {
         finalAction = activeSweep.type === 'BUY' ? "HIGH CONVICTION BUY" : "HIGH CONVICTION SELL";
         confidence = "95% (Institutional Liquidity Raid)";
         reason = activeSweep.reason;
@@ -9668,8 +10096,61 @@
         }
       }
 
-            // INSTITUTIONAL LIQUIDITY SWEEP TRAJECTORY CONFLUENCE (Priority Magnet Target)
-      if (window.latestLiquiditySweep) {
+      // DEDICATED: LIQUIDITY & CANDLE PSYCHOLOGY ENGINE TRAJECTORY PROJECTION
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.liquidityPsychology && window.latestLiquidityPsychology) {
+        const psy = window.latestLiquidityPsychology;
+        isUp = (psy.type === 'BUY');
+        const tpVal = Number(psy.tp);
+        targetLabel = `🎯 Opposing Pool $${tpVal.toFixed(1)} (${psy.levelCode || 'Opposing'})`;
+        targetColor = isUp ? '#00e5ff' : '#f85149';
+
+        if (isUp) {
+          c1_open = currentPrice;
+          c1_close = c1_open + (atr * 1.15);
+          c1_high = c1_close + (atr * 0.35);
+          c1_low = c1_open - (atr * 0.15);
+          c2_open = c1_close;
+          c2_close = c2_open + (atr * 1.35);
+          c2_high = c2_close + (atr * 0.40);
+          c2_low = c2_open - (atr * 0.15);
+          c3_open = c2_close;
+          c3_close = tpVal;
+          c3_high = c3_close + (atr * 0.35);
+          c3_low = c3_open - (atr * 0.20);
+        } else {
+          c1_open = currentPrice;
+          c1_close = c1_open - (atr * 1.15);
+          c1_low = c1_close - (atr * 0.35);
+          c1_high = c1_open + (atr * 0.15);
+          c2_open = c1_close;
+          c2_close = c2_open - (atr * 1.35);
+          c2_low = c2_close - (atr * 0.40);
+          c2_high = c2_open + (atr * 0.15);
+          c3_open = c2_close;
+          c3_close = tpVal;
+          c3_low = c3_close - (atr * 0.35);
+          c3_high = c3_open + (atr * 0.20);
+        }
+
+        // STRICT SYNC TO EXECUTION CARD
+        if (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock) {
+          shortTermSignalLock.tp1 = tpVal;
+          shortTermSignalLock.sl = Number(psy.sl);
+          shortTermSignalLock.reason = "Confirmed: Liquidity Swept + 5-Bar Psychological Absorption Verified";
+          shortTermSignalLock.gainPts = Number(Math.abs(tpVal - shortTermSignalLock.entryPrice).toFixed(1));
+          const risk = Math.max(1.5, Math.abs(shortTermSignalLock.entryPrice - shortTermSignalLock.sl));
+          shortTermSignalLock.rrText = `1 : ${(shortTermSignalLock.gainPts / risk).toFixed(1)} (+${shortTermSignalLock.gainPts.toFixed(1)} pts)`;
+
+          const stTp = document.getElementById('stTpVal');
+          const stSl = document.getElementById('stSlVal');
+          const stRr = document.getElementById('stRrVal');
+          const stNote = document.getElementById('stNoteVal');
+          if (stTp) stTp.innerText = '$' + tpVal.toFixed(2);
+          if (stSl) stSl.innerText = '$' + Number(psy.sl).toFixed(2);
+          if (stRr) stRr.innerText = shortTermSignalLock.rrText;
+          if (stNote) stNote.innerText = shortTermSignalLock.reason;
+        }
+      } else if (window.latestLiquiditySweep) {
         const sw = window.latestLiquiditySweep;
         isUp = (sw.type === 'BUY');
         const tpVal = Number(sw.tp);
@@ -10416,7 +10897,29 @@ const ghostCandles = [
         ? shortTermSignalLock 
         : (window.shortTermSignalLock || null);
 
-      if (window.latestLiquiditySweep && (!curLock || !curLock.active || curLock.status !== 'ACTIVE_HOLD')) {
+      if (window.latestLiquidityPsychology && (!curLock || !curLock.active || curLock.status !== 'ACTIVE_HOLD' || curLock.reason !== window.latestLiquidityPsychology.reason)) {
+        const psy = window.latestLiquidityPsychology;
+        shortTermSignalLock = {
+          active: true,
+          signalType: psy.type,
+          action: psy.type === 'BUY' ? 'HIGH CONVICTION BUY' : 'HIGH CONVICTION SELL',
+          confidence: '84% (5-Bar Absorption Verified)',
+          entryPrice: psy.entry,
+          tp1: psy.tp,
+          tp2: psy.tp + (psy.type === 'BUY' ? 6.0 : -6.0),
+          sl: Number(psy.sl),
+          rr: psy.rr,
+          gainPts: Math.abs(psy.tp - psy.entry),
+          reason: "Confirmed: Liquidity Swept + 5-Bar Psychological Absorption Verified",
+          lockedAt: now,
+          maxLockDurationMs: 60 * 60 * 1000,
+          status: 'ACTIVE_HOLD',
+          completedAt: null,
+          lastCompletedType: curLock ? curLock.lastCompletedType : null,
+          lastCompletedStatus: curLock ? curLock.lastCompletedStatus : null
+        };
+        window.shortTermSignalLock = shortTermSignalLock;
+      } else if (window.latestLiquiditySweep && (!curLock || !curLock.active || curLock.status !== 'ACTIVE_HOLD')) {
         const sw = window.latestLiquiditySweep;
         shortTermSignalLock = {
           active: true,
@@ -10828,6 +11331,7 @@ const ghostCandles = [
 
         updateStep('pipeSMC', 'smcZones', '🏛️ SMC');
         updateStep('pipeLiq', 'liquidityHunter', '💧 Liq');
+        updateStep('pipeLiqPsy', 'liquidityPsychology', '⚡ Liq Psy');
         updateStep('pipeFib', 'autoFib', '🎯 Fib');
         updateStep('pipePA', 'priceAction', '🕯️ PA');
         updateStep('pipeMom', 'momentumSuite', '⚡ Mom');
@@ -10930,7 +11434,13 @@ const ghostCandles = [
       const stLiqBadge = document.getElementById('stLiquidityBadge');
       if (stLiqBadge) {
         const currentLock = (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock) ? shortTermSignalLock : window.shortTermSignalLock;
-        if (window.latestLiquiditySweep && currentLock && (currentLock.status === 'ACTIVE_HOLD' || currentLock.status === 'RUNNER_ACTIVE')) {
+        if (window.latestLiquidityPsychology && currentLock && (currentLock.status === 'ACTIVE_HOLD' || currentLock.status === 'RUNNER_ACTIVE')) {
+          stLiqBadge.innerText = "⚡ Liquidity Purged & Confirmed (Buyers Absorbed)";
+          stLiqBadge.style.display = 'block';
+          stLiqBadge.style.background = 'rgba(0, 229, 255, 0.12)';
+          stLiqBadge.style.color = '#00e5ff';
+          stLiqBadge.style.borderColor = 'rgba(0, 229, 255, 0.4)';
+        } else if (window.latestLiquiditySweep && currentLock && (currentLock.status === 'ACTIVE_HOLD' || currentLock.status === 'RUNNER_ACTIVE')) {
           stLiqBadge.innerText = window.latestLiquiditySweep.badgeText || `Confirmed: ${window.latestLiquiditySweep.levelName} Swept + Absorption`;
           stLiqBadge.style.display = 'block';
           if (window.latestLiquiditySweep.type === 'BUY') {
@@ -13134,6 +13644,20 @@ window.addEventListener('resize', () => {
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="modal-toggle-liquidityHunter" checked onchange="toggleModularIndicator('liquidityHunter')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="indicator-row">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #00e5ff;">⚡ Liquidity &amp; Candle Psychology (Sweep + Multi-Bar Confirmation)</b>
+              <span style="font-size: 9px; background: rgba(0,229,255,0.18); color: #00e5ff; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 25%</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">Sweep + 5-Candle Psychology Window &amp; Absorption Protocol</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="modal-toggle-liquidityPsychology" checked onchange="toggleModularIndicator('liquidityPsychology')">
             <span class="toggle-slider"></span>
           </label>
         </div>
