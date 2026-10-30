@@ -7273,6 +7273,65 @@
       const isQualityBullWick = lowerWickRatio >= 0.40;
       const isQualityBearWick = upperWickRatio >= 0.40;
 
+      // ==========================================
+      // HIGH-VOLUME EXPANSION REGIME FILTER (Strict Trend Alignment)
+      // When a 15M candle closes with body expansion > 70% below dynamic EMA 20,
+      // do NOT trigger a BUY signal purely based on micro wicks until a confirmed Market Structure Shift (BOS/CHoCH) prints on 15M.
+      let isBearishExpansionRegime = false;
+      let isBullishExpansionRegime = false;
+
+      if (candles && candles.length >= 4) {
+        const checkBars = candles.slice(-5);
+        const emaVal = (typeof currentEMA20 === 'number' && currentEMA20 > 0) ? currentEMA20 : null;
+
+        // Check for Bearish Expansion (> 70% body below EMA 20)
+        let bearExpIdx = -1;
+        for (let i = 0; i < checkBars.length; i++) {
+          const b = checkBars[i];
+          const bRange = Math.max(0.001, b.high - b.low);
+          const bBody = Math.abs(b.open - b.close);
+          const bRatio = bBody / bRange;
+          const isRed = b.close < b.open;
+          const isBelowEma = emaVal ? (b.close < emaVal) : true;
+          if (isRed && isBelowEma && bRatio >= 0.70 && bRange >= 2.0) {
+            bearExpIdx = i;
+          }
+        }
+
+        if (bearExpIdx !== -1) {
+          const expBar = checkBars[bearExpIdx];
+          const subsequentBars = checkBars.slice(bearExpIdx + 1);
+          // Confirmed 15M BOS/CHoCH: requires a subsequent 15M candle closing strictly above the expansion bar high
+          const hasBullMSS = subsequentBars.some(b => b.close > expBar.high);
+          if (!hasBullMSS) {
+            isBearishExpansionRegime = true;
+          }
+        }
+
+        // Check for Bullish Expansion (> 70% body above EMA 20)
+        let bullExpIdx = -1;
+        for (let i = 0; i < checkBars.length; i++) {
+          const b = checkBars[i];
+          const bRange = Math.max(0.001, b.high - b.low);
+          const bBody = Math.abs(b.open - b.close);
+          const bRatio = bBody / bRange;
+          const isGreen = b.close > b.open;
+          const isAboveEma = emaVal ? (b.close > emaVal) : true;
+          if (isGreen && isAboveEma && bRatio >= 0.70 && bRange >= 2.0) {
+            bullExpIdx = i;
+          }
+        }
+
+        if (bullExpIdx !== -1) {
+          const expBar = checkBars[bullExpIdx];
+          const subsequentBars = checkBars.slice(bullExpIdx + 1);
+          const hasBearMSS = subsequentBars.some(b => b.close < expBar.low);
+          if (!hasBearMSS) {
+            isBullishExpansionRegime = true;
+          }
+        }
+      }
+
       // 1. BULLISH LIQUIDITY SWEEP (LONG TRIGGERS): Pierces below level & closes back ABOVE
       const bullSweepCandidates = [
         { name: "Equal Lows (EQL)", price: pools.eql, code: "EQL" },
@@ -7283,10 +7342,11 @@
         { name: "Old Low", price: pools.oldLow, code: "OLD_LOW" }
       ];
 
+      if (!isBearishExpansionRegime) {
       for (const cand of bullSweepCandidates) {
         if (!cand.price || cand.price <= 0) continue;
         const swept = (current.low < cand.price && current.close > cand.price && isQualityBullWick) ||
-                      (prev.low < cand.price && current.close > cand.price);
+                      (prev.low < cand.price && current.close > cand.price && isQualityBullWick);
         if (swept) {
           const sweepLowest = Math.min(current.low, prev.low);
           const entry = Number(current.close.toFixed(2));
@@ -7323,6 +7383,7 @@
           };
         }
       }
+      } // end if (!isBearishExpansionRegime)
 
       // 2. BEARISH LIQUIDITY SWEEP (SHORT TRIGGERS): Spikes above level & closes back BELOW
       const bearSweepCandidates = [
@@ -7334,10 +7395,11 @@
         { name: "Old High", price: pools.oldHigh, code: "OLD_HIGH" }
       ];
 
+      if (!isBullishExpansionRegime) {
       for (const cand of bearSweepCandidates) {
         if (!cand.price || cand.price <= 0) continue;
         const swept = (current.high > cand.price && current.close < cand.price && isQualityBearWick) ||
-                      (prev.high > cand.price && current.close < cand.price);
+                      (prev.high > cand.price && current.close < cand.price && isQualityBearWick);
         if (swept) {
           const sweepHighest = Math.max(current.high, prev.high);
           const entry = Number(current.close.toFixed(2));
@@ -7374,6 +7436,7 @@
           };
         }
       }
+      } // end if (!isBullishExpansionRegime)
 
       return null;
     }
@@ -9804,32 +9867,62 @@
         macroMarketState.sugraWarScore < 60);
 
       // ==========================================
-      // MANDATORY INSTITUTIONAL LIQUIDITY SWEEP & CANDLE PSYCHOLOGY EXECUTION OVERRIDE
+      // MANDATORY INSTITUTIONAL LIQUIDITY SWEEP & SMC EXECUTION OVERRIDE (STRICT 1:1 ALIGNMENT)
       // ==========================================
-      if (activePsychology) {
-        finalAction = activePsychology.type === 'BUY' ? "HIGH CONVICTION BUY" : "HIGH CONVICTION SELL";
-        confidence = "84% (5-Bar Absorption Verified)";
-        reason = "Confirmed: Liquidity Swept + 5-Bar Psychological Absorption Verified";
-        entry = activePsychology.entry;
-        sl = Number(activePsychology.sl);
-        tp1 = Number(activePsychology.tp);
-        tp2 = Number((activePsychology.tp + (activePsychology.type === 'BUY' ? 6.0 : -6.0)).toFixed(2));
-        rr = activePsychology.rr;
-        const pushPts = Math.abs(tp1 - entry);
-        shortTermProfit = {
-          lot01: Number((pushPts * 1.00).toFixed(2)),
-          lot02: Number((pushPts * 2.00).toFixed(2)),
-          lot05: Number((pushPts * 5.00).toFixed(2))
+      let activePositionSetup = null;
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.liquidityPsychology && activePsychology) {
+        activePositionSetup = {
+          type: activePsychology.type,
+          action: activePsychology.type === 'BUY' ? "HIGH CONVICTION BUY" : "HIGH CONVICTION SELL",
+          confidence: "84% (5-Bar Absorption Verified)",
+          reason: "Confirmed: Liquidity Swept + 5-Bar Psychological Absorption Verified",
+          entry: activePsychology.entry,
+          sl: Number(activePsychology.sl),
+          tp1: Number(activePsychology.tp),
+          tp2: Number((activePsychology.tp + (activePsychology.type === 'BUY' ? 6.0 : -6.0)).toFixed(2)),
+          rr: activePsychology.rr
+        };
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcZones && currentSMCZones && currentSMCZones.activeRRSetup) {
+        const rrSetup = currentSMCZones.activeRRSetup;
+        const isShortSetup = (rrSetup.type === 'SHORT' || rrSetup.type === 'SELL');
+        activePositionSetup = {
+          type: isShortSetup ? 'SELL' : 'BUY',
+          action: isShortSetup ? "HIGH CONVICTION SELL" : "HIGH CONVICTION BUY",
+          confidence: "88% (15M SMC Structure Alignment)",
+          reason: rrSetup.triggerReason 
+            ? `Confirmed: ${rrSetup.triggerReason}`
+            : (isShortSetup 
+                ? `15M Bearish Breakdown & Supply FVG Retest ($${rrSetup.fvgBottom ? rrSetup.fvgBottom.toFixed(1) : rrSetup.entry.toFixed(1)}). Target Sell-Side Liquidity.`
+                : `15M Bullish Expansion & Demand FVG Retest ($${rrSetup.fvgTop ? rrSetup.fvgTop.toFixed(1) : rrSetup.entry.toFixed(1)}). Target Buy-Side Liquidity.`),
+          entry: Number(rrSetup.entry),
+          sl: Number(rrSetup.sl),
+          tp1: Number(rrSetup.tp),
+          tp2: Number((rrSetup.tp + (isShortSetup ? -6.0 : 6.0)).toFixed(2)),
+          rr: `1 : ${rrSetup.rrRatio || '3.5'}`
         };
       } else if (activeSweep) {
-        finalAction = activeSweep.type === 'BUY' ? "HIGH CONVICTION BUY" : "HIGH CONVICTION SELL";
-        confidence = "95% (Institutional Liquidity Raid)";
-        reason = activeSweep.reason;
-        entry = activeSweep.entry;
-        sl = Number(activeSweep.sl);
-        tp1 = Number(activeSweep.tp);
-        tp2 = Number((activeSweep.tp + (activeSweep.type === 'BUY' ? 6.0 : -6.0)).toFixed(2));
-        rr = activeSweep.rr;
+        activePositionSetup = {
+          type: activeSweep.type,
+          action: activeSweep.type === 'BUY' ? "HIGH CONVICTION BUY" : "HIGH CONVICTION SELL",
+          confidence: "95% (Institutional Liquidity Raid)",
+          reason: activeSweep.reason,
+          entry: activeSweep.entry,
+          sl: Number(activeSweep.sl),
+          tp1: Number(activeSweep.tp),
+          tp2: Number((activeSweep.tp + (activeSweep.type === 'BUY' ? 6.0 : -6.0)).toFixed(2)),
+          rr: activeSweep.rr
+        };
+      }
+
+      if (activePositionSetup) {
+        finalAction = activePositionSetup.action;
+        confidence = activePositionSetup.confidence;
+        reason = activePositionSetup.reason;
+        entry = activePositionSetup.entry;
+        sl = activePositionSetup.sl;
+        tp1 = activePositionSetup.tp1;
+        tp2 = activePositionSetup.tp2;
+        rr = activePositionSetup.rr;
         const pushPts = Math.abs(tp1 - entry);
         shortTermProfit = {
           lot01: Number((pushPts * 1.00).toFixed(2)),
@@ -9848,7 +9941,7 @@
       }
 
       // Fallback macro/agent evaluation ONLY when no institutional sweep/psychology setup is confirmed
-      if (!activePsychology && !activeSweep) {
+      if (!activePositionSetup) {
       if (macroWarBuy) {
         finalAction = "HIGH CONVICTION BUY";
         confidence = `${Math.min(94, Math.round(75 + (macroMarketState.confluenceScore * 2.0)))}% Prob. (War Safe-Haven)`;
@@ -10280,6 +10373,68 @@
           if (stRr) stRr.innerText = shortTermSignalLock.rrText;
           if (stNote) stNote.innerText = shortTermSignalLock.reason;
         }
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcZones && currentSMCZones && currentSMCZones.activeRRSetup) {
+        const rr = currentSMCZones.activeRRSetup;
+        const isShort = (rr.type === 'SHORT' || rr.type === 'SELL');
+        isUp = !isShort;
+        const tpVal = Number(rr.tp);
+        targetLabel = isShort ? `🎯 SMC Target $${tpVal.toFixed(1)} (Short)` : `🎯 SMC Target $${tpVal.toFixed(1)} (Long)`;
+        targetColor = isShort ? '#f85149' : '#2ea043';
+
+        if (isShort) {
+          c1_open = currentPrice;
+          c1_close = c1_open - (atr * 1.10);
+          c1_low = c1_close - (atr * 0.35);
+          c1_high = c1_open + (atr * 0.15);
+          c2_open = c1_close;
+          c2_close = c2_open - (atr * 1.30);
+          c2_low = c2_close - (atr * 0.40);
+          c2_high = c2_open + (atr * 0.15);
+          c3_open = c2_close;
+          c3_close = tpVal;
+          c3_low = c3_close - (atr * 0.35);
+          c3_high = c3_open + (atr * 0.20);
+        } else {
+          c1_open = currentPrice;
+          c1_close = c1_open + (atr * 1.10);
+          c1_high = c1_close + (atr * 0.35);
+          c1_low = c1_open - (atr * 0.15);
+          c2_open = c1_close;
+          c2_close = c2_open + (atr * 1.30);
+          c2_high = c2_close + (atr * 0.40);
+          c2_low = c2_open - (atr * 0.15);
+          c3_open = c2_close;
+          c3_close = tpVal;
+          c3_high = c3_close + (atr * 0.35);
+          c3_low = c3_open - (atr * 0.20);
+        }
+
+        // STRICT SYNC TO EXECUTION CARD
+        if (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock) {
+          shortTermSignalLock.tp1 = tpVal;
+          shortTermSignalLock.sl = Number(rr.sl);
+          shortTermSignalLock.signalType = isShort ? 'SELL' : 'BUY';
+          shortTermSignalLock.action = isShort ? 'HIGH CONVICTION SELL' : 'HIGH CONVICTION BUY';
+          shortTermSignalLock.gainPts = Number(Math.abs(tpVal - shortTermSignalLock.entryPrice).toFixed(1));
+          const risk = Math.max(1.8, Math.abs(shortTermSignalLock.entryPrice - shortTermSignalLock.sl));
+          shortTermSignalLock.rrText = `1 : ${(shortTermSignalLock.gainPts / risk).toFixed(1)} (+${shortTermSignalLock.gainPts.toFixed(1)} pts)`;
+
+          const stTp = document.getElementById('stTpVal');
+          const stSl = document.getElementById('stSlVal');
+          const stRr = document.getElementById('stRrVal');
+          const stDirPill = document.getElementById('stDirectionPill');
+          const stConfPill = document.getElementById('stConfidencePill');
+          const stAction = document.getElementById('stSignalAction');
+          if (stTp) stTp.innerText = '$' + tpVal.toFixed(2);
+          if (stSl) stSl.innerText = '$' + Number(rr.sl).toFixed(2);
+          if (stRr) stRr.innerText = shortTermSignalLock.rrText;
+          if (stDirPill) {
+            stDirPill.className = isShort ? 'exec-dir-pill sell' : 'exec-dir-pill buy';
+            stDirPill.innerText = isShort ? 'SELL' : 'BUY';
+          }
+          if (stConfPill) stConfPill.innerText = '88% (15M SMC Structure Alignment)';
+          if (stAction) stAction.innerText = shortTermSignalLock.action;
+        }
       } else if (window.latestLiquiditySweep) {
         const sw = window.latestLiquiditySweep;
         isUp = (sw.type === 'BUY');
@@ -10454,7 +10609,7 @@ const ghostCandles = [
       try {
               // STRICT MATHEMATICAL SYNCHRONIZATION:
       // If Ghost Candles point Downside (isUp === false), Execution Card is FORBIDDEN from showing BUY!
-      const isInstitutionalSweepActiveSync = (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock && shortTermSignalLock.reason && (shortTermSignalLock.reason.includes('Liquidity Swept') || shortTermSignalLock.reason.includes('Institutional Liquidity Raid')));
+      const isInstitutionalSweepActiveSync = (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock && shortTermSignalLock.reason && shortTermSignalLock.reason.includes('Liquidity Swept + 5-Bar Psychological Absorption Verified'));
       if (!isInstitutionalSweepActiveSync && !isUp && typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock.signalType === 'BUY' && shortTermSignalLock.status === 'ACTIVE_HOLD') {
         const currentSpot = (typeof currentLiveSpot !== 'undefined' && currentLiveSpot) ? currentLiveSpot : currentPrice;
         if (currentSpot < (currentEMA20 || currentPrice) || (currentCandle && currentCandle.close < currentCandle.open)) {
@@ -10508,6 +10663,10 @@ const ghostCandles = [
     // ==========================================
     function renderChart(data, low, high) {
       if (!data || data.length === 0) return;
+      rawCandleData = data;
+      window.rawCandleData = data;
+      window.evaluateSignals = evaluateSignals;
+      window.detectSmartMoneyZones = detectSmartMoneyZones;
 
       const prevLogicalRange = (!isInitialLoad && !timeframeJustSwitched && chart && chart.timeScale) 
         ? chart.timeScale().getVisibleLogicalRange() 
@@ -11030,7 +11189,7 @@ const ghostCandles = [
         ? shortTermSignalLock 
         : (window.shortTermSignalLock || null);
 
-      if (window.latestLiquidityPsychology && (!curLock || !curLock.active || curLock.status !== 'ACTIVE_HOLD' || curLock.reason !== window.latestLiquidityPsychology.reason)) {
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.liquidityPsychology && window.latestLiquidityPsychology && (!curLock || !curLock.active || curLock.status !== 'ACTIVE_HOLD' || curLock.reason !== window.latestLiquidityPsychology.reason)) {
         const psy = window.latestLiquidityPsychology;
         shortTermSignalLock = {
           active: true,
@@ -11052,6 +11211,34 @@ const ghostCandles = [
           lastCompletedStatus: curLock ? curLock.lastCompletedStatus : null
         };
         window.shortTermSignalLock = shortTermSignalLock;
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcZones && currentSMCZones && currentSMCZones.activeRRSetup) {
+        const rr = currentSMCZones.activeRRSetup;
+        const isShort = (rr.type === 'SHORT' || rr.type === 'SELL');
+        const expectedSigType = isShort ? 'SELL' : 'BUY';
+        if (!curLock || !curLock.active || curLock.status !== 'ACTIVE_HOLD' || curLock.signalType !== expectedSigType || Math.abs(curLock.entryPrice - rr.entry) > 1.0) {
+          shortTermSignalLock = {
+            active: true,
+            signalType: expectedSigType,
+            action: isShort ? 'HIGH CONVICTION SELL' : 'HIGH CONVICTION BUY',
+            confidence: '88% (15M SMC Structure Alignment)',
+            entryPrice: Number(rr.entry),
+            tp1: Number(rr.tp),
+            tp2: Number((rr.tp + (isShort ? -6.0 : 6.0)).toFixed(2)),
+            sl: Number(rr.sl),
+            rrText: `1 : ${rr.rrRatio || '3.5'} (+${Number(Math.abs(rr.tp - rr.entry).toFixed(1))} pts)`,
+            gainPts: Number(Math.abs(rr.tp - rr.entry).toFixed(1)),
+            reason: isShort 
+              ? `15M Bearish Breakdown & Supply FVG Retest ($${rr.fvgBottom ? rr.fvgBottom.toFixed(1) : rr.entry.toFixed(1)}). Target Sell-Side Liquidity.`
+              : `15M Bullish Expansion & Demand FVG Retest ($${rr.fvgTop ? rr.fvgTop.toFixed(1) : rr.entry.toFixed(1)}). Target Buy-Side Liquidity.`,
+            lockedAt: now,
+            maxLockDurationMs: 60 * 60 * 1000,
+            status: 'ACTIVE_HOLD',
+            completedAt: null,
+            lastCompletedType: curLock ? curLock.lastCompletedType : null,
+            lastCompletedStatus: curLock ? curLock.lastCompletedStatus : null
+          };
+          window.shortTermSignalLock = shortTermSignalLock;
+        }
       } else if (window.latestLiquiditySweep && (!curLock || !curLock.active || curLock.status !== 'ACTIVE_HOLD')) {
         const sw = window.latestLiquiditySweep;
         shortTermSignalLock = {
@@ -11085,7 +11272,7 @@ const ghostCandles = [
         // Immediate SL breach detection
         const isSlBreached = isBuy ? (currentSpot <= slPrice) : (currentSpot >= slPrice);
 
-        const isInstitutionalSweepActive = (shortTermSignalLock.reason && (shortTermSignalLock.reason.includes('Liquidity Swept') || shortTermSignalLock.reason.includes('Institutional Liquidity Raid')));
+        const isInstitutionalSweepActive = (shortTermSignalLock.reason && shortTermSignalLock.reason.includes('Liquidity Swept + 5-Bar Psychological Absorption Verified'));
         // Immediate Demand / Supply structure breakdown detection (bypassed for sweep absorptions where price swept past pivot)
         const isStructureBroken = isInstitutionalSweepActive
           ? false
