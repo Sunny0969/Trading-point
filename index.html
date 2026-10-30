@@ -4342,6 +4342,21 @@
               </label>
             </div>
 
+            <!-- Indicator: Daily Liquidity Sniper (1D Sweep + 1M Trigger) -->
+            <div class="tv-ind-row" onclick="clickModularToggle('dailyLiquiditySniper', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #ffd700;">⚡ Daily Liquidity Sniper (PDH/PDL 1M Breakout)</b>
+                  <span style="font-size: 9px; background: rgba(255,215,0,0.18); color: #ffd700; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 25%</span>
+                </div>
+                <small>1D PDH/PDL Sweep + 1M Micro Candle Low/High Breakout Confirmation</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-dailyLiquiditySniper" checked onchange="toggleModularIndicator('dailyLiquiditySniper')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
             <!-- Indicator 3: Risk / Reward Position Tool (Short/Long Tool) -->
             <div class="tv-ind-row" onclick="clickModularToggle('rrTool', event)">
               <div class="tv-ind-info">
@@ -4792,6 +4807,7 @@
               <span id="pipeSMC" class="pipe-step-pill active" title="Step 1: SMC Key Zones">🏛️ SMC: Demand</span>
               <span id="pipeLiq" class="pipe-step-pill active" title="Step 2: Liquidity Hunter">💧 Liq: ASL Swept</span>
               <span id="pipeLiqPsy" class="pipe-step-pill active" title="Step 3: Liquidity &amp; Candle Psychology">⚡ Liq Psy: 5-Bar Confirmed</span>
+              <span id="pipeDLS" class="pipe-step-pill active" title="Step 3.5: Daily Liquidity Sniper (PDH/PDL 1M Breakout)">⚡ DLS-1M: Active</span>
               <span id="pipeFib" class="pipe-step-pill active" title="Step 4: Auto Fib Golden Pocket">🎯 Fib: 0.618 Pocket</span>
               <span id="pipePA" class="pipe-step-pill active" title="Step 5: Price Action Scanner">🕯️ PA: Hammer</span>
               <span id="pipeMom" class="pipe-step-pill disabled" title="Step 6: Momentum Suite">⚡ Mom: EMA 20/50</span>
@@ -5866,6 +5882,7 @@
       smcZones: true,        // Module 1: SMC Zones (FVG & Order Blocks) - Weight: 25
       liquidityHunter: true, // Module 2: Liquidity & Order Flow Hunter (Session Sweeps, EQH/EQL) - Weight: 25
       liquidityPsychology: true, // Dedicated: Liquidity & Candle Psychology Engine (Sweep + 5-Candle Confirmation) - Weight: 25
+      dailyLiquiditySniper: true, // Dedicated: Daily Liquidity Sniper (1D Sweep + 1M Trigger) - Weight: 25
       autoFib: true,         // Module 3: Auto Fibonacci Golden Pocket (0.50 - 0.618) - Weight: 20
       priceAction: true,     // Module 4: Price Action & Candlestick Scanner - Weight: 15
       momentumSuite: false   // Module 5: Momentum & Trend Suite (EMA 20/50, RSI, MACD) - Weight: 15
@@ -5875,6 +5892,7 @@
       smcZones: 25,
       liquidityHunter: 25,
       liquidityPsychology: 25,
+      dailyLiquiditySniper: 25,
       autoFib: 20,
       priceAction: 15,
       momentumSuite: 15
@@ -5900,6 +5918,9 @@
     var sweepAlertsEnabled = !!indicatorSettings.liquidityHunter;
     var liquidityPsychologyEnabled = !!indicatorSettings.liquidityPsychology;
     window.latestLiquidityPsychology = null;
+    var dailyLiquiditySniperEnabled = !!indicatorSettings.dailyLiquiditySniper;
+    window.daily_liquidity_sniper_active = dailyLiquiditySniperEnabled;
+    window.latestDailyLiquiditySniper = null;
     var fibActive = !!indicatorSettings.autoFib;
     var priceActionEnabled = !!indicatorSettings.priceAction;
     var momentumSuiteEnabled = !!indicatorSettings.momentumSuite;
@@ -6252,6 +6273,7 @@
         smcZones: 'SMC Zones (OB & FVG)',
         liquidityHunter: 'Liquidity & Order Flow Hunter',
         liquidityPsychology: 'Liquidity & Candle Psychology (Sweep + Multi-Bar Confirmation)',
+        dailyLiquiditySniper: 'Daily Liquidity Sniper (PDH/PDL 1M Breakout)',
         autoFib: 'Auto Fibonacci Golden Pocket',
         priceAction: 'Price Action & Pattern Scanner',
         momentumSuite: 'Momentum & Trend Suite (EMA/RSI/MACD)'
@@ -6331,6 +6353,9 @@
         sweepAlertsEnabled = isChecked;
       } else if (moduleName === 'liquidityPsychology') {
         liquidityPsychologyEnabled = isChecked;
+      } else if (moduleName === 'dailyLiquiditySniper') {
+        dailyLiquiditySniperEnabled = isChecked;
+        window.daily_liquidity_sniper_active = isChecked;
       } else if (moduleName === 'autoFib') {
         fibActive = isChecked;
         const btn = document.getElementById('tool-fib');
@@ -7736,6 +7761,333 @@
     }
     window.scanAllLiquidityPsychology = scanAllLiquidityPsychology;
 
+    // ==========================================
+    // DAILY LIQUIDITY SNIPER (1D SWEEP + 1M TRIGGER) ENGINE
+    // State Machine: 1D PDH/PDL Sweep -> 1M Solid Red/Green Retest -> Agli Candle Low/High Breakout Trigger
+    // ==========================================
+    function evaluateDailyLiquiditySniper(candles, pools, currentSpot) {
+      if (!candles || candles.length < 5) return null;
+      if (!currentSpot) currentSpot = candles[candles.length - 1].close;
+
+      // 1. Daily Level Tracking (PDH & PDL)
+      let pdh = (pools && typeof pools.pdh === 'number' && pools.pdh > 0) ? pools.pdh : null;
+      let pdl = (pools && typeof pools.pdl === 'number' && pools.pdl > 0) ? pools.pdl : null;
+
+      if (!pdh || !pdl) {
+        const curBar = candles[candles.length - 1];
+        const curUtcDate = new Date(curBar.time * 1000).toISOString().slice(0, 10);
+        let prevUtcDate = null;
+        for (let i = candles.length - 1; i >= 0; i--) {
+          const dStr = new Date(candles[i].time * 1000).toISOString().slice(0, 10);
+          if (dStr < curUtcDate) {
+            prevUtcDate = dStr;
+            break;
+          }
+        }
+        if (prevUtcDate) {
+          const prevDayCandles = candles.filter(c => new Date(c.time * 1000).toISOString().slice(0, 10) === prevUtcDate);
+          if (prevDayCandles.length > 0) {
+            pdh = Math.max(...prevDayCandles.map(c => c.high));
+            pdl = Math.min(...prevDayCandles.map(c => c.low));
+          }
+        }
+        if (!pdh || !pdl) {
+          const slice = candles.slice(-96, -24);
+          if (slice.length >= 10) {
+            pdh = Math.max(...slice.map(c => c.high));
+            pdl = Math.min(...slice.map(c => c.low));
+          } else {
+            pdh = Math.max(...candles.slice(-48, -12).map(c => c.high));
+            pdl = Math.min(...candles.slice(-48, -12).map(c => c.low));
+          }
+        }
+      }
+
+      pdh = Number(pdh.toFixed(2));
+      pdl = Number(pdl.toFixed(2));
+
+      // 2. Obtain 1M execution candles (Direct 1M or Resampled from 15M/5M)
+      let c1m = null;
+      if (candles && (typeof currentTf !== 'undefined' && currentTf === '1m' || candles.length <= 30 || !window.mtfCandleStore || !window.mtfCandleStore['1m'])) {
+        c1m = candles;
+      } else if (window.mtfCandleStore && window.mtfCandleStore['1m'] && window.mtfCandleStore['1m'].length >= 10) {
+        c1m = window.mtfCandleStore['1m'];
+      } else if (typeof resampleCandles === 'function') {
+        const curSec = (typeof currentTf !== 'undefined' && currentTf === '5m') ? 300 : ((typeof currentTf !== 'undefined' && currentTf === '1h') ? 3600 : ((typeof currentTf !== 'undefined' && currentTf === '4h') ? 14400 : 900));
+        c1m = resampleCandles(candles, curSec, 60);
+      } else {
+        c1m = candles;
+      }
+
+      if (!c1m || c1m.length < 5) return null;
+
+      // 3. 1-Minute Micro-Execution State Machine
+      const lookback = Math.min(30, c1m.length - 2);
+      const startIdx = Math.max(1, c1m.length - lookback);
+
+      let latestShortSetup = null;
+      let latestBuySetup = null;
+
+      for (let i = startIdx; i < c1m.length - 1; i++) {
+        const bar = c1m[i];
+        const nextBar = c1m[i + 1];
+
+        // --- SHORT / SELL SETUP ---
+        // State 1: 1M price breaks above PDH (high >= PDH)
+        // State 2: A solid red candle closes above or retesting the PDH level
+        const isRedCandle = bar.close < bar.open;
+        const sweepsPdh = bar.high >= pdh;
+        const retestsPdh = (bar.close >= (pdh - 1.20) || bar.open >= pdh);
+
+        if (sweepsPdh && isRedCandle && retestsPdh) {
+          // State 3: Next 1M candle breaks strictly below the LOW of that red candle
+          if (nextBar.low < bar.low) {
+            const redHigh = bar.high;
+            const sl = Number((redHigh + 0.50).toFixed(2));
+            let invalidated = false;
+            for (let k = i + 1; k < c1m.length; k++) {
+              if (c1m[k].high > sl) {
+                invalidated = true;
+                break;
+              }
+            }
+
+            if (!invalidated) {
+              const entry = Number(nextBar.close.toFixed(2));
+              const risk = Math.max(0.80, sl - entry);
+
+              // TP1: Recent swing low prior to rally (Min 1:4.0 RR)
+              const preSlice = c1m.slice(Math.max(0, i - 20), i);
+              let recentSwingLow = preSlice.length ? Math.min(...preSlice.map(b => b.low)) : (entry - (risk * 4.0));
+              if ((entry - recentSwingLow) / risk < 4.0) {
+                recentSwingLow = entry - (risk * 4.0);
+              }
+              const tp1 = Number(recentSwingLow.toFixed(2));
+              // TP2: 1:10 RR Target
+              const tp2 = Number((entry - (risk * 10.0)).toFixed(2));
+              const gainPts = Number((entry - tp1).toFixed(1));
+              const rrRatio = (gainPts / risk).toFixed(1);
+
+              latestShortSetup = {
+                active: true,
+                direction: "SELL",
+                type: "SELL",
+                action: "HIGH CONVICTION SELL",
+                confidence: "96% (PDH Swept + 1M Red Low Purged)",
+                badge: "⚡ DLS-1M SNIPER",
+                pdh,
+                pdl,
+                sweepLevel: pdh,
+                sweepLevelName: "PDH",
+                redCandle: bar,
+                triggerBar: nextBar,
+                triggerIndex: i + 1,
+                entry,
+                sl,
+                tp1,
+                tp2,
+                tp: tp1,
+                risk,
+                gainPts,
+                rr: `1 : ${rrRatio} (TP1) · 1 : 10.0 (TP2)`,
+                rrText: `1 : ${rrRatio} (+${gainPts} pts)`,
+                reason: "Confirmed: PDH Swept + 1M Red Candle Low Purged (Sellers Dominated)"
+              };
+            }
+          }
+        }
+
+        // --- BUY / LONG SETUP ---
+        // State 1: 1M price drops below PDL (low <= PDL)
+        // State 2: A solid green candle closes below or retesting the PDL level
+        const isGreenCandle = bar.close > bar.open;
+        const sweepsPdl = bar.low <= pdl;
+        const retestsPdl = (bar.close <= (pdl + 1.20) || bar.open <= pdl);
+
+        if (sweepsPdl && isGreenCandle && retestsPdl) {
+          // State 3: Next 1M candle breaks strictly above the HIGH of that green candle
+          if (nextBar.high > bar.high) {
+            const greenLow = bar.low;
+            const sl = Number((greenLow - 0.50).toFixed(2));
+            let invalidated = false;
+            for (let k = i + 1; k < c1m.length; k++) {
+              if (c1m[k].low < sl) {
+                invalidated = true;
+                break;
+              }
+            }
+
+            if (!invalidated) {
+              const entry = Number(nextBar.close.toFixed(2));
+              const risk = Math.max(0.80, entry - sl);
+
+              // TP1: Recent swing high prior to dump (Min 1:4.0 RR)
+              const preSlice = c1m.slice(Math.max(0, i - 20), i);
+              let recentSwingHigh = preSlice.length ? Math.max(...preSlice.map(b => b.high)) : (entry + (risk * 4.0));
+              if ((recentSwingHigh - entry) / risk < 4.0) {
+                recentSwingHigh = entry + (risk * 4.0);
+              }
+              const tp1 = Number(recentSwingHigh.toFixed(2));
+              // TP2: 1:10 RR Target
+              const tp2 = Number((entry + (risk * 10.0)).toFixed(2));
+              const gainPts = Number((tp1 - entry).toFixed(1));
+              const rrRatio = (gainPts / risk).toFixed(1);
+
+              latestBuySetup = {
+                active: true,
+                direction: "BUY",
+                type: "BUY",
+                action: "HIGH CONVICTION BUY",
+                confidence: "96% (PDL Swept + 1M Green High Purged)",
+                badge: "⚡ DLS-1M SNIPER",
+                pdh,
+                pdl,
+                sweepLevel: pdl,
+                sweepLevelName: "PDL",
+                greenCandle: bar,
+                triggerBar: nextBar,
+                triggerIndex: i + 1,
+                entry,
+                sl,
+                tp1,
+                tp2,
+                tp: tp1,
+                risk,
+                gainPts,
+                rr: `1 : ${rrRatio} (TP1) · 1 : 10.0 (TP2)`,
+                rrText: `1 : ${rrRatio} (+${gainPts} pts)`,
+                reason: "Confirmed: PDL Swept + 1M Green Candle High Purged (Buyers Dominated)"
+              };
+            }
+          }
+        }
+      }
+
+      if (latestShortSetup && latestBuySetup) {
+        return (latestShortSetup.triggerIndex >= latestBuySetup.triggerIndex) ? latestShortSetup : latestBuySetup;
+      }
+      if (latestShortSetup) return latestShortSetup;
+      if (latestBuySetup) return latestBuySetup;
+
+      // Mid-Range Standby Filter (No Trade Zone)
+      return {
+        active: false,
+        isStandby: true,
+        direction: "STANDBY",
+        action: "STANDBY: PRICE IN MID-RANGE",
+        confidence: "PDH/PDL Boundary Scanner Active",
+        badge: "⚡ DLS-1M SNIPER",
+        pdh,
+        pdl,
+        currentSpot,
+        entry: currentSpot,
+        sl: 0,
+        tp1: 0,
+        tp2: 0,
+        risk: 0,
+        gainPts: 0,
+        rr: "0 : 0 (NO TRADE)",
+        rrText: "0 : 0 (NO TRADE)",
+        reason: `Standby: Price floating in Mid-Range between PDH ($${pdh.toFixed(2)}) and PDL ($${pdl.toFixed(2)}) - No Trade Zone. Waiting for boundary sweep.`
+      };
+    }
+    window.evaluateDailyLiquiditySniper = evaluateDailyLiquiditySniper;
+
+    // Dedicated Canvas Overlay for Daily Reference Lines (PDH Golden, PDL Cyan)
+    function drawDailyLiquiditySniperOverlay(ctx, dlsResult, pools) {
+      if (!ctx || !candleSeries || !chart) return;
+      if (typeof indicatorSettings !== 'undefined' && !indicatorSettings.dailyLiquiditySniper) return;
+
+      let pdh = dlsResult ? dlsResult.pdh : (pools ? pools.pdh : null);
+      let pdl = dlsResult ? dlsResult.pdl : (pools ? pools.pdl : null);
+      if (!pdh || !pdl) return;
+
+      const yPdh = candleSeries.priceToCoordinate(pdh);
+      const yPdl = candleSeries.priceToCoordinate(pdl);
+
+      ctx.save();
+
+      // 1. Golden Reference Line at PDH
+      if (yPdh !== null && yPdh >= 10 && yPdh <= canvasCssHeight - 15) {
+        const isSwept = dlsResult && dlsResult.active && dlsResult.direction === 'SELL';
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = isSwept ? 1.8 : 1.0;
+        ctx.setLineDash(isSwept ? [6, 3] : [5, 4]);
+        if (isSwept) {
+          ctx.shadowColor = 'rgba(255, 215, 0, 0.7)';
+          ctx.shadowBlur = 6;
+        } else {
+          ctx.shadowBlur = 0;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(15, yPdh);
+        ctx.lineTo(canvasCssWidth - 65, yPdh);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.shadowBlur = 0;
+
+        const tagText = isSwept ? `⚡ PDH SWEPT · $${pdh.toFixed(2)} [1M SHORT TRIGGERED]` : `PDH (Liquidity High) · $${pdh.toFixed(2)}`;
+        ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        const tw = ctx.measureText(tagText).width;
+        const bw = Math.round(tw + 12);
+        const bh = 16;
+        const bx = canvasCssWidth - bw - 72;
+        const by = Math.round(yPdh - bh / 2);
+
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.94)';
+        ctx.fillRect(bx, by, bw, bh);
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx, by, bw, bh);
+        ctx.fillStyle = '#ffd700';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(tagText, bx + 6, yPdh);
+      }
+
+      // 2. Cyan Reference Line at PDL
+      if (yPdl !== null && yPdl >= 10 && yPdl <= canvasCssHeight - 15) {
+        const isSwept = dlsResult && dlsResult.active && dlsResult.direction === 'BUY';
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = isSwept ? 1.8 : 1.0;
+        ctx.setLineDash(isSwept ? [6, 3] : [5, 4]);
+        if (isSwept) {
+          ctx.shadowColor = 'rgba(0, 229, 255, 0.7)';
+          ctx.shadowBlur = 6;
+        } else {
+          ctx.shadowBlur = 0;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(15, yPdl);
+        ctx.lineTo(canvasCssWidth - 65, yPdl);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.shadowBlur = 0;
+
+        const tagText = isSwept ? `⚡ PDL SWEPT · $${pdl.toFixed(2)} [1M BUY TRIGGERED]` : `PDL (Liquidity Low) · $${pdl.toFixed(2)}`;
+        ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        const tw = ctx.measureText(tagText).width;
+        const bw = Math.round(tw + 12);
+        const bh = 16;
+        const bx = canvasCssWidth - bw - 72;
+        const by = Math.round(yPdl - bh / 2);
+
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.94)';
+        ctx.fillRect(bx, by, bw, bh);
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx, by, bw, bh);
+        ctx.fillStyle = '#00e5ff';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(tagText, bx + 6, yPdl);
+      }
+
+      ctx.restore();
+    }
+    window.drawDailyLiquiditySniperOverlay = drawDailyLiquiditySniperOverlay;
+
+
     // Dedicated Canvas Overlay for Liquidity & Candle Psychology Engine
     // (Always draws Key Liquidity Pools with "[Pool Name] · $[Price] [Liquidity Pool]", and highlights sweeps)
     function drawLiquidityPsychologyOverlay(ctx, psyResult, pools) {
@@ -8744,9 +9096,29 @@
         drawLiquidityPsychologyOverlay(drawingCtx, window.latestLiquidityPsychology, actPools);
       }
 
+      // 2.3 Dedicated: Daily Liquidity Sniper Reference Lines (Golden PDH, Cyan PDL)
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.dailyLiquiditySniper) {
+        const actPools = (typeof currentLiquidityPools !== 'undefined' && currentLiquidityPools) ? currentLiquidityPools : (window.currentLiquidityPools || null);
+        drawDailyLiquiditySniperOverlay(drawingCtx, window.latestDailyLiquiditySniper, actPools);
+      }
+
       // 3. Automatic Risk/Reward Position Tool (Short/Long Tool)
       if (showRROverlay) {
-        if (typeof indicatorSettings !== 'undefined' && indicatorSettings.liquidityPsychology && window.latestLiquidityPsychology) {
+        if (typeof indicatorSettings !== 'undefined' && indicatorSettings.dailyLiquiditySniper && window.latestDailyLiquiditySniper && window.latestDailyLiquiditySniper.active) {
+          const dls = window.latestDailyLiquiditySniper;
+          const riskPts = Math.abs(Number(dls.entry) - Number(dls.sl));
+          const rewardPts = Math.abs(Number(dls.tp1) - Number(dls.entry));
+          const rrRatio = (rewardPts / Math.max(0.1, riskPts)).toFixed(1);
+          drawRiskRewardOverlay(drawingCtx, {
+            type: dls.direction === 'BUY' ? 'LONG' : 'SHORT',
+            entry: Number(dls.entry),
+            sl: Number(dls.sl),
+            tp: Number(dls.tp1),
+            risk: riskPts,
+            reward: rewardPts,
+            rrRatio: rrRatio
+          });
+        } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.liquidityPsychology && window.latestLiquidityPsychology) {
           const psy = window.latestLiquidityPsychology;
           const riskPts = Math.abs(Number(psy.entry) - Number(psy.sl));
           const rewardPts = Math.abs(Number(psy.tp) - Number(psy.entry));
@@ -9469,6 +9841,33 @@
       };
     }
 
+    function evaluateDailyLiquiditySniperModule(candles, currentSpot, liquidityPools) {
+      if (window.latestDailyLiquiditySniper) {
+        const dls = window.latestDailyLiquiditySniper;
+        if (dls.active) {
+          return {
+            bias: dls.direction,
+            score: 25,
+            reason: dls.reason,
+            summary: `${dls.direction} Confirmed`
+          };
+        } else if (dls.isStandby) {
+          return {
+            bias: 'NEUTRAL',
+            score: 0,
+            reason: dls.reason,
+            summary: 'Mid-Range Standby'
+          };
+        }
+      }
+      return {
+        bias: 'NEUTRAL',
+        score: 0,
+        reason: 'Scanning PDH/PDL 1M Breakouts',
+        summary: 'Scanning'
+      };
+    }
+
     // Dynamic Confluence Arbiter across active modular indicators
     function evaluateActiveConfluence(candles, currentSpot, atr, liquidityPools, activeSweep) {
       if (!candles || candles.length < 5) return null;
@@ -9477,6 +9876,7 @@
       const smcRes = evaluateSMCModule(candles, spot, atr);
       const liqRes = evaluateLiquidityModule(candles, spot, liquidityPools, activeSweep);
       const liqPsyRes = evaluateLiquidityPsychologyModule(candles, spot, liquidityPools);
+      const dlsRes = evaluateDailyLiquiditySniperModule(candles, spot, liquidityPools);
       const fibRes = evaluateAutoFibModule(candles, spot);
       const paRes = evaluatePriceActionModule(candles);
       const momRes = evaluateMomentumModule(candles, spot);
@@ -9485,6 +9885,7 @@
         smcZones: { name: 'SMC Zones', weight: 25, active: !!indicatorSettings.smcZones, result: smcRes },
         liquidityHunter: { name: 'Liquidity Hunter', weight: 25, active: !!indicatorSettings.liquidityHunter, result: liqRes },
         liquidityPsychology: { name: 'Liquidity & Candle Psychology', weight: 25, active: !!indicatorSettings.liquidityPsychology, result: liqPsyRes },
+        dailyLiquiditySniper: { name: 'Daily Liquidity Sniper', weight: 25, active: !!indicatorSettings.dailyLiquiditySniper, result: dlsRes },
         autoFib: { name: 'Auto Fib Golden Pocket', weight: 20, active: !!indicatorSettings.autoFib, result: fibRes },
         priceAction: { name: 'Price Action Scanner', weight: 15, active: !!indicatorSettings.priceAction, result: paRes },
         momentumSuite: { name: 'Momentum Suite', weight: 15, active: !!indicatorSettings.momentumSuite, result: momRes }
@@ -9603,6 +10004,12 @@
         ? scanAllLiquidityPsychology(candles, currentLiquidityPools)
         : null;
       window.latestLiquidityPsychology = activePsychology;
+
+      // 0.3 DEDICATED: DAILY LIQUIDITY SNIPER (1D SWEEP + 1M TRIGGER)
+      const activeDLS = (typeof indicatorSettings !== 'undefined' && indicatorSettings.dailyLiquiditySniper)
+        ? evaluateDailyLiquiditySniper(candles, currentLiquidityPools, currentPrice)
+        : null;
+      window.latestDailyLiquiditySniper = activeDLS;
 
       // 0.5 5 CORE MODULAR SEQUENTIAL CONFLUENCE
       const activeModularConfluence = evaluateActiveConfluence(candles, currentPrice, 3.5, currentLiquidityPools, activeSweep);
@@ -11184,12 +11591,65 @@ const ghostCandles = [
 
       const now = Date.now();
 
-      // 0. REAL-TIME INSTITUTIONAL LIQUIDITY SWEEP PRIORITY UPDATE
+      // 0. PRIORITY 0: REAL-TIME DAILY LIQUIDITY SNIPER (1D SWEEP + 1M TRIGGER)
       const curLock = (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock) 
         ? shortTermSignalLock 
         : (window.shortTermSignalLock || null);
 
-      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.liquidityPsychology && window.latestLiquidityPsychology && (!curLock || !curLock.active || curLock.status !== 'ACTIVE_HOLD' || curLock.reason !== window.latestLiquidityPsychology.reason)) {
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.dailyLiquiditySniper && window.latestDailyLiquiditySniper) {
+        const dls = window.latestDailyLiquiditySniper;
+        if (dls.active) {
+          if (!curLock || !curLock.active || curLock.status !== 'ACTIVE_HOLD' || curLock.reason !== dls.reason || curLock.signalType !== dls.direction) {
+            shortTermSignalLock = {
+              active: true,
+              signalType: dls.direction,
+              action: dls.direction === 'BUY' ? 'HIGH CONVICTION BUY' : 'HIGH CONVICTION SELL',
+              confidence: dls.confidence || '96% (DLS-1M Micro Breakout Verified)',
+              entryPrice: dls.entry,
+              tp1: dls.tp1,
+              tp2: dls.tp2,
+              sl: Number(dls.sl),
+              rr: dls.rr,
+              rrText: dls.rrText,
+              gainPts: dls.gainPts,
+              reason: dls.reason,
+              badgeText: dls.badge || '⚡ DLS-1M SNIPER',
+              lockedAt: now,
+              maxLockDurationMs: 60 * 60 * 1000,
+              status: 'ACTIVE_HOLD',
+              completedAt: null,
+              lastCompletedType: curLock ? curLock.lastCompletedType : null,
+              lastCompletedStatus: curLock ? curLock.lastCompletedStatus : null
+            };
+            window.shortTermSignalLock = shortTermSignalLock;
+          }
+        } else if (dls.isStandby) {
+          if (!curLock || !curLock.active || curLock.status !== 'ACTIVE_HOLD' || curLock.status === 'STANDBY_MIDRANGE') {
+            shortTermSignalLock = {
+              active: false,
+              signalType: 'STANDBY',
+              action: 'STANDBY: PRICE IN MID-RANGE',
+              confidence: 'PDH/PDL Boundary Scan Active (No-Trade Zone)',
+              entryPrice: currentSpot,
+              tp1: currentSpot,
+              tp2: currentSpot,
+              sl: 0,
+              rr: '0 : 0 (STANDBY)',
+              rrText: '0 : 0 (STANDBY)',
+              gainPts: 0,
+              reason: dls.reason,
+              badgeText: '⚡ DLS-1M SNIPER (STANDBY)',
+              lockedAt: now,
+              maxLockDurationMs: 60 * 60 * 1000,
+              status: 'STANDBY_MIDRANGE',
+              completedAt: null,
+              lastCompletedType: curLock ? curLock.lastCompletedType : null,
+              lastCompletedStatus: curLock ? curLock.lastCompletedStatus : null
+            };
+            window.shortTermSignalLock = shortTermSignalLock;
+          }
+        }
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.liquidityPsychology && window.latestLiquidityPsychology && (!curLock || !curLock.active || curLock.status !== 'ACTIVE_HOLD' || curLock.reason !== window.latestLiquidityPsychology.reason)) {
         const psy = window.latestLiquidityPsychology;
         shortTermSignalLock = {
           active: true,
@@ -11614,7 +12074,7 @@ const ghostCandles = [
           stDirPill.style.background = 'rgba(248, 81, 73, 0.2)';
           stDirPill.style.color = '#f85149';
           stDirPill.style.borderColor = 'rgba(248, 81, 73, 0.5)';
-        } else if (shortTermSignalLock.status === 'CONFLICT_HOLD') {
+        } else if (shortTermSignalLock.status === 'CONFLICT_HOLD' || shortTermSignalLock.status === 'STANDBY_MIDRANGE') {
           stDirPill.innerText = 'STANDBY ⚠️';
           stDirPill.className = 'exec-dir-pill standby';
           stDirPill.style.background = 'rgba(234, 179, 8, 0.2)';
@@ -11655,6 +12115,7 @@ const ghostCandles = [
         updateStep('pipeSMC', 'smcZones', '🏛️ SMC');
         updateStep('pipeLiq', 'liquidityHunter', '💧 Liq');
         updateStep('pipeLiqPsy', 'liquidityPsychology', '⚡ Liq Psy');
+        updateStep('pipeDLS', 'dailyLiquiditySniper', '⚡ DLS-1M');
         updateStep('pipeFib', 'autoFib', '🎯 Fib');
         updateStep('pipePA', 'priceAction', '🕯️ PA');
         updateStep('pipeMom', 'momentumSuite', '⚡ Mom');
@@ -11733,6 +12194,11 @@ const ghostCandles = [
         if (stSl) { stSl.innerText = '$' + shortTermSignalLock.sl.toFixed(2) + ' (HIT)'; stSl.style.color = '#f85149'; }
         if (stTp) { stTp.innerText = 'CANCELLED'; stTp.style.color = '#8b949e'; }
         if (stRr) stRr.innerText = '0 : 0 (STOPPED)';
+      } else if (shortTermSignalLock.status === 'STANDBY_MIDRANGE') {
+        if (stEntry) { stEntry.innerText = '$' + currentSpot.toFixed(2); stEntry.style.color = '#8b949e'; }
+        if (stSl) { stSl.innerText = 'NO TRADE ZONE'; stSl.style.color = '#eab308'; }
+        if (stTp) { stTp.innerText = 'WAITING BOUNDARY'; stTp.style.color = '#8b949e'; }
+        if (stRr) stRr.innerText = '0 : 0 (STANDBY)';
       } else {
         if (stEntry) { stEntry.innerText = '$' + shortTermSignalLock.entryPrice.toFixed(2); stEntry.style.color = '#f0f6fc'; }
         if (stTp) { stTp.innerText = '$' + shortTermSignalLock.tp1.toFixed(2); stTp.style.color = '#3fb950'; }
@@ -11757,7 +12223,24 @@ const ghostCandles = [
       const stLiqBadge = document.getElementById('stLiquidityBadge');
       if (stLiqBadge) {
         const currentLock = (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock) ? shortTermSignalLock : window.shortTermSignalLock;
-        if (window.latestLiquidityPsychology && currentLock && (currentLock.status === 'ACTIVE_HOLD' || currentLock.status === 'RUNNER_ACTIVE')) {
+        if (window.latestDailyLiquiditySniper && indicatorSettings && indicatorSettings.dailyLiquiditySniper) {
+          const dls = window.latestDailyLiquiditySniper;
+          if (dls.active) {
+            stLiqBadge.innerText = `⚡ DLS-1M SNIPER (${dls.direction} CONFIRMED)`;
+            stLiqBadge.style.display = 'block';
+            stLiqBadge.style.background = dls.direction === 'BUY' ? 'rgba(46, 160, 67, 0.15)' : 'rgba(248, 81, 73, 0.15)';
+            stLiqBadge.style.color = dls.direction === 'BUY' ? '#3fb950' : '#f85149';
+            stLiqBadge.style.borderColor = dls.direction === 'BUY' ? 'rgba(46, 160, 67, 0.4)' : 'rgba(248, 81, 73, 0.4)';
+          } else if (dls.isStandby) {
+            stLiqBadge.innerText = `⚡ DLS-1M SNIPER (MID-RANGE NO-TRADE ZONE)`;
+            stLiqBadge.style.display = 'block';
+            stLiqBadge.style.background = 'rgba(234, 179, 8, 0.12)';
+            stLiqBadge.style.color = '#eab308';
+            stLiqBadge.style.borderColor = 'rgba(234, 179, 8, 0.35)';
+          } else {
+            stLiqBadge.style.display = 'none';
+          }
+        } else if (window.latestLiquidityPsychology && currentLock && (currentLock.status === 'ACTIVE_HOLD' || currentLock.status === 'RUNNER_ACTIVE')) {
           stLiqBadge.innerText = "⚡ Liquidity Purged & Confirmed (Buyers Absorbed)";
           stLiqBadge.style.display = 'block';
           stLiqBadge.style.background = 'rgba(0, 229, 255, 0.12)';
@@ -13981,6 +14464,20 @@ window.addEventListener('resize', () => {
           </div>
           <label class="toggle-switch">
             <input type="checkbox" id="modal-toggle-liquidityPsychology" checked onchange="toggleModularIndicator('liquidityPsychology')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="indicator-row">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #ffd700;">⚡ Daily Liquidity Sniper (PDH/PDL 1M Breakout)</b>
+              <span style="font-size: 9px; background: rgba(255,215,0,0.18); color: #ffd700; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 25%</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">1D PDH/PDL Sweep + 1M Micro Candle Low/High Breakout Confirmation</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="modal-toggle-dailyLiquiditySniper" checked onchange="toggleModularIndicator('dailyLiquiditySniper')">
             <span class="toggle-slider"></span>
           </label>
         </div>
