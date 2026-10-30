@@ -7544,6 +7544,7 @@
             type: "BUY",
             signal: "HIGH_CONVICTION_BUY",
             tag: "LIQUIDITY ABSORPTION CONFIRMED",
+            sweepTime: sweepBar.time,
             levelName: levelMeta.name || "Liquidity Pool",
             levelCode: levelMeta.code || "POOL",
             liquidityLevel: Number(liquidityLevel.toFixed(2)),
@@ -7610,6 +7611,7 @@
             type: "SELL",
             signal: "HIGH_CONVICTION_SELL",
             tag: "LIQUIDITY DISPLACEMENT CONFIRMED",
+            sweepTime: sweepBar.time,
             levelName: levelMeta.name || "Liquidity Pool",
             levelCode: levelMeta.code || "POOL",
             liquidityLevel: Number(liquidityLevel.toFixed(2)),
@@ -7682,103 +7684,184 @@
       ctx.save();
 
       // 1. Collect Key Liquidity Pools
-      const levels = [
-        { name: "Equal Highs (EQH)", price: pools.eqh },
-        { name: "Asia High (ASH)", price: pools.asiaHigh },
-        { name: "London High (LSH)", price: pools.londonHigh },
-        { name: "1H Swing High", price: pools.h1SwingHigh },
-        { name: "Prev Day High (PDH)", price: pools.pdh },
-        { name: "Equal Lows (EQL)", price: pools.eql },
-        { name: "Asia Low (ASL)", price: pools.asiaLow },
-        { name: "London Low (LSL)", price: pools.londonLow },
-        { name: "1H Swing Low", price: pools.h1SwingLow },
-        { name: "Prev Day Low (PDL)", price: pools.pdl }
+      const rawLevels = [
+        { code: "EQH", name: "Equal Highs (EQH)", price: pools.eqh },
+        { code: "PDH", name: "Prev Day High (PDH)", price: pools.pdh },
+        { code: "ASH", name: "Asia High (ASH)", price: pools.asiaHigh },
+        { code: "LSH", name: "London High (LSH)", price: pools.londonHigh },
+        { code: "H1H", name: "1H Swing High", price: pools.h1SwingHigh },
+        { code: "EQL", name: "Equal Lows (EQL)", price: pools.eql },
+        { code: "PDL", name: "Prev Day Low (PDL)", price: pools.pdl },
+        { code: "ASL", name: "Asia Low (ASL)", price: pools.asiaLow },
+        { code: "LSL", name: "London Low (LSL)", price: pools.londonLow },
+        { code: "H1L", name: "1H Swing Low", price: pools.h1SwingLow }
       ];
 
       const activeLevel = (psyResult && psyResult.liquidityLevel) ? psyResult.liquidityLevel : null;
 
-      // Draw all valid Liquidity Pools with crisp horizontal lines and labels
-      levels.forEach(lvl => {
+      // Filter visible levels on screen
+      const screenLevels = [];
+      rawLevels.forEach(lvl => {
         if (!lvl.price || lvl.price <= 0) return;
         const y = candleSeries.priceToCoordinate(lvl.price);
         if (y === null || y < 10 || y > canvasCssHeight - 15) return;
+        screenLevels.push({
+          ...lvl,
+          y: Math.round(y),
+          isSweptLevel: !!(activeLevel && Math.abs(lvl.price - activeLevel) <= 0.40)
+        });
+      });
 
-        const isSweptLevel = activeLevel && Math.abs(lvl.price - activeLevel) <= 0.35;
+      // Sort by price descending (top to bottom on chart)
+      screenLevels.sort((a, b) => b.price - a.price);
 
-        ctx.strokeStyle = isSweptLevel ? '#00e5ff' : 'rgba(0, 229, 255, 0.45)';
-        ctx.lineWidth = isSweptLevel ? 1.8 : 1.0;
-        if (isSweptLevel) {
-          ctx.shadowColor = 'rgba(0, 229, 255, 0.8)';
-          ctx.shadowBlur = 6;
+      // Smart Deduplication: Merge levels that are within 1.4 USD into a single clean line
+      const cleanLevels = [];
+      for (let i = 0; i < screenLevels.length; i++) {
+        const cur = screenLevels[i];
+        const last = cleanLevels[cleanLevels.length - 1];
+        if (last && Math.abs(cur.price - last.price) <= 1.4) {
+          if (cur.isSweptLevel) last.isSweptLevel = true;
+          last.name = `${last.code} / ${cur.name}`;
+        } else {
+          cleanLevels.push(cur);
+        }
+      }
+
+      // Sort by screen Y (ascending coordinate)
+      cleanLevels.sort((a, b) => a.y - b.y);
+
+      let prevTagY = -999;
+      let colTier = 0;
+
+      cleanLevels.forEach(lvl => {
+        const isSwept = lvl.isSweptLevel;
+
+        // Subtle, elegant line style (Candlesticks in middle remain clearly visible)
+        ctx.strokeStyle = isSwept ? '#00e5ff' : 'rgba(0, 229, 255, 0.25)';
+        ctx.lineWidth = isSwept ? 1.6 : 0.8;
+        if (isSwept) {
+          ctx.shadowColor = 'rgba(0, 229, 255, 0.6)';
+          ctx.shadowBlur = 5;
+          ctx.setLineDash([6, 3]);
         } else {
           ctx.shadowBlur = 0;
+          ctx.setLineDash([3, 5]);
         }
-        ctx.setLineDash(isSweptLevel ? [6, 3] : [4, 4]);
+
         ctx.beginPath();
-        ctx.moveTo(15, y);
-        ctx.lineTo(canvasCssWidth - 65, y);
+        ctx.moveTo(15, lvl.y);
+        ctx.lineTo(canvasCssWidth - 65, lvl.y);
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.shadowBlur = 0;
 
-        const txt = isSweptLevel 
-          ? `⚡ ${lvl.name} · $${lvl.price.toFixed(2)} [Liquidity Pool - PURGED]`
+        // Right-side tag with collision staggering
+        const txt = isSwept 
+          ? `⚡ ${lvl.name} · $${lvl.price.toFixed(2)} [PURGED]`
           : `${lvl.name} · $${lvl.price.toFixed(2)} [Liquidity Pool]`;
 
-        ctx.font = isSweptLevel ? '800 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace' : '600 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        ctx.font = isSwept 
+          ? '800 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace' 
+          : '600 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        
         const tw = ctx.measureText(txt).width;
-        const bw = tw + 12;
-        const bh = 17;
-        const bx = canvasCssWidth - bw - 72;
-        const by = y - Math.floor(bh / 2);
+        const bw = Math.round(tw + 12);
+        const bh = 16;
+
+        // If distance from previous tag is < 18px, stagger into Column 2
+        if (lvl.y - prevTagY < 18) {
+          colTier = (colTier + 1) % 2;
+        } else {
+          colTier = 0;
+        }
+        prevTagY = lvl.y;
+
+        const bx = (colTier === 1) 
+          ? (canvasCssWidth - bw - 72 - 120) 
+          : (canvasCssWidth - bw - 72);
+        const by = lvl.y - Math.floor(bh / 2);
 
         ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 18, 28, 0.94)';
         ctx.fillRect(bx, by, bw, bh);
-        ctx.strokeStyle = isSweptLevel ? '#00e5ff' : 'rgba(0, 229, 255, 0.5)';
+        ctx.strokeStyle = isSwept ? '#00e5ff' : 'rgba(0, 229, 255, 0.35)';
         ctx.lineWidth = 1;
         ctx.strokeRect(bx, by, bw, bh);
 
-        ctx.fillStyle = isSweptLevel ? '#00e5ff' : '#00e5ff';
+        ctx.fillStyle = isSwept ? '#00e5ff' : '#00e5ff';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(txt, bx + 6, y);
+        ctx.fillText(txt, bx + 6, lvl.y);
       });
 
-      // 2. When swept and 5-candle confirmation completes:
-      // Plot small neon badge: "⚡ Liquidity Purged & Confirmed (Buyers Absorbed)"
+      // 2. CANDLESTICK SANCTUARY (Zero clutter in the middle):
+      // a) On the Sweep Candle itself: subtle micro-pin BELOW the wick tip
+      if (psyResult && psyResult.sweepTime && chart.timeScale) {
+        try {
+          const sx = chart.timeScale().timeToCoordinate(psyResult.sweepTime);
+          const sweepTip = (psyResult.type === 'BUY') 
+            ? (psyResult.sweepLowest || psyResult.sweepPrice || psyResult.liquidityLevel)
+            : (psyResult.sweepPrice || psyResult.liquidityLevel);
+          const sy = candleSeries.priceToCoordinate(sweepTip);
+
+          if (sx !== null && sy !== null && sx >= 30 && sx <= canvasCssWidth - 65) {
+            const isBuy = (psyResult.type === 'BUY');
+            const pinY = isBuy ? (sy + 14) : (sy - 14);
+
+            // Subtle vertical dashed connector from wick tip to micro-tag
+            ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            ctx.moveTo(sx, isBuy ? sy + 2 : sy - 2);
+            ctx.lineTo(sx, isBuy ? pinY - 7 : pinY + 7);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Micro-tag: "⚡ PURGED" (Only 54px wide, safely outside candles)
+            const microTxt = "⚡ PURGED";
+            ctx.font = '800 8px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+            const mtw = ctx.measureText(microTxt).width + 8;
+            const mth = 13;
+            const mbx = Math.round(sx - (mtw / 2));
+            const mby = Math.round(pinY - (mth / 2));
+
+            ctx.fillStyle = 'rgba(10, 24, 38, 0.95)';
+            ctx.fillRect(mbx, mby, mtw, mth);
+            ctx.strokeStyle = '#00e5ff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(mbx, mby, mtw, mth);
+
+            ctx.fillStyle = '#00e5ff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(microTxt, sx, pinY);
+          }
+        } catch (e) {}
+      }
+
+      // b) The Full Confirmation Badge: Positioned cleanly in the FORWARD PROJECTION AREA
+      // (To the right of the latest candle, where ghost candles project - NEVER covering candles in the middle!)
       if (psyResult && (psyResult.signal || psyResult.tag)) {
         const badgeTxt = "⚡ Liquidity Purged & Confirmed (Buyers Absorbed)";
-        ctx.font = '800 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-        const badgeW = Math.round(ctx.measureText(badgeTxt).width + 18);
-        const badgeH = 22;
+        ctx.font = '800 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        const badgeW = Math.round(ctx.measureText(badgeTxt).width + 16);
+        const badgeH = 20;
 
-        let badgeX = 24;
-        let badgeY = 24;
-
-        if (rawCandleData && rawCandleData.length && chart.timeScale) {
-          try {
-            const lastCandle = rawCandleData[rawCandleData.length - 1];
-            const px = chart.timeScale().timeToCoordinate(lastCandle.time);
-            const py = candleSeries.priceToCoordinate(psyResult.type === 'BUY' ? lastCandle.low : lastCandle.high);
-            if (px !== null && py !== null && px >= 50 && px <= canvasCssWidth - 100) {
-              badgeX = Math.round(px - (badgeW / 2));
-              badgeY = (psyResult.type === 'BUY') 
-                ? Math.min(canvasCssHeight - badgeH - 12, Math.round(py + 18))
-                : Math.max(15, Math.round(py - badgeH - 18));
-            }
-          } catch (e) {}
-        }
+        // Sleek Top-Left HUD Status Pill (100% clear of middle candlesticks)
+        const badgeX = 18;
+        const badgeY = 16;
 
         ctx.shadowColor = '#00e5ff';
-        ctx.shadowBlur = 8;
-        ctx.fillStyle = 'rgba(10, 25, 40, 0.95)';
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = 'rgba(10, 25, 40, 0.94)';
         ctx.beginPath();
         if (ctx.roundRect) ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
         else ctx.rect(badgeX, badgeY, badgeW, badgeH);
         ctx.fill();
 
         ctx.strokeStyle = '#00e5ff';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.2;
         ctx.stroke();
 
         ctx.shadowBlur = 0;
@@ -8619,8 +8702,8 @@
         }
       }
 
-      // 1.5 Draw Quantitative Breakout Line (Only when SMC is off to avoid collision)
-      if (!smcEnabled) {
+      // 1.5 Draw Quantitative Breakout Line (Only when SMC and Liquidity Psychology are off to avoid collision)
+      if (!smcEnabled && (!indicatorSettings || !indicatorSettings.liquidityPsychology)) {
         try { drawBreakoutOverlayOnCanvas(drawingCtx); } catch (boDrawErr) {}
       }
 
