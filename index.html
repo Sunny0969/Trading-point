@@ -3290,6 +3290,48 @@
       color: #f85149;
     }
 
+    /* High-Impact Macro Economic News Radar & Capital Protection Shield */
+    @keyframes pulse-red-glow {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 83, 80, 0.7); opacity: 0.8; }
+      70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(239, 83, 80, 0); opacity: 1; }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 83, 80, 0); opacity: 0.8; }
+    }
+    .blinking-dot {
+      animation: pulse-red-glow 1.5s infinite;
+    }
+    #macroNewsAlertBanner {
+      display: none;
+      position: sticky;
+      top: 60px;
+      z-index: 9999;
+      background: linear-gradient(90deg, rgba(239,83,80,0.25) 0%, rgba(20,22,28,0.95) 50%, rgba(239,83,80,0.25) 100%);
+      border-top: 1px solid #ef5350;
+      border-bottom: 1px solid #ef5350;
+      padding: 10px 18px;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 0 25px rgba(239,83,80,0.28);
+      backdrop-filter: blur(8px);
+      transition: all 0.3s ease;
+    }
+    #macroNewsAlertBanner.warning-state {
+      background: linear-gradient(90deg, rgba(245,158,11,0.22) 0%, rgba(20,22,28,0.95) 50%, rgba(245,158,11,0.22) 100%);
+      border-top: 1px solid #f59e0b;
+      border-bottom: 1px solid #f59e0b;
+      box-shadow: 0 0 20px rgba(245,158,11,0.2);
+    }
+    #macroNewsAlertBanner.warning-state .blinking-dot {
+      background-color: #f59e0b !important;
+      box-shadow: 0 0 10px #f59e0b !important;
+    }
+    #macroNewsAlertBanner.warning-state .alert-label {
+      color: #f59e0b !important;
+    }
+    #macroNewsAlertBanner.warning-state #newsCountdownTimer {
+      background: rgba(245,158,11,0.18) !important;
+      border-color: #f59e0b !important;
+      color: #f59e0b !important;
+    }
 </style>
   <script src="/supabase.min.js"></script>
   <script>if (typeof window.supabase === 'undefined') { document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>'); }</script>
@@ -3464,6 +3506,21 @@
       </div>
     </div>
   </header>
+
+  <!-- High-Impact Macro Economic News Radar & Capital Protection Shield Banner -->
+  <div id="macroNewsAlertBanner">
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <span class="blinking-dot" style="height: 10px; width: 10px; background-color: #ef5350; border-radius: 50%; display: inline-block; box-shadow: 0 0 10px #ef5350;"></span>
+      <span class="alert-label" style="font-weight: 800; font-size: 13px; color: #ef5350; letter-spacing: 0.5px;">⚠️ HIGH IMPACT EVENT INCOMING:</span>
+      <span id="newsEventTitle" style="font-weight: 700; font-size: 13px; color: #FFFFFF;">FOMC RATE DECISION &amp; PRESS CONFERENCE</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+      <div style="font-size: 12px; color: #848E9C;">PROJECTED GOLD RANGE: <strong id="projectedGoldRange" style="color: #F0B90B;">$4010.50 — $4075.00 (±$32.50)</strong></div>
+      <div style="background: rgba(239,83,80,0.2); border: 1px solid #ef5350; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 800; color: #ef5350; letter-spacing: 0.5px;" id="newsCountdownTimer">
+        LOCKOUT IN: 00:08:42
+      </div>
+    </div>
+  </div>
 
   <!-- ========================================================
        PAGE 1: DYNAMIC HOMEPAGE (EXECUTIVE DASHBOARD)
@@ -5833,6 +5890,7 @@
       wickDownColor: '#f85149',
     });
     window.candleSeries = candleSeries;
+    window.mainCandleSeries = candleSeries;
 
     const ghostCandleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
       upColor: 'rgba(46, 160, 67, 0.40)',
@@ -9510,10 +9568,68 @@
       ctx.restore();
     }
 
+    function drawMacroNewsReleaseMarker(ctx) {
+      if (!window.macroNewsEngine || !window.macroNewsEngine.activeNews || !window.chart) return;
+      const ev = window.macroNewsEngine.activeNews;
+      const evTimeMs = new Date(ev.time).getTime();
+      const evTimeSec = Math.floor(evTimeMs / 1000);
+      const timeScale = window.chart.timeScale();
+      if (!timeScale) return;
+
+      let lineX = null;
+      if (typeof timeScale.timeToCoordinate === 'function') {
+        lineX = timeScale.timeToCoordinate(evTimeSec);
+      }
+      if ((lineX === null || isNaN(lineX)) && typeof allCandleData !== 'undefined' && allCandleData && allCandleData.length > 0) {
+        const lastCandle = allCandleData[allCandleData.length - 1];
+        const lastSec = typeof lastCandle.time === 'number' ? lastCandle.time : Math.floor(new Date(lastCandle.time).getTime() / 1000);
+        const lastCoord = typeof timeScale.timeToCoordinate === 'function' ? timeScale.timeToCoordinate(lastSec) : null;
+        if (lastCoord !== null && !isNaN(lastCoord)) {
+          const diffSec = evTimeSec - lastSec;
+          const barSpacing = (timeScale.options && typeof timeScale.options === 'function' && timeScale.options().barSpacing) || 12;
+          const tfSec = (currentTf === '1m' ? 60 : (currentTf === '5m' ? 300 : (currentTf === '1h' ? 3600 : (currentTf === '4h' ? 14400 : 900))));
+          lineX = lastCoord + (diffSec / tfSec) * barSpacing;
+        }
+      }
+
+      if (lineX !== null && !isNaN(lineX) && lineX >= 0 && lineX <= canvasCssWidth) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(lineX, 0);
+        ctx.lineTo(lineX, canvasCssHeight);
+        ctx.stroke();
+
+        const pillW = 150;
+        const pillH = 22;
+        const pillX = Math.min(canvasCssWidth - pillW - 8, Math.max(8, lineX - pillW / 2));
+        ctx.fillStyle = 'rgba(20, 22, 28, 0.95)';
+        ctx.strokeStyle = '#ef5350';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(pillX, 6, pillW, pillH, 4);
+        else ctx.rect(pillX, 6, pillW, pillH);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ef5350';
+        ctx.font = 'bold 9.5px "Space Grotesk", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const releaseLabel = (ev.name && /FOMC/i.test(ev.name)) ? '⚠️ FOMC RELEASE TIME' : '⚠️ NEWS RELEASE TIME';
+        ctx.fillText(releaseLabel, pillX + pillW / 2, 6 + pillH / 2);
+        ctx.restore();
+      }
+    }
+
     function redrawDrawings() {
     window.redrawDrawings = redrawDrawings;
       if (!drawingCtx || !drawingCanvas) return;
       drawingCtx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
+      drawMacroNewsReleaseMarker(drawingCtx);
 
       // 1. Smart Money Concept (SMC) Key Supply & Demand Zones (FVG & Order Blocks)
       if (currentSMCZones && smcEnabled) {
@@ -9999,6 +10115,244 @@
       return ema;
     }
 
+    // ==========================================
+    // MACRO ECONOMIC NEWS RADAR & DYNAMIC VOLATILITY ENGINE
+    // ==========================================
+    window.macroNewsEngine = {
+      activeNews: null,
+      isLockoutActive: false,
+      newsBlackout: false,
+      newsUpperTargetLine: null,
+      newsLowerTargetLine: null,
+
+      evaluateUpcomingEvents: function(currentSpot, dailyATR = 48.0) {
+        const now = new Date();
+        const spot = (typeof currentSpot === 'number' && !isNaN(currentSpot) && currentSpot > 0)
+          ? currentSpot
+          : ((typeof window.latestCandle !== 'undefined' && window.latestCandle && window.latestCandle.close) 
+             || (typeof window.latestPrice === 'number' && window.latestPrice) 
+             || 4015.00);
+
+        // Standard or custom scheduled macro events
+        if (!window.scheduledMacroEvents || window.scheduledMacroEvents.length === 0) {
+          window.scheduledMacroEvents = [
+            {
+              name: "FOMC Rate Decision & Press Conference",
+              impact: "HIGH",
+              currency: "USD",
+              time: new Date(now.getTime() + 14 * 60000), // 14 mins away for pre-news lockout testing
+              multiplier: 0.65
+            },
+            {
+              name: "CPI m/m & y/y (Consumer Price Index)",
+              impact: "HIGH",
+              currency: "USD",
+              time: new Date(now.getTime() + 180 * 60000),
+              multiplier: 0.45
+            },
+            {
+              name: "Non-Farm Payrolls (NFP) & Unemployment Rate",
+              impact: "HIGH",
+              currency: "USD",
+              time: new Date(now.getTime() + 1440 * 60000),
+              multiplier: 0.45
+            }
+          ];
+        }
+
+        const upcomingEvents = window.scheduledMacroEvents;
+
+        // Window: -10 min post-release to +30 min pre-release
+        const nextHighImpact = upcomingEvents.find(ev => {
+          const evTimeMs = new Date(ev.time).getTime();
+          const diffMinutes = (evTimeMs - now.getTime()) / 60000;
+          const isHigh = (ev.impact === "HIGH" || ev.impact === "High" || /FOMC|CPI|NFP|Powell|Rate Decision|PPI/i.test(ev.name));
+          const isUsd = (ev.currency === "USD" || !ev.currency);
+          return isHigh && isUsd && diffMinutes >= -10 && diffMinutes <= 30;
+        });
+
+        const banner = document.getElementById("macroNewsAlertBanner");
+        const cSeries = window.candleSeries || window.mainCandleSeries;
+
+        if (!nextHighImpact) {
+          if (banner) banner.style.display = "none";
+          this.isLockoutActive = false;
+          this.newsBlackout = false;
+          this.activeNews = null;
+          window.NEWS_BLACKOUT = false;
+
+          if (cSeries) {
+            if (this.newsUpperTargetLine) {
+              try { cSeries.removePriceLine(this.newsUpperTargetLine); } catch (e) {}
+              this.newsUpperTargetLine = null;
+            }
+            if (this.newsLowerTargetLine) {
+              try { cSeries.removePriceLine(this.newsLowerTargetLine); } catch (e) {}
+              this.newsLowerTargetLine = null;
+            }
+          }
+          window.newsUpperTargetLine = null;
+          window.newsLowerTargetLine = null;
+          return;
+        }
+
+        this.activeNews = nextHighImpact;
+        const diffExactMs = new Date(nextHighImpact.time).getTime() - now.getTime();
+        const diffMinutes = Math.floor(diffExactMs / 60000);
+        const diffSeconds = Math.abs(Math.floor((diffExactMs % 60000) / 1000));
+
+        // Calculate Volatility Targets:
+        // FOMC / Powell Speech: M = 0.65 * ATR1D (~$31 - $45+)
+        // CPI / NFP: M = 0.45 * ATR1D (~$21 - $30+)
+        const mult = nextHighImpact.multiplier || (/FOMC|Powell/i.test(nextHighImpact.name) ? 0.65 : 0.45);
+        const volatilityExpansion = dailyATR * mult;
+        const upsideTarget = (spot + volatilityExpansion).toFixed(2);
+        const downsideTarget = (spot - volatilityExpansion).toFixed(2);
+
+        // Timing Windows:
+        // T - 30 min: Warning status active (Yellow/Orange state)
+        // T - 15 min to T + 10 min: RED LOCKOUT SHIELD ACTIVE (NEWS_BLACKOUT = true)
+        // T + 10 min onward: Re-armed directional breakout evaluation mode
+        const isWarningOnly = (diffMinutes > 15 && diffMinutes <= 30);
+        const isLockoutTime = (diffMinutes <= 15 && diffMinutes >= -10);
+
+        this.isLockoutActive = isLockoutTime;
+        this.newsBlackout = isLockoutTime;
+        window.NEWS_BLACKOUT = isLockoutTime;
+
+        // Sync with legacy currentEconomicState
+        if (typeof currentEconomicState !== 'undefined') {
+          currentEconomicState.isNewsNear = isLockoutTime;
+          currentEconomicState.diffMins = diffMinutes;
+          currentEconomicState.isHighImpact = true;
+          currentEconomicState.eventTitle = nextHighImpact.name;
+        }
+
+        // 1. Update Alert Banner UI
+        if (banner) {
+          banner.style.display = "flex";
+          if (isWarningOnly) {
+            banner.classList.add("warning-state");
+          } else {
+            banner.classList.remove("warning-state");
+          }
+
+          const titleEl = document.getElementById("newsEventTitle");
+          if (titleEl) titleEl.innerText = nextHighImpact.name.toUpperCase();
+
+          const rangeEl = document.getElementById("projectedGoldRange");
+          if (rangeEl) rangeEl.innerText = `$${downsideTarget} — $${upsideTarget} (±$${volatilityExpansion.toFixed(2)})`;
+
+          const timerEl = document.getElementById("newsCountdownTimer");
+          if (timerEl) {
+            if (diffExactMs > 0) {
+              const mStr = String(Math.max(0, diffMinutes)).padStart(2, '0');
+              const sStr = String(diffSeconds).padStart(2, '0');
+              if (diffMinutes > 15) {
+                timerEl.innerText = `LOCKOUT IN: 00:${mStr}:${sStr}`;
+              } else {
+                timerEl.innerText = `🔒 LOCKOUT ACTIVE: RELEASE IN ${mStr}:${sStr}`;
+              }
+            } else {
+              const postElapsedMins = Math.abs(diffMinutes);
+              const remainingPostSec = Math.max(0, (10 * 60) - (postElapsedMins * 60 + diffSeconds));
+              const remM = String(Math.floor(remainingPostSec / 60)).padStart(2, '0');
+              const remS = String(remainingPostSec % 60).padStart(2, '0');
+              timerEl.innerText = `POST-RELEASE SHIELD: RE-ARM IN ${remM}:${remS}`;
+            }
+          }
+        }
+
+        // 2. Lockout Enforcement in EXECUTION SIGNALS Card
+        if (isLockoutTime) {
+          const stDirPill = document.getElementById("stDirectionPill") || document.getElementById("moduleSignalDirection") || document.getElementById("signalDirectionBadge");
+          if (stDirPill) {
+            stDirPill.className = "exec-dir-pill red";
+            stDirPill.style.background = "rgba(239, 83, 80, 0.2)";
+            stDirPill.style.color = "#ef5350";
+            stDirPill.style.borderColor = "#ef5350";
+            stDirPill.innerText = "🔒 EXECUTION LOCKED (NEWS CAPITAL SHIELD)";
+          }
+
+          const stConfPill = document.getElementById("stConfidencePill");
+          if (stConfPill) {
+            stConfPill.innerText = "0% (Shield Active)";
+            stConfPill.style.color = "#ef5350";
+          }
+
+          const stTimer = document.getElementById("stLockTimer");
+          if (stTimer) {
+            stTimer.innerText = "🔒 NEWS CAPITAL SHIELD ACTIVE";
+            stTimer.style.background = "rgba(239, 83, 80, 0.15)";
+            stTimer.style.color = "#ef5350";
+            stTimer.style.borderColor = "rgba(239, 83, 80, 0.4)";
+          }
+
+          const stNote = document.getElementById("stNoteVal") || document.getElementById("moduleSignalRationale") || document.getElementById("signalRationaleText");
+          if (stNote) {
+            stNote.innerText = `Trading paused during high-volatility event. Market expected to sweep both liquidity pools ($${downsideTarget} vs $${upsideTarget}) before establishing real institutional trend. System will re-arm 10 minutes post-release.`;
+            stNote.style.color = "#ef5350";
+            stNote.style.borderColor = "rgba(239, 83, 80, 0.4)";
+            stNote.style.background = "rgba(239, 83, 80, 0.08)";
+          }
+        }
+
+        // 3. Lightweight Charts Primitives (Dotted Upper & Lower Target Lines)
+        if (cSeries && typeof cSeries.createPriceLine === 'function') {
+          const upTitle = `🎯 Post-News Upside Target: $${upsideTarget}`;
+          const downTitle = `🎯 Post-News Downside Target: $${downsideTarget}`;
+
+          if (!this.newsUpperTargetLine) {
+            try {
+              this.newsUpperTargetLine = cSeries.createPriceLine({
+                price: parseFloat(upsideTarget),
+                color: '#FF5252',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: upTitle
+              });
+            } catch (e) { console.warn("Error creating upper target line:", e); }
+          } else {
+            try {
+              this.newsUpperTargetLine.applyOptions({
+                price: parseFloat(upsideTarget),
+                title: upTitle
+              });
+            } catch (e) {}
+          }
+
+          if (!this.newsLowerTargetLine) {
+            try {
+              this.newsLowerTargetLine = cSeries.createPriceLine({
+                price: parseFloat(downsideTarget),
+                color: '#00E676',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: downTitle
+              });
+            } catch (e) { console.warn("Error creating lower target line:", e); }
+          } else {
+            try {
+              this.newsLowerTargetLine.applyOptions({
+                price: parseFloat(downsideTarget),
+                title: downTitle
+              });
+            } catch (e) {}
+          }
+
+          window.newsUpperTargetLine = this.newsUpperTargetLine;
+          window.newsLowerTargetLine = this.newsLowerTargetLine;
+        }
+
+        // 4. Redraw Canvas for News Release Time Marker
+        if (typeof window.redrawDrawings === 'function') {
+          window.redrawDrawings();
+        }
+      }
+    };
+
     // Global economic state for Pre-News Shield
     let currentEconomicState = {
       isNewsNear: false,
@@ -10473,7 +10827,7 @@
       const currentVol = currentCandle.volume || (Math.abs(currentCandle.close - currentCandle.open) * 120 + 150);
 
       // RULE 0: PRE-NEWS CAPITAL PROTECTION SHIELD (<= 20 mins)
-      if (economicState && economicState.isNewsNear) {
+      if ((economicState && economicState.isNewsNear) || (window.macroNewsEngine && window.macroNewsEngine.isLockoutActive)) {
         return {
           action: "NO_TRADE_NEWS_SHIELD",
           confidence: "0% (Shield Active)",
@@ -11301,7 +11655,7 @@
           if (stTp) stTp.innerText = '$' + tpVal.toFixed(2);
           if (stSl) stSl.innerText = '$' + Number(rr.sl).toFixed(2);
           if (stRr) stRr.innerText = shortTermSignalLock.rrText;
-          if (stDirPill) {
+          if (stDirPill && (!window.macroNewsEngine || !window.macroNewsEngine.isLockoutActive)) {
             stDirPill.className = isShort ? 'exec-dir-pill sell' : 'exec-dir-pill buy';
             stDirPill.innerText = isShort ? 'SELL' : 'BUY';
           }
@@ -12532,6 +12886,28 @@ const ghostCandles = [
 
       const isBuy = (shortTermSignalLock.signalType === 'BUY');
 
+      // If news capital protection shield is active, maintain lockout shield
+      if (window.macroNewsEngine && window.macroNewsEngine.isLockoutActive) {
+        if (stDirPill) {
+          stDirPill.className = 'exec-dir-pill red';
+          stDirPill.style.background = 'rgba(239, 83, 80, 0.2)';
+          stDirPill.style.color = '#ef5350';
+          stDirPill.style.borderColor = '#ef5350';
+          stDirPill.innerText = '🔒 EXECUTION LOCKED (NEWS CAPITAL SHIELD)';
+        }
+        if (stConfPill) {
+          stConfPill.innerText = '0% (Shield Active)';
+          stConfPill.style.color = '#ef5350';
+        }
+        if (stTimer) {
+          stTimer.innerText = '🔒 NEWS CAPITAL SHIELD ACTIVE';
+          stTimer.style.background = 'rgba(239, 83, 80, 0.15)';
+          stTimer.style.color = '#ef5350';
+          stTimer.style.borderColor = 'rgba(239, 83, 80, 0.4)';
+        }
+        return;
+      }
+
       // Update Direction & Confidence Pills (Clean Bento Execution)
       if (stDirPill) {
         if (shortTermSignalLock.status === 'SL_HIT') {
@@ -13202,6 +13578,27 @@ const ghostCandles = [
 
           if (inPlayEvent) {
             window.activeNewsEvent = inPlayEvent;
+
+          // Ingest high-impact USD events into Macro News Radar Engine
+          const highImpactUsd = data
+            .filter(e => (e.impact === 'High' || /FOMC|Fed|Interest Rate|CPI|NFP|Powell|PPI/i.test(e.title || '')))
+            .map(e => {
+              const evTime = new Date(e.date || e.time);
+              const isFomc = /FOMC|Powell|Rate Decision/i.test(e.title || '');
+              return {
+                name: e.title,
+                impact: 'HIGH',
+                currency: 'USD',
+                time: evTime,
+                multiplier: isFomc ? 0.65 : 0.45
+              };
+            });
+          if (highImpactUsd.length > 0) {
+            window.scheduledMacroEvents = highImpactUsd;
+            if (window.macroNewsEngine) {
+              window.macroNewsEngine.evaluateUpcomingEvents();
+            }
+          }
           }
 
           const upcoming = data
@@ -14633,6 +15030,16 @@ window.addEventListener('resize', () => {
     setInterval(syncTopDownMTFData, 30000);
     setInterval(fetchMostRecentNews, 60000);
     setInterval(monitorGeopoliticalFeed, 60000);
+
+    // High-Impact Macro Economic News Radar 1-Second Precision Timer
+    if (window.macroNewsEngine) {
+      window.macroNewsEngine.evaluateUpcomingEvents();
+    }
+    setInterval(() => {
+      if (window.macroNewsEngine) {
+        window.macroNewsEngine.evaluateUpcomingEvents();
+      }
+    }, 1000);
   
     
     // ========================================================
