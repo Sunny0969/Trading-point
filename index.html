@@ -2885,6 +2885,9 @@
       background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, transparent 70%);
       pointer-events: none;
     }
+    #view-education-portal {
+      overflow: visible !important;
+    }
     .edu-layout-grid {
       display: flex;
       gap: 26px;
@@ -2894,6 +2897,7 @@
     .edu-toc-sidebar {
       width: 300px;
       flex-shrink: 0;
+      position: -webkit-sticky;
       position: sticky;
       top: 20px;
       max-height: calc(100vh - 40px);
@@ -2903,6 +2907,7 @@
       border-radius: 12px;
       padding: 16px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+      z-index: 50;
       scrollbar-width: thin;
       scrollbar-color: #30363d transparent;
     }
@@ -6564,7 +6569,7 @@
   <!-- ==========================================
        TRADINGPOINT INSTITUTIONAL ACADEMY & INDICATORS EDUCATION PORTAL
        ========================================== -->
-  <div id="view-education-portal" class="portal-view-page" style="display: none; background: #08090a; padding: 24px 28px; min-height: 100vh; box-sizing: border-box; overflow-y: auto;" itemscope itemtype="https://schema.org/TechArticle">
+  <div id="view-education-portal" class="portal-view-page" style="display: none; background: #08090a; padding: 24px 28px; min-height: 100vh; box-sizing: border-box; overflow: visible;" itemscope itemtype="https://schema.org/TechArticle">
     
     <!-- Structured Data Microdata & Schema.org Metadata -->
     <meta itemprop="headline" content="TradingPoint Institutional Indicators & Quantitative Trading Academy">
@@ -7829,6 +7834,21 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #21262d; padding-bottom: 6px;">
               <span class="tv-dd-group-title" style="margin: 0; font-size: 10px; letter-spacing: 0.5px;">INSTITUTIONAL SMC &amp; QUANT SUITE</span>
               <span id="totalActiveWeightBadge" style="font-size: 10px; color: #3fb950; font-weight: 700;">85% Weight Active</span>
+            </div>
+
+            <!-- Indicator: SMC M5 Pullback Sniper (BOS + OB + Fibo 0.618) -->
+            <div class="tv-ind-row" onclick="clickModularToggle('smcPullbackSniper', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #ff5252;">🎯 SMC Pullback Sniper (BOS + OB 0.618 + IFVG TP)</b>
+                  <span style="font-size: 9px; background: rgba(255,82,82,0.18); color: #ff5252; padding: 1px 4px; border-radius: 4px; font-weight: 700;">1:3.8 RR</span>
+                </div>
+                <small>M5 Imbalance + BOS + 0.618 Retest into Bearish Order Block with Inversion FVG Target</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-smcPullbackSniper" checked onchange="toggleModularIndicator('smcPullbackSniper')">
+                <span class="toggle-slider"></span>
+              </label>
             </div>
 
             <!-- Indicator 1: Smart Money Structure (15M FVG & Order Blocks) -->
@@ -9646,6 +9666,12 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     // ==========================================
     const DEFAULT_INDICATOR_CONFIG = {
       smcZones: true,        // Module 1: SMC Zones (FVG & Order Blocks) - Weight: 25
+      smcPullbackSniper: (function() {
+        try {
+          const v = localStorage.getItem('indicator_ob_fibo_active');
+          return v !== null ? (v === 'true') : true;
+        } catch (e) { return true; }
+      })(), // Dedicated: SMC M5 Pullback Sniper (BOS + OB 0.618 + IFVG TP) - Weight: 25
       liquidityHunter: true, // Module 2: Liquidity & Order Flow Hunter (Session Sweeps, EQH/EQL) - Weight: 25
       liquidityPsychology: true, // Dedicated: Liquidity & Candle Psychology Engine (Sweep + 5-Candle Confirmation) - Weight: 25
       dailyLiquiditySniper: true, // Dedicated: Daily Liquidity Sniper (1D Sweep + 1M Trigger) - Weight: 25
@@ -9658,6 +9684,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
     const MODULE_WEIGHTS = {
       smcZones: 25,
+      smcPullbackSniper: 25,
       liquidityHunter: 25,
       liquidityPsychology: 25,
       dailyLiquiditySniper: 25,
@@ -9684,6 +9711,14 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     let currentSMCZones = { fvgList: [], obList: [] };
     var currentLiquidityPools = null;
     var smcEnabled = !!indicatorSettings.smcZones;
+    var smcPullbackSniperEnabled = (() => {
+      try {
+        const v = localStorage.getItem('indicator_ob_fibo_active');
+        return v !== null ? (v === 'true') : true;
+      } catch (e) { return true; }
+    })();
+    window.smcPullbackSniperEnabled = smcPullbackSniperEnabled;
+    window.latestSMC_OB_Fibo = null;
     var liquidityPoolsEnabled = !!indicatorSettings.liquidityHunter;
     var sweepAlertsEnabled = !!indicatorSettings.liquidityHunter;
     var liquidityPsychologyEnabled = !!indicatorSettings.liquidityPsychology;
@@ -10023,6 +10058,12 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       const cur = !!indicatorSettings[moduleName];
       const newVal = explicitVal !== undefined ? !!explicitVal : !cur;
       indicatorSettings[moduleName] = newVal;
+      if (moduleName === 'smcPullbackSniper') {
+        try {
+          localStorage.setItem('indicator_ob_fibo_active', newVal ? 'true' : 'false');
+          window.smcPullbackSniperEnabled = newVal;
+        } catch (e) {}
+      }
 
       try {
         localStorage.setItem('active_indicators_config', JSON.stringify(indicatorSettings));
@@ -10039,6 +10080,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       const tabMap = {
         smcZones: 'SMC',
+        smcPullbackSniper: 'OB_FIBO',
         liquidityHunter: 'LIQUIDITY',
         liquidityPsychology: 'LIQUIDITY',
         dailyLiquiditySniper: 'DLS',
@@ -10062,6 +10104,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       const labels = {
         smcZones: 'SMC Zones (OB & FVG)',
+        smcPullbackSniper: 'SMC M5 Pullback Sniper (BOS + OB + 0.618 Fibo)',
         liquidityHunter: 'Liquidity & Order Flow Hunter',
         liquidityPsychology: 'Liquidity & Candle Psychology (Sweep + Multi-Bar Confirmation)',
         dailyLiquiditySniper: 'Daily Liquidity Sniper (PDH/PDL 1M Breakout)',
@@ -10135,7 +10178,13 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     }
 
     function applyModularVisuals(moduleName, isChecked) {
-      if (moduleName === 'smcZones') {
+      if (moduleName === 'smcPullbackSniper') {
+        smcPullbackSniperEnabled = isChecked;
+        window.smcPullbackSniperEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_ob_fibo_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+      } else if (moduleName === 'smcZones') {
         smcEnabled = isChecked;
         const btn = document.getElementById('btn-toggle-smc');
         if (btn) btn.classList.toggle('active', smcEnabled);
@@ -12317,6 +12366,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     const modularEngineState = {
       activeTab: 'SMC',
       indicators: {
+        OB_FIBO: { status: 'STANDBY', direction: 'NEUTRAL', entry: '--', sl: '--', tp: '--', rr: '--', reason: 'Scanning M5 Structure for BOS & Fibo Retracement' },
         SMC: { status: 'STANDBY', direction: 'NEUTRAL', entry: '--', sl: '--', tp: '--', rr: '--', reason: 'Awaiting Zone Mitigation' },
         LIQUIDITY: { status: 'STANDBY', direction: 'NEUTRAL', entry: '--', sl: '--', tp: '--', rr: '--', reason: 'Scanning Session Ranges' },
         DLS: { status: 'STANDBY', direction: 'NEUTRAL', entry: '--', sl: '--', tp: '--', rr: '--', reason: 'Price Inside Daily Range' },
@@ -12326,9 +12376,395 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       }
     };
 
+    // ==========================================
+    // SMC M5 PULLBACK SNIPER (BOS + OB + FIBO 0.618 + IFVG TP) ENGINE
+    // ==========================================
+    function evaluateSMC_OB_FiboSetup(candlesM5) {
+      if (!candlesM5 || candlesM5.length < 30) return null;
+
+      const currentBar = candlesM5[candlesM5.length - 1];
+      
+      // 1. Identify Recent Swing High and Swing Low
+      const startIdx = Math.max(0, candlesM5.length - 25);
+      const endIdx = Math.max(startIdx + 1, candlesM5.length - 5);
+      let swingHigh = candlesM5[startIdx].high;
+      let swingHighIdx = startIdx;
+
+      for (let i = startIdx; i < endIdx; i++) {
+        if (candlesM5[i].high > swingHigh) {
+          swingHigh = candlesM5[i].high;
+          swingHighIdx = i;
+        }
+      }
+
+      let swingLow = candlesM5[swingHighIdx].low;
+      let swingLowIdx = swingHighIdx;
+      for (let i = swingHighIdx; i < candlesM5.length - 2; i++) {
+        if (candlesM5[i].low < swingLow) {
+          swingLow = candlesM5[i].low;
+          swingLowIdx = i;
+        }
+      }
+
+      // 2. Verify Break of Structure (BOS)
+      const range = swingHigh - swingLow;
+      const minRange = (candlesM5.length > 50) ? 6.0 : 4.0;
+      const isBOS = swingLowIdx > swingHighIdx && range >= minRange;
+      if (!isBOS) return null;
+
+      // 3. Calculate 0.618 Golden Pocket Level
+      const fibo618Level = swingLow + (range * 0.618);
+
+      // 4. Locate Order Block (last green candle before impulsive move down)
+      let obLevel = fibo618Level;
+      let obHigh = fibo618Level;
+      let obLow = fibo618Level;
+      for (let i = swingHighIdx; i < Math.min(candlesM5.length, swingHighIdx + 4); i++) {
+        if (candlesM5[i] && candlesM5[i].close > candlesM5[i].open) {
+          obLevel = candlesM5[i].high;
+          obHigh = candlesM5[i].high;
+          obLow = candlesM5[i].low;
+          break;
+        }
+      }
+
+      // Locate upper FVG from bearish impulse drop (high[t-2] > low[t])
+      let fvgZone = null;
+      for (let i = swingHighIdx + 1; i <= Math.min(swingLowIdx + 1, candlesM5.length - 2); i++) {
+        if (i >= 2 && candlesM5[i - 2].high > candlesM5[i].low + 0.3) {
+          fvgZone = {
+            top: candlesM5[i - 2].high,
+            bottom: candlesM5[i].low,
+            time: candlesM5[i - 1].time
+          };
+          break;
+        }
+      }
+      if (!fvgZone) {
+        fvgZone = {
+          top: Math.max(obLevel, fibo618Level),
+          bottom: Math.min(obLevel, fibo618Level) - 0.8,
+          time: candlesM5[swingHighIdx].time
+        };
+      }
+
+      const confluenceEntry = (fibo618Level + obLevel) / 2;
+
+      // 5. Check if current price is testing the OB + 0.618 zone
+      const isRetesting = (Math.abs(currentBar.high - confluenceEntry) <= 1.20) || 
+                          (Math.abs(currentBar.high - fibo618Level) <= 1.20) ||
+                          (currentBar.high >= Math.min(fibo618Level, obLevel) - 0.60 && currentBar.high <= Math.max(fibo618Level, obLevel) + 1.20);
+      const totalBarRange = currentBar.high - currentBar.low;
+      const upperWick = currentBar.high - Math.max(currentBar.open, currentBar.close);
+      const isRejected = (upperWick / (totalBarRange + 0.001)) >= 0.30;
+
+      if (isRetesting && isRejected && currentBar.close < confluenceEntry) {
+        const entry = currentBar.close.toFixed(2);
+        const sl = (Math.max(obLevel, fibo618Level) + 1.20).toFixed(2);
+        const risk = Math.max(0.20, parseFloat(sl) - parseFloat(entry));
+        const tp = (parseFloat(entry) - (risk * 3.8)).toFixed(2); // Inversion FVG Target
+
+        return {
+          indicatorName: "SMC M5 Pullback Sniper",
+          direction: "SELL",
+          isTriggered: true,
+          stateBadge: "0.618 RETEST CONFIRMED",
+          entry: entry,
+          sl: sl,
+          tp: tp,
+          rr: "1 : 3.8",
+          risk: risk.toFixed(2),
+          reward: (risk * 3.8).toFixed(2),
+          fiboLevel: fibo618Level.toFixed(2),
+          obLevel: obLevel.toFixed(2),
+          obHigh: obHigh,
+          obLow: obLow,
+          confluenceEntry: confluenceEntry.toFixed(2),
+          swingHigh: swingHigh,
+          swingLow: swingLow,
+          fvg: fvgZone,
+          reason: `M5 BOS verified. Price pulled back to 0.618 Fibo ($${fibo618Level.toFixed(2)}) + Bearish Order Block with rejection wick. Target set at Inversion FVG ($${tp}).`
+        };
+      }
+
+      const defaultSl = (Math.max(obLevel, fibo618Level) + 1.20).toFixed(2);
+      const defaultEntry = confluenceEntry.toFixed(2);
+      const defaultRisk = Math.max(1.0, parseFloat(defaultSl) - parseFloat(defaultEntry));
+      const defaultTp = (parseFloat(defaultEntry) - (defaultRisk * 3.8)).toFixed(2);
+
+      return {
+        indicatorName: "SMC M5 Pullback Sniper",
+        direction: "STANDBY",
+        isTriggered: false,
+        stateBadge: "WAITING PULLBACK",
+        entry: defaultEntry,
+        sl: defaultSl,
+        tp: defaultTp,
+        rr: "1 : 3.8",
+        risk: defaultRisk.toFixed(2),
+        reward: (defaultRisk * 3.8).toFixed(2),
+        fiboLevel: fibo618Level.toFixed(2),
+        obLevel: obLevel.toFixed(2),
+        obHigh: obHigh,
+        obLow: obLow,
+        confluenceEntry: confluenceEntry.toFixed(2),
+        swingHigh: swingHigh,
+        swingLow: swingLow,
+        fvg: fvgZone,
+        reason: `BOS detected at $${swingLow.toFixed(2)}. Waiting for retracement pullback to 0.618 Fibo ($${fibo618Level.toFixed(2)}). Do not chase early.`
+      };
+    }
+    window.evaluateSMC_OB_FiboSetup = evaluateSMC_OB_FiboSetup;
+
+    // Dedicated Canvas Overlay for SMC M5 Pullback Sniper
+    function drawSMC_OB_FiboOverlay(ctx, setup, candles) {
+      if (!ctx || !candleSeries || !chart) return;
+      if (typeof indicatorSettings !== 'undefined' && !indicatorSettings.smcPullbackSniper) return;
+      if (!setup) return;
+
+      ctx.save();
+
+      // 1. Blue Shaded Boundary Box for Initial FVG
+      if (setup.fvg && setup.fvg.top && setup.fvg.bottom) {
+        const yTop = candleSeries.priceToCoordinate(setup.fvg.top);
+        const yBottom = candleSeries.priceToCoordinate(setup.fvg.bottom);
+        if (yTop !== null && yBottom !== null) {
+          const boxY = Math.min(yTop, yBottom);
+          const boxH = Math.max(4, Math.abs(yBottom - yTop));
+          const boxX = Math.max(10, canvasCssWidth - 280);
+          const boxW = 210;
+
+          ctx.fillStyle = 'rgba(59, 130, 246, 0.20)'; // Blue shaded boundary
+          ctx.fillRect(boxX, boxY, boxW, boxH);
+          ctx.strokeStyle = 'rgba(59, 130, 246, 0.85)';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(boxX, boxY, boxW, boxH);
+          ctx.setLineDash([]);
+
+          ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          ctx.fillStyle = '#60a5fa';
+          ctx.textBaseline = 'top';
+          ctx.fillText(`M5 Upper FVG · $${Number(setup.fvg.bottom).toFixed(1)} - $${Number(setup.fvg.top).toFixed(1)}`, boxX + 6, boxY + 3);
+        }
+      }
+
+      // 2. Break of Structure (BOS) Dotted Line with "bos" Label
+      if (setup.swingLow) {
+        const yBOS = candleSeries.priceToCoordinate(setup.swingLow);
+        if (yBOS !== null && yBOS >= 10 && yBOS <= canvasCssHeight - 15) {
+          ctx.strokeStyle = 'rgba(239, 83, 80, 0.85)';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(30, yBOS);
+          ctx.lineTo(canvasCssWidth - 65, yBOS);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          const bosText = `bos · $${Number(setup.swingLow).toFixed(2)}`;
+          ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const tw = ctx.measureText(bosText).width;
+          const bw = Math.round(tw + 8);
+          const bh = 15;
+          const bx = 35;
+          const by = Math.round(yBOS - bh / 2);
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.strokeStyle = 'rgba(239, 83, 80, 0.85)';
+          ctx.strokeRect(bx, by, bw, bh);
+          ctx.fillStyle = '#ef5350';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(bosText, bx + 4, yBOS);
+        }
+      }
+
+      // 3. Red Horizontal Level Line at OB + FIBO 0.618
+      const fiboPrice = Number(setup.confluenceEntry || setup.fiboLevel || setup.entry);
+      if (fiboPrice) {
+        const yFibo = candleSeries.priceToCoordinate(fiboPrice);
+        if (yFibo !== null && yFibo >= 10 && yFibo <= canvasCssHeight - 15) {
+          ctx.strokeStyle = '#ff5252';
+          ctx.lineWidth = 1.6;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(30, yFibo);
+          ctx.lineTo(canvasCssWidth - 65, yFibo);
+          ctx.stroke();
+
+          const fiboText = `OB + FIBO 0.618 · $${fiboPrice.toFixed(2)}`;
+          ctx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const tw = ctx.measureText(fiboText).width;
+          const bw = Math.round(tw + 10);
+          const bh = 16;
+          const bx = canvasCssWidth - bw - 70;
+          const by = Math.round(yFibo - bh / 2);
+
+          ctx.fillStyle = 'rgba(20, 10, 10, 0.92)';
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.strokeStyle = '#ff5252';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(bx, by, bw, bh);
+          ctx.fillStyle = '#ff5252';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(fiboText, bx + 5, yFibo);
+        }
+      }
+
+      // 4. Text Watermark "wait pullback" during State 3
+      if (!setup.isTriggered) {
+        ctx.font = '800 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        ctx.fillStyle = 'rgba(234, 179, 8, 0.32)'; // Subtly transparent yellow/gold
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const wmX = Math.round(canvasCssWidth * 0.55);
+        const wmY = Math.round(canvasCssHeight * 0.42);
+        ctx.fillText('wait pullback', wmX, wmY);
+        ctx.font = '700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        ctx.fillStyle = 'rgba(234, 179, 8, 0.25)';
+        ctx.fillText('SMC M5 · 0.618 OB Retest Monitor Active', wmX, wmY + 18);
+      }
+
+      // 5. TradingView Style Short Position Tool on State 4 Trigger
+      if (setup.isTriggered && setup.entry && setup.sl && setup.tp) {
+        const yEntry = candleSeries.priceToCoordinate(Number(setup.entry));
+        const ySL = candleSeries.priceToCoordinate(Number(setup.sl));
+        const yTP = candleSeries.priceToCoordinate(Number(setup.tp));
+
+        if (yEntry !== null && ySL !== null && yTP !== null) {
+          let lastCandleX = null;
+          if (candles && candles.length) {
+            lastCandleX = chart.timeScale().timeToCoordinate(candles[candles.length - 1].time);
+          }
+          const startX = (lastCandleX !== null && lastCandleX > 40 && lastCandleX < canvasCssWidth - 165)
+            ? Math.round(lastCandleX + 16)
+            : Math.round(canvasCssWidth - 190);
+          const boxW = Math.max(110, Math.min(145, canvasCssWidth - startX - 68));
+          const endX = startX + boxW;
+
+          // Red Risk Box (SL) - 1.20 USD above OB high down to entry
+          const riskTopY = Math.min(ySL, yEntry);
+          const riskBotY = Math.max(ySL, yEntry);
+          const riskH = Math.max(4, riskBotY - riskTopY);
+
+          ctx.fillStyle = 'rgba(248, 81, 73, 0.25)';
+          ctx.fillRect(startX, riskTopY, boxW, riskH);
+          ctx.strokeStyle = 'rgba(248, 81, 73, 0.90)';
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(startX, riskTopY, boxW, riskH);
+
+          // Green Reward Box (TP) - Extending downward to IFVG - TP
+          const rewTopY = Math.min(yEntry, yTP);
+          const rewBotY = Math.max(yEntry, yTP);
+          const rewH = Math.max(4, rewBotY - rewTopY);
+
+          ctx.fillStyle = 'rgba(46, 160, 67, 0.22)';
+          ctx.fillRect(startX, rewTopY, boxW, rewH);
+          ctx.strokeStyle = 'rgba(46, 160, 67, 0.90)';
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(startX, rewTopY, boxW, rewH);
+
+          // Entry Midline
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(startX, yEntry);
+          ctx.lineTo(endX, yEntry);
+          ctx.stroke();
+
+          // Pills
+          ctx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+
+          // SL pill
+          const slTxt = `SL $${Number(setup.sl).toFixed(1)} (-$${Number(setup.risk).toFixed(1)})`;
+          const slW = ctx.measureText(slTxt).width + 8;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.fillRect(startX + 4, riskTopY + 2, slW, 14);
+          ctx.fillStyle = '#ff5252';
+          ctx.fillText(slTxt, startX + 8, riskTopY + 9);
+
+          // TP pill (Inversion FVG Target)
+          const tpTxt = `IFVG - TP $${Number(setup.tp).toFixed(1)} (+$${Number(setup.reward).toFixed(1)}) · 1:3.8 RR`;
+          const tpW = ctx.measureText(tpTxt).width + 8;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.fillRect(startX + 4, rewBotY - 16, tpW, 14);
+          ctx.fillStyle = '#3fb950';
+          ctx.fillText(tpTxt, startX + 8, rewBotY - 9);
+
+          // Entry pill
+          const entTxt = `Short Entry $${Number(setup.entry).toFixed(1)}`;
+          const entW = ctx.measureText(entTxt).width + 8;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.fillRect(startX + 4, yEntry - 7, entW, 14);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(entTxt, startX + 8, yEntry);
+        }
+      }
+
+      ctx.restore();
+    }
+    window.drawSMC_OB_FiboOverlay = drawSMC_OB_FiboOverlay;
+
     function updateModularEngineTelemetry(candles, currentSpot) {
       if (!candles || candles.length < 5) return;
       const spot = (typeof currentSpot === 'number' && currentSpot > 0) ? currentSpot : candles[candles.length - 1].close;
+
+      // Dedicated: SMC M5 PULLBACK SNIPER (BOS + OB + 0.618 FIBO + IFVG TP) TELEMETRY
+      let m5Candles = candles;
+      if (window.mtfCandleStore && window.mtfCandleStore['5m'] && window.mtfCandleStore['5m'].length >= 30) {
+        m5Candles = window.mtfCandleStore['5m'];
+      } else if (typeof currentTf !== 'undefined' && currentTf === '5m' && candles && candles.length >= 30) {
+        m5Candles = candles;
+      } else if (typeof resampleCandles === 'function' && candles && candles.length >= 60 && typeof currentTf !== 'undefined' && currentTf !== '5m') {
+        const curSec = (currentTf === '1m') ? 60 : 900;
+        const resampled = resampleCandles(candles, curSec, 300);
+        if (resampled && resampled.length >= 30) m5Candles = resampled;
+      }
+      if (!m5Candles || m5Candles.length < 30) {
+        m5Candles = candles;
+      }
+      const obFiboResult = evaluateSMC_OB_FiboSetup(m5Candles);
+      window.latestSMC_OB_Fibo = obFiboResult;
+
+      if (obFiboResult) {
+        if (obFiboResult.isTriggered) {
+          modularEngineState.indicators.OB_FIBO = {
+            status: '0.618 RETEST CONFIRMED',
+            stateBadge: '0.618 RETEST CONFIRMED',
+            direction: 'SELL / SHORT',
+            entry: '$' + Number(obFiboResult.entry).toFixed(2),
+            sl: '$' + Number(obFiboResult.sl).toFixed(2),
+            tp: '$' + Number(obFiboResult.tp).toFixed(2),
+            rr: obFiboResult.rr || '1 : 3.8',
+            reason: obFiboResult.reason || 'M5 BOS confirmed. Price completed 0.618 Fibonacci pullback into Bearish Order Block. Rejection confirms institutional selling pressure.'
+          };
+        } else {
+          modularEngineState.indicators.OB_FIBO = {
+            status: 'WAITING PULLBACK',
+            stateBadge: 'WAITING PULLBACK',
+            direction: 'STANDBY',
+            entry: '$' + Number(obFiboResult.entry || obFiboResult.fiboLevel).toFixed(2),
+            sl: '$' + Number(obFiboResult.sl || (parseFloat(obFiboResult.obLevel) + 1.20)).toFixed(2),
+            tp: '$' + Number(obFiboResult.tp || (parseFloat(obFiboResult.entry) - 8.0)).toFixed(2),
+            rr: obFiboResult.rr || '1 : 3.8',
+            reason: obFiboResult.reason || `BOS detected at $${obFiboResult.swingLow}. Waiting for retracement pullback to 0.618 Fibo ($${obFiboResult.fiboLevel}). Do not chase early.`
+          };
+        }
+      } else {
+        modularEngineState.indicators.OB_FIBO = {
+          status: 'STANDBY',
+          stateBadge: 'STANDBY',
+          direction: 'NEUTRAL',
+          entry: '--',
+          sl: '--',
+          tp: '--',
+          rr: '--',
+          reason: 'Awaiting M5 Imbalance & Break of Structure (BOS).'
+        };
+      }
 
       // 1. SMC TELEMETRY
       const smc = (typeof currentSMCZones !== 'undefined' && currentSMCZones && currentSMCZones.fvgList)
@@ -12575,7 +13011,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         : { status: 'STANDBY', direction: 'NEUTRAL', entry: '--', sl: '--', tp: '--', rr: '--', reason: 'Awaiting telemetry' };
 
       const isBuy = activeData.direction === 'BUY';
-      const isSell = activeData.direction === 'SELL';
+      const isSell = activeData.direction === 'SELL' || (typeof activeData.direction === 'string' && activeData.direction.includes('SELL'));
       const isStandby = (activeData.direction === 'STANDBY' || activeData.direction === 'NEUTRAL');
 
       let badgeBg = 'rgba(139, 148, 158, 0.15)';
@@ -12596,7 +13032,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         badgeBorder = 'rgba(234, 179, 8, 0.4)';
       }
 
-      const tabs = ['SMC', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
+      const tabs = ['SMC', 'OB_FIBO', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
 
       container.innerHTML = `
         <div class="terminal-card clean-signal-card" style="padding: 12px; margin-top: 10px; border-radius: 12px; background: rgba(18, 20, 26, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);">
@@ -12604,10 +13040,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
             <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #ffd700; display: flex; align-items: center; gap: 6px;">
               <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ffd700; box-shadow: 0 0 8px #ffd700;"></span>
-              ${activeTab === 'VWAP_FVG' ? 'VWAP + FVG' : activeTab} Indicator Engine
+              ${activeTab === 'OB_FIBO' ? '⚡ SMC PULLBACK SNIPER (OB + 0.618 FIB)' : (activeTab === 'VWAP_FVG' ? 'VWAP + FVG' : activeTab)} Indicator Engine
             </span>
             <span style="font-size: 10px; padding: 2px 7px; border-radius: 10px; background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; font-family: monospace; font-weight: 700;">
-              ${activeData.direction}
+              ${activeTab === 'OB_FIBO' && activeData.stateBadge ? activeData.stateBadge : activeData.direction}
             </span>
           </div>
 
@@ -12621,7 +13057,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
               return `
                 <button type="button" onclick="switchModularTab('${tab}')"
                         style="flex: 1; min-width: 50px; font-size: 9.5px; padding: 4px 6px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease; ${activeStyle}">
-                  ${tab === 'VWAP_FVG' ? 'VWAP+FVG' : tab}
+                  ${tab === 'VWAP_FVG' ? 'VWAP+FVG' : (tab === 'OB_FIBO' ? 'OB+FIB 🎯' : tab)}
                 </button>
               `;
             }).join('')}
@@ -13823,6 +14259,11 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       }
 
       // 2.3 Dedicated: Daily Liquidity Sniper Reference Lines (Golden PDH, Cyan PDL)
+      // Dedicated: SMC M5 Pullback Sniper Overlay (BOS + OB + 0.618 Fibo + IFVG TP)
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcPullbackSniper) {
+        drawSMC_OB_FiboOverlay(drawingCtx, window.latestSMC_OB_Fibo, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
+      }
+
       if (typeof indicatorSettings !== 'undefined' && indicatorSettings.dailyLiquiditySniper) {
         const actPools = (typeof currentLiquidityPools !== 'undefined' && currentLiquidityPools) ? currentLiquidityPools : (window.currentLiquidityPools || null);
         drawDailyLiquiditySniperOverlay(drawingCtx, window.latestDailyLiquiditySniper, actPools);
@@ -13836,7 +14277,18 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         tpTarget = Number(v.tp);
         targetColor = isUp ? '#3fb950' : '#f85149';
         targetLabel = `🎯 VWAP+FVG TP $${tpTarget.toFixed(1)} (1:2.5 RR)`;
-      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.dailyLiquiditySniper && window.latestDailyLiquiditySniper && window.latestDailyLiquiditySniper.active) {
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcPullbackSniper && window.latestSMC_OB_Fibo && window.latestSMC_OB_Fibo.isTriggered) {
+          const sniper = window.latestSMC_OB_Fibo;
+          drawRiskRewardOverlay(drawingCtx, {
+            type: 'SHORT',
+            entry: Number(sniper.entry),
+            sl: Number(sniper.sl),
+            tp: Number(sniper.tp),
+            risk: Number(sniper.risk),
+            reward: Number(sniper.reward),
+            rrRatio: '3.8'
+          });
+        } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.dailyLiquiditySniper && window.latestDailyLiquiditySniper && window.latestDailyLiquiditySniper.active) {
           const dls = window.latestDailyLiquiditySniper;
           const riskPts = Math.abs(Number(dls.entry) - Number(dls.sl));
           const rewardPts = Math.abs(Number(dls.tp1) - Number(dls.entry));
@@ -19970,6 +20422,20 @@ window.addEventListener('resize', () => {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #21262d;">
           <span style="font-size: 11px; font-weight: 700; color: #8b949e; letter-spacing: 0.5px;">5 CORE MODULAR ENGINES</span>
           <span style="font-size: 11px; font-weight: 700; color: #3fb950;">Sequential Weight Confluence</span>
+        </div>
+
+        <div class="indicator-row" onclick="clickModularToggle('smcPullbackSniper', event)">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #ff5252;">🎯 SMC Pullback Sniper (BOS + OB 0.618 + IFVG TP)</b>
+              <span style="font-size: 9px; background: rgba(255,82,82,0.18); color: #ff5252; padding: 1px 4px; border-radius: 4px; font-weight: 700;">1:3.8 RR</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">M5 Imbalance + BOS + 0.618 Retest into Bearish Order Block with Inversion FVG Target</p>
+          </div>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="modal-toggle-smcPullbackSniper" checked onchange="toggleModularIndicator('smcPullbackSniper')">
+            <span class="toggle-slider"></span>
+          </label>
         </div>
 
         <div class="indicator-row">
