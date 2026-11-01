@@ -266,7 +266,8 @@
     }
   ]
 }
-  
+  </script>
+  <script>
     // ========================================================
     // PORTAL VIEW SWITCHER & PERSISTENCE
     // ========================================================
@@ -275,7 +276,19 @@
     }
     window.closePortalMobileSidebar = closePortalMobileSidebar;
 
+    // Safe early demoState initialization
+    window.demoState = window.demoState || {
+      balance: 1000.00,
+      positions: [],
+      transfers: [],
+      history: []
+    };
+    var demoState = window.demoState;
+
     function switchPortalView(portalView) {
+      if (document.body) {
+        document.body.classList.add('portal-mode-active');
+      }
       if (typeof closePortalMobileSidebar === 'function') closePortalMobileSidebar();
       try {
         sessionStorage.setItem('tradingpoint_active_portal_view', portalView);
@@ -380,35 +393,33 @@
 
     function checkUrlForTerminal() {
       var hash = (window.location.hash || '').toLowerCase();
-      var isPortal = (document.body && document.body.classList.contains('portal-mode-active')) || 
-                     !!localStorage.getItem('tradingpoint_local_user') ||
-                     ['#terminal', '#trade', '#dashboard', '#signals', '#wallet', '#profile', '#conditions'].includes(hash);
+      var loggedIn = (typeof isUserLoggedIn === 'function') ? isUserLoggedIn() : false;
 
-      if (isPortal && !localStorage.getItem('tradingpoint_local_user')) {
-        try {
-          localStorage.setItem('tradingpoint_local_user', JSON.stringify({ email: 'suneel.pirkash@demo.com', name: 'Suneel Pirkash' }));
-        } catch (e) {}
-      }
+      if (loggedIn) {
+        if (document.body) document.body.classList.add('portal-mode-active');
+        var targetView = 'dashboard';
 
-      if (isPortal) {
-        document.body.classList.add('portal-mode-active');
-        var savedView = null;
-        try { savedView = sessionStorage.getItem('tradingpoint_active_portal_view') || localStorage.getItem('tradingpoint_active_portal_view'); } catch (e) {}
+        if (hash === '#wallet') targetView = 'wallet';
+        else if (hash === '#signals') targetView = 'signals';
+        else if (hash === '#dashboard') targetView = 'dashboard';
+        else if (hash === '#trade' || hash === '#terminal') targetView = 'trade';
+        else if (hash === '#profile') targetView = 'profile';
+        else if (hash === '#conditions') targetView = 'conditions';
+        else {
+          var savedView = null;
+          try { savedView = sessionStorage.getItem('tradingpoint_active_portal_view') || localStorage.getItem('tradingpoint_active_portal_view'); } catch (e) {}
+          if (savedView && ['dashboard', 'trade', 'signals', 'wallet', 'profile', 'conditions'].includes(savedView)) {
+            targetView = savedView;
+          }
+        }
 
-        if (hash === '#signals' || savedView === 'signals') {
-          switchPortalView('signals');
-        } else if (hash === '#wallet' || savedView === 'wallet') {
-          switchPortalView('wallet');
-        } else if (hash === '#trade' || hash === '#terminal' || savedView === 'trade' || savedView === 'terminal') {
-          switchPortalView('trade');
-        } else if (hash === '#profile' || savedView === 'profile') {
-          switchPortalView('profile');
-        } else if (hash === '#conditions' || savedView === 'conditions') {
-          switchPortalView('conditions');
-        } else if (hash === '#dashboard' || savedView === 'dashboard') {
-          switchPortalView('dashboard');
+        switchPortalView(targetView);
+      } else {
+        if (document.body) document.body.classList.remove('portal-mode-active');
+        if (hash === '#terminal' || hash === '#trade') {
+          switchView('terminal');
         } else {
-          switchPortalView('trade');
+          switchView('dashboard');
         }
       }
     }
@@ -4163,6 +4174,11 @@
     function isUserLoggedIn() {
       if (typeof currentAuthUser !== 'undefined' && currentAuthUser) return true;
       try {
+        var localUser = localStorage.getItem('tradingpoint_local_user');
+        if (localUser) {
+          var parsed = JSON.parse(localUser);
+          if (parsed && (parsed.email || parsed.name)) return true;
+        }
         for (var i = 0; i < localStorage.length; i++) {
           var k = localStorage.key(i);
           if (k && k.indexOf('sb-') !== -1 && k.indexOf('-auth-token') !== -1) {
@@ -4178,35 +4194,40 @@
     window.isUserLoggedIn = isUserLoggedIn;
 
     function switchView(viewName) {
-      var loggedIn = isUserLoggedIn();
-      // If user has logged in, FORBID showing the landing page (view-dashboard) - always keep in terminal/dashboard!
+      var loggedIn = (typeof isUserLoggedIn === 'function') ? isUserLoggedIn() : false;
       if (loggedIn) {
-        viewName = 'terminal';
+        if (typeof switchPortalView === 'function') {
+          switchPortalView(viewName === 'terminal' || viewName === 'trade' ? 'trade' : 'dashboard');
+          return;
+        }
       }
 
+      if (document.body) document.body.classList.remove('portal-mode-active');
       var dashView = document.getElementById('view-dashboard');
       var termView = document.getElementById('view-terminal');
+      var traderDashView = document.getElementById('view-trader-dashboard');
+      var signalsPortalView = document.getElementById('view-signals-portal');
+      var walletPortalView = document.getElementById('view-wallet-portal');
+      var profView = document.getElementById('view-profile-portal');
+      var condView = document.getElementById('view-conditions-portal');
       var btnDash = document.getElementById('nav-btn-dashboard');
       var btnTerm = document.getElementById('nav-btn-terminal');
 
-      if (viewName === 'terminal') {
+      if (traderDashView) traderDashView.style.display = 'none';
+      if (signalsPortalView) signalsPortalView.style.display = 'none';
+      if (walletPortalView) walletPortalView.style.display = 'none';
+      if (profView) profView.style.display = 'none';
+      if (condView) condView.style.display = 'none';
+
+      if (viewName === 'terminal' || viewName === 'trade') {
         if (dashView) dashView.style.display = 'none';
         if (termView) {
           termView.style.display = 'flex';
           termView.style.visibility = 'visible';
         }
-        if (btnDash) {
-          btnDash.classList.remove('active');
-          if (loggedIn) {
-            btnDash.style.display = 'none'; // Logged in user stays on their trading dashboard
-          }
-        }
+        if (btnDash) btnDash.classList.remove('active');
         if (btnTerm) btnTerm.classList.add('active');
-        try {
-          history.replaceState(null, null, '#terminal');
-        } catch (e) {
-          window.location.hash = 'terminal';
-        }
+        try { history.replaceState(null, null, '#terminal'); } catch (e) { window.location.hash = 'terminal'; }
         [30, 80, 200, 450, 1000].forEach(function(delay) {
           setTimeout(function() {
             window.dispatchEvent(new Event('resize'));
@@ -4224,7 +4245,6 @@
           }, delay);
         });
       } else {
-        // Show landing page only when logged out
         if (dashView) dashView.style.display = 'block';
         if (termView) termView.style.display = 'none';
         if (btnDash) {
@@ -4243,14 +4263,41 @@
 
     function checkUrlForTerminal() {
       var hash = (window.location.hash || '').toLowerCase();
-      var path = (window.location.pathname || '').toLowerCase();
-      var search = (window.location.search || '').toLowerCase();
-      if (isUserLoggedIn() || hash === '#terminal' || hash.indexOf('terminal') !== -1 || search.indexOf('terminal') !== -1 || path.indexOf('deep') !== -1) {
-        switchView('terminal');
+      var loggedIn = (typeof isUserLoggedIn === 'function') ? isUserLoggedIn() : false;
+      var isPortal = loggedIn || ['#terminal', '#trade', '#dashboard', '#signals', '#wallet', '#profile', '#conditions'].includes(hash);
+
+      if (isPortal) {
+        if (document.body) document.body.classList.add('portal-mode-active');
+        if (!localStorage.getItem('tradingpoint_local_user')) {
+          try {
+            localStorage.setItem('tradingpoint_local_user', JSON.stringify({ email: 'suneel.pirkash@demo.com', name: 'Suneel Pirkash' }));
+          } catch (e) {}
+        }
+
+        var targetView = 'trade';
+        if (hash === '#wallet') targetView = 'wallet';
+        else if (hash === '#signals') targetView = 'signals';
+        else if (hash === '#dashboard') targetView = 'dashboard';
+        else if (hash === '#trade' || hash === '#terminal') targetView = 'trade';
+        else if (hash === '#profile') targetView = 'profile';
+        else if (hash === '#conditions') targetView = 'conditions';
+        else {
+          var savedView = null;
+          try { savedView = sessionStorage.getItem('tradingpoint_active_portal_view') || localStorage.getItem('tradingpoint_active_portal_view'); } catch (e) {}
+          if (savedView && ['dashboard', 'trade', 'signals', 'wallet', 'profile', 'conditions'].includes(savedView)) targetView = savedView;
+        }
+
+        if (typeof switchPortalView === 'function') {
+          switchPortalView(targetView);
+        } else {
+          switchView('terminal');
+        }
       } else {
+        if (document.body) document.body.classList.remove('portal-mode-active');
         switchView('dashboard');
       }
     }
+    window.checkUrlForTerminal = checkUrlForTerminal;
     window.addEventListener('hashchange', checkUrlForTerminal);
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', checkUrlForTerminal);
@@ -7052,22 +7099,35 @@
     function switchView(viewName) {
       const loggedIn = (typeof isUserLoggedIn === 'function') ? isUserLoggedIn() : false;
       if (loggedIn) {
-        viewName = 'terminal';
+        if (typeof switchPortalView === 'function') {
+          switchPortalView(viewName === 'terminal' || viewName === 'trade' ? 'trade' : 'dashboard');
+          return;
+        }
       }
 
+      if (document.body) document.body.classList.remove('portal-mode-active');
       const dashView = document.getElementById('view-dashboard');
       const termView = document.getElementById('view-terminal');
+      const traderDashView = document.getElementById('view-trader-dashboard');
+      const signalsPortalView = document.getElementById('view-signals-portal');
+      const walletPortalView = document.getElementById('view-wallet-portal');
+      const profView = document.getElementById('view-profile-portal');
+      const condView = document.getElementById('view-conditions-portal');
       const btnDash = document.getElementById('nav-btn-dashboard');
       const btnTerm = document.getElementById('nav-btn-terminal');
 
-      if (viewName === 'terminal') {
+      if (traderDashView) traderDashView.style.display = 'none';
+      if (signalsPortalView) signalsPortalView.style.display = 'none';
+      if (walletPortalView) walletPortalView.style.display = 'none';
+      if (profView) profView.style.display = 'none';
+      if (condView) condView.style.display = 'none';
+
+      if (viewName === 'terminal' || viewName === 'trade') {
         if (dashView && termView) {
           dashView.style.display = 'none';
           termView.style.display = 'flex';
-          if (btnDash) {
-            btnDash.classList.remove('active');
-            if (loggedIn) btnDash.style.display = 'none';
-          }
+          termView.style.visibility = 'visible';
+          if (btnDash) btnDash.classList.remove('active');
           if (btnTerm) btnTerm.classList.add('active');
           
           try {
@@ -7112,6 +7172,7 @@
         }
       }
     }
+    window.switchView = switchView;
 
     function highlightCurrentNav() {
       const hash = (window.location.hash || '').toLowerCase();
@@ -16007,12 +16068,13 @@ window.addEventListener('resize', () => {
     const CONTRACT_SIZE = 100; // 1 Lot = 100 Troy Ounces
     const LEVERAGE = 100; // 1:100 Standard Institutional Demo Leverage
 
-    let demoState = {
+    window.demoState = window.demoState || {
       balance: DEFAULT_DEMO_BALANCE,
       positions: [],
       transfers: [],
       history: []
     };
+    var demoState = window.demoState;
 
     function initSupabaseClient() {
       if (window.supabase) {
@@ -16040,8 +16102,39 @@ window.addEventListener('resize', () => {
     async function onUserAuthenticated(user) {
       currentAuthUser = user;
       console.log('%c[SUPABASE] User Authenticated:', 'color: #3fb950; font-weight: bold;', user.email);
-      // Immediately switch to the user's trading terminal/dashboard and hide overview button
-      switchView('terminal');
+
+      // 1. ACTIVATE AUTHENTICATED PORTAL MODE (Enables left sidebar #traderAdminSidebar)
+      if (document.body) {
+        document.body.classList.add('portal-mode-active');
+      }
+
+      const emailStr = user.email || 'trader@demo.com';
+      const shortName = emailStr.split('@')[0];
+
+      try {
+        localStorage.setItem('tradingpoint_local_user', JSON.stringify({
+          email: emailStr,
+          name: shortName.charAt(0).toUpperCase() + shortName.slice(1)
+        }));
+      } catch (e) {}
+
+      // Update Left Sidebar Profile Info
+      const sidebarUserName = document.getElementById('sidebarUserName');
+      const sidebarUserEmail = document.getElementById('sidebarUserEmail');
+      const sidebarAvatar = document.getElementById('sidebarAvatar');
+      const sidebarUserBalance = document.getElementById('sidebarUserBalance');
+      const sidebarNavWalletPill = document.getElementById('sidebarNavWalletPill');
+
+      if (sidebarUserName) sidebarUserName.innerText = shortName.charAt(0).toUpperCase() + shortName.slice(1);
+      if (sidebarUserEmail) sidebarUserEmail.innerText = emailStr;
+      if (sidebarAvatar) sidebarAvatar.innerText = shortName.substring(0, 2).toUpperCase();
+
+      // 2. SWITCH TO TRADER PERFORMANCE DASHBOARD WITH LEFT SIDEBAR
+      if (typeof switchPortalView === 'function') {
+        switchPortalView('dashboard');
+      } else {
+        switchView('dashboard');
+      }
       const navBtnDash = document.getElementById('nav-btn-dashboard');
       if (navBtnDash) navBtnDash.style.display = 'none';
       // Update UI navbar
@@ -16057,8 +16150,6 @@ window.addEventListener('resize', () => {
       if (profileContainer) profileContainer.style.display = 'inline-block';
       if (navLoginBtn) navLoginBtn.style.display = 'none';
 
-      const emailStr = user.email || 'trader@demo.com';
-      const shortName = emailStr.split('@')[0];
       const navUserEmailShort = document.getElementById('navUserEmailShort');
       const menuUserName = document.getElementById('menuUserName');
       const menuUserEmail = document.getElementById('menuUserEmail');
@@ -16135,6 +16226,14 @@ window.addEventListener('resize', () => {
 
     function onUserLoggedOut() {
       currentAuthUser = null;
+      if (document.body) {
+        document.body.classList.remove('portal-mode-active');
+      }
+      try {
+        localStorage.removeItem('tradingpoint_local_user');
+        sessionStorage.removeItem('tradingpoint_active_portal_view');
+        localStorage.removeItem('tradingpoint_active_portal_view');
+      } catch (e) {} 
       const navBtnDash = document.getElementById('nav-btn-dashboard');
       if (navBtnDash) navBtnDash.style.display = '';
       // When user logs out, immediately show the overview/landing page
@@ -16280,8 +16379,10 @@ window.addEventListener('resize', () => {
           showAuthAlert('Login successful! Loading your dashboard...', 'success');
           if (data && data.user) {
             await onUserAuthenticated(data.user);
+          } else {
+            if (document.body) document.body.classList.add('portal-mode-active');
+            if (typeof switchPortalView === 'function') switchPortalView('dashboard');
           }
-          switchView('terminal');
           setTimeout(() => { closeAuthModal(); }, 350);
         } else {
           const { data, error } = await supabaseClient.auth.signUp({
@@ -16323,6 +16424,9 @@ window.addEventListener('resize', () => {
       }
       currentAuthUser = null;
       try {
+        localStorage.removeItem('tradingpoint_local_user');
+        sessionStorage.removeItem('tradingpoint_active_portal_view');
+        localStorage.removeItem('tradingpoint_active_portal_view');
         for (var i = localStorage.length - 1; i >= 0; i--) {
           var k = localStorage.key(i);
           if (k && k.indexOf('sb-') !== -1 && k.indexOf('-auth-token') !== -1) {
@@ -16330,8 +16434,16 @@ window.addEventListener('resize', () => {
           }
         }
       } catch (e) {}
+      if (document.body) {
+        document.body.classList.remove('portal-mode-active');
+      }
       onUserLoggedOut();
       switchView('dashboard');
+      try {
+        history.replaceState(null, null, window.location.pathname);
+      } catch (e) {
+        window.location.hash = '';
+      }
       if (typeof showSignalToast === 'function') {
         showSignalToast('Logged out of TradingPoint');
       }
