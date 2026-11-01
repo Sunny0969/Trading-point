@@ -8,3 +8,4 @@ node_modules/
 edge_*
 *.csv
 *.jsonl
+scratch/
