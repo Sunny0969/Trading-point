@@ -266,7 +266,598 @@
     }
   ]
 }
-  </script>
+  
+    // ========================================================
+    // PORTAL VIEW SWITCHER & PERSISTENCE
+    // ========================================================
+    function closePortalMobileSidebar() {
+      if (document.body) document.body.classList.remove('mobile-sidebar-open');
+    }
+    window.closePortalMobileSidebar = closePortalMobileSidebar;
+
+    function switchPortalView(portalView) {
+      if (typeof closePortalMobileSidebar === 'function') closePortalMobileSidebar();
+      try {
+        sessionStorage.setItem('tradingpoint_active_portal_view', portalView);
+        localStorage.setItem('tradingpoint_active_portal_view', portalView);
+      } catch (e) {}
+
+      var navButtons = document.querySelectorAll('.admin-nav-item');
+      for (var i = 0; i < navButtons.length; i++) {
+        navButtons[i].classList.remove('active');
+      }
+      var targetBtn = document.getElementById('adminNav_' + portalView);
+      if (targetBtn) targetBtn.classList.add('active');
+
+      var dashView = document.getElementById('view-dashboard');
+      var traderDashView = document.getElementById('view-trader-dashboard');
+      var signalsPortalView = document.getElementById('view-signals-portal');
+      var walletPortalView = document.getElementById('view-wallet-portal');
+      var termView = document.getElementById('view-terminal');
+      var profView = document.getElementById('view-profile-portal');
+      var condView = document.getElementById('view-conditions-portal');
+
+      // STRICT: Homepage is never displayed in authenticated mode
+      if (dashView) dashView.style.display = 'none';
+
+      if (portalView === 'dashboard') {
+        if (termView) { termView.style.display = 'none'; termView.style.visibility = 'hidden'; }
+        if (signalsPortalView) signalsPortalView.style.display = 'none';
+        if (walletPortalView) walletPortalView.style.display = 'none';
+        if (profView) profView.style.display = 'none';
+        if (condView) condView.style.display = 'none';
+        if (traderDashView) { traderDashView.style.display = 'block'; traderDashView.style.visibility = 'visible'; }
+        if (typeof renderDashboardPortalData === 'function') renderDashboardPortalData();
+        try { history.replaceState(null, null, '#dashboard'); } catch (e) { window.location.hash = 'dashboard'; }
+        window.scrollTo(0, 0);
+      } else if (portalView === 'signals') {
+        if (traderDashView) traderDashView.style.display = 'none';
+        if (termView) { termView.style.display = 'none'; termView.style.visibility = 'hidden'; }
+        if (walletPortalView) walletPortalView.style.display = 'none';
+        if (profView) profView.style.display = 'none';
+        if (condView) condView.style.display = 'none';
+        if (signalsPortalView) { signalsPortalView.style.display = 'block'; signalsPortalView.style.visibility = 'visible'; }
+        if (typeof renderSignalsPortalPage === 'function') renderSignalsPortalPage();
+        try { history.replaceState(null, null, '#signals'); } catch (e) { window.location.hash = 'signals'; }
+        window.scrollTo(0, 0);
+      } else if (portalView === 'wallet') {
+        if (traderDashView) traderDashView.style.display = 'none';
+        if (termView) { termView.style.display = 'none'; termView.style.visibility = 'hidden'; }
+        if (signalsPortalView) signalsPortalView.style.display = 'none';
+        if (profView) profView.style.display = 'none';
+        if (condView) condView.style.display = 'none';
+        if (walletPortalView) { walletPortalView.style.display = 'block'; walletPortalView.style.visibility = 'visible'; }
+        if (typeof renderWalletPortalData === 'function') renderWalletPortalData();
+        try { history.replaceState(null, null, '#wallet'); } catch (e) { window.location.hash = 'wallet'; }
+        window.scrollTo(0, 0);
+      } else if (portalView === 'trade' || portalView === 'terminal' || portalView === 'positions') {
+        if (traderDashView) traderDashView.style.display = 'none';
+        if (signalsPortalView) signalsPortalView.style.display = 'none';
+        if (walletPortalView) walletPortalView.style.display = 'none';
+        if (profView) profView.style.display = 'none';
+        if (condView) condView.style.display = 'none';
+        if (termView) {
+          termView.style.display = 'flex';
+          termView.style.visibility = 'visible';
+        }
+        try { history.replaceState(null, null, '#terminal'); } catch (e) { window.location.hash = 'terminal'; }
+
+        [30, 80, 200, 450].forEach(function(delay) {
+          setTimeout(function() {
+            window.dispatchEvent(new Event('resize'));
+            var chartElem = document.getElementById('chart');
+            if (chartElem && typeof window.chart !== 'undefined' && window.chart && window.chart.resize) {
+              var nw = chartElem.clientWidth || (window.innerWidth - 630);
+              var nh = chartElem.clientHeight || (window.innerHeight - 124);
+              if (nw > 50 && nh > 50) {
+                window.chart.resize(nw, nh);
+                if (window.chart.timeScale) window.chart.timeScale().fitContent();
+              }
+            }
+            if (typeof window.syncCanvasSize === 'function') window.syncCanvasSize();
+            if (typeof window.redrawDrawings === 'function') window.redrawDrawings();
+          }, delay);
+        });
+      } else if (portalView === 'profile') {
+        if (traderDashView) traderDashView.style.display = 'none';
+        if (signalsPortalView) signalsPortalView.style.display = 'none';
+        if (walletPortalView) walletPortalView.style.display = 'none';
+        if (termView) termView.style.display = 'none';
+        if (condView) condView.style.display = 'none';
+        if (profView) profView.style.display = 'block';
+        try { history.replaceState(null, null, '#profile'); } catch (e) { window.location.hash = 'profile'; }
+      } else if (portalView === 'conditions') {
+        if (traderDashView) traderDashView.style.display = 'none';
+        if (signalsPortalView) signalsPortalView.style.display = 'none';
+        if (walletPortalView) walletPortalView.style.display = 'none';
+        if (termView) termView.style.display = 'none';
+        if (profView) profView.style.display = 'none';
+        if (condView) condView.style.display = 'block';
+        try { history.replaceState(null, null, '#conditions'); } catch (e) { window.location.hash = 'conditions'; }
+      }
+    }
+    window.switchPortalView = switchPortalView;
+
+    function checkUrlForTerminal() {
+      var hash = (window.location.hash || '').toLowerCase();
+      var isPortal = (document.body && document.body.classList.contains('portal-mode-active')) || 
+                     !!localStorage.getItem('tradingpoint_local_user') ||
+                     ['#terminal', '#trade', '#dashboard', '#signals', '#wallet', '#profile', '#conditions'].includes(hash);
+
+      if (isPortal && !localStorage.getItem('tradingpoint_local_user')) {
+        try {
+          localStorage.setItem('tradingpoint_local_user', JSON.stringify({ email: 'suneel.pirkash@demo.com', name: 'Suneel Pirkash' }));
+        } catch (e) {}
+      }
+
+      if (isPortal) {
+        document.body.classList.add('portal-mode-active');
+        var savedView = null;
+        try { savedView = sessionStorage.getItem('tradingpoint_active_portal_view') || localStorage.getItem('tradingpoint_active_portal_view'); } catch (e) {}
+
+        if (hash === '#signals' || savedView === 'signals') {
+          switchPortalView('signals');
+        } else if (hash === '#wallet' || savedView === 'wallet') {
+          switchPortalView('wallet');
+        } else if (hash === '#trade' || hash === '#terminal' || savedView === 'trade' || savedView === 'terminal') {
+          switchPortalView('trade');
+        } else if (hash === '#profile' || savedView === 'profile') {
+          switchPortalView('profile');
+        } else if (hash === '#conditions' || savedView === 'conditions') {
+          switchPortalView('conditions');
+        } else if (hash === '#dashboard' || savedView === 'dashboard') {
+          switchPortalView('dashboard');
+        } else {
+          switchPortalView('trade');
+        }
+      }
+    }
+    window.checkUrlForTerminal = checkUrlForTerminal;
+
+    // ========================================================
+    // INSTITUTIONAL REAL-TIME WALLET & CAPITAL DATA ENGINE
+    // ========================================================
+    function renderWalletPortalData(spotPrice) {
+      const price = spotPrice || (typeof currentLiveSpot !== 'undefined' && currentLiveSpot ? currentLiveSpot : (typeof rawCandleData !== 'undefined' && rawCandleData.length ? rawCandleData[rawCandleData.length - 1].close : 4007.05));
+      const totalFloating = (typeof getTotalFloatingPnL === 'function') ? getTotalFloatingPnL(price) : 0;
+      const equity = demoState.balance + totalFloating;
+      const usedMargin = (typeof getUsedMargin === 'function') ? getUsedMargin() : 0;
+      const freeMargin = Math.max(0, equity - usedMargin);
+      const marginLevel = usedMargin > 0 ? (equity / usedMargin) * 100 : 999.9;
+
+      // Update Sidebar Pill
+      const sidebarNavWalletPill = document.getElementById('sidebarNavWalletPill');
+      if (sidebarNavWalletPill) {
+        sidebarNavWalletPill.innerText = '$' + demoState.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      const sidebarUserBalance = document.getElementById('sidebarUserBalance');
+      if (sidebarUserBalance) {
+        sidebarUserBalance.innerText = '$' + demoState.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      // Update KPI Elements
+      const balEl = document.getElementById('walletKpiBalance');
+      const eqEl = document.getElementById('walletKpiEquity');
+      const pnlEl = document.getElementById('walletKpiFloatingPnl');
+      const fmEl = document.getElementById('walletKpiFreeMargin');
+      const umEl = document.getElementById('walletKpiUsedMargin');
+      const mlEl = document.getElementById('walletKpiMarginLevel');
+      const healthBadge = document.getElementById('walletHealthBadge');
+      const healthBar = document.getElementById('walletHealthBar');
+      const spotDisplay = document.getElementById('walletLiveSpotDisplay');
+      const countEl = document.getElementById('walletActivePositionsCount');
+
+      if (spotDisplay) spotDisplay.innerText = '$' + price.toFixed(2);
+      if (countEl) countEl.innerText = demoState.positions ? demoState.positions.length : 0;
+      if (balEl) balEl.innerText = '$' + demoState.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      
+      if (eqEl) {
+        eqEl.innerText = '$' + equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        eqEl.style.color = equity >= demoState.balance ? '#3fb950' : '#ef5350';
+      }
+      
+      if (pnlEl) {
+        const sign = totalFloating >= 0 ? '+' : '';
+        pnlEl.innerText = `${sign}$${totalFloating.toFixed(2)}`;
+        pnlEl.style.color = totalFloating >= 0 ? '#3fb950' : '#ef5350';
+      }
+
+      if (fmEl) fmEl.innerText = '$' + freeMargin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (umEl) umEl.innerText = usedMargin.toFixed(2);
+
+      if (mlEl) {
+        if (usedMargin === 0) {
+          mlEl.innerText = '100% (No Debt)';
+          mlEl.style.color = '#3fb950';
+        } else {
+          mlEl.innerText = `${marginLevel.toFixed(1)}%`;
+          mlEl.style.color = marginLevel > 200 ? '#3fb950' : (marginLevel > 100 ? '#ffd700' : '#ef5350');
+        }
+      }
+
+      if (healthBadge) {
+        if (usedMargin === 0) {
+          healthBadge.innerText = 'HEALTHY · 100% FREE';
+          healthBadge.style.color = '#3fb950';
+          healthBadge.style.borderColor = 'rgba(63, 185, 80, 0.4)';
+          healthBadge.style.background = 'rgba(63, 185, 80, 0.12)';
+        } else if (marginLevel > 200) {
+          healthBadge.innerText = 'SECURE · OPTIMAL MARGIN';
+          healthBadge.style.color = '#3fb950';
+          healthBadge.style.borderColor = 'rgba(63, 185, 80, 0.4)';
+          healthBadge.style.background = 'rgba(63, 185, 80, 0.12)';
+        } else if (marginLevel > 50) {
+          healthBadge.innerText = 'WARNING · MARGIN CALL RISK';
+          healthBadge.style.color = '#f08c00';
+          healthBadge.style.borderColor = 'rgba(240, 140, 0, 0.4)';
+          healthBadge.style.background = 'rgba(240, 140, 0, 0.12)';
+        } else {
+          healthBadge.innerText = 'DANGER · NEAR LIQUIDATION (10%)';
+          healthBadge.style.color = '#ef5350';
+          healthBadge.style.borderColor = 'rgba(239, 83, 80, 0.4)';
+          healthBadge.style.background = 'rgba(239, 83, 80, 0.12)';
+        }
+      }
+
+      if (healthBar) {
+        const pct = usedMargin === 0 ? 100 : Math.min(100, Math.max(8, marginLevel / 5));
+        healthBar.style.width = pct + '%';
+        healthBar.style.background = marginLevel > 200 ? '#3fb950' : (marginLevel > 50 ? '#f08c00' : '#ef5350');
+      }
+
+      renderWalletPositionsTable(price);
+      renderWalletTransactionsLedger();
+    }
+    window.renderWalletPortalData = renderWalletPortalData;
+
+    function renderWalletPositionsTable(spotPrice) {
+      const container = document.getElementById('walletPositionsTableBody');
+      if (!container) return;
+
+      const positions = demoState.positions || [];
+      if (positions.length === 0) {
+        container.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 28px 16px; color: #8b949e; font-size: 13px;">
+              <div style="font-size: 24px; margin-bottom: 6px;">🛡️</div>
+              <div style="font-weight: 700; color: #f0f6fc; margin-bottom: 4px;">No Active Margin Exposure</div>
+              <div>All virtual funds are 100% liquid and available for new orders.</div>
+              <button type="button" onclick="switchPortalView('trade')" style="margin-top: 12px; background: #21262d; border: 1px solid #30363d; color: #ffd700; font-size: 11.5px; font-weight: 700; padding: 6px 14px; border-radius: 6px; cursor: pointer;">
+                Open Trade Terminal &rarr;
+              </button>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      let html = '';
+      positions.forEach(pos => {
+        const pnl = calculatePositionPnL(pos, spotPrice);
+        const sign = pnl >= 0 ? '+' : '';
+        const pnlColor = pnl >= 0 ? '#3fb950' : '#ef5350';
+        const isBuy = pos.type === 'BUY';
+        const badgeBg = isBuy ? 'rgba(63, 185, 80, 0.15)' : 'rgba(239, 83, 80, 0.15)';
+        const badgeBorder = isBuy ? 'rgba(63, 185, 80, 0.4)' : 'rgba(239, 83, 80, 0.4)';
+        const badgeColor = isBuy ? '#3fb950' : '#ef5350';
+
+        html += `
+          <tr style="border-bottom: 1px solid #21262d; transition: background 0.15s ease;">
+            <td style="padding: 12px 14px; font-family: monospace; font-size: 12px; color: #8b949e;">#${pos.id ? pos.id.slice(-6) : 'ORD'}</td>
+            <td style="padding: 12px 14px;">
+              <span style="background: ${badgeBg}; border: 1px solid ${badgeBorder}; color: ${badgeColor}; font-weight: 800; font-size: 10.5px; padding: 3px 8px; border-radius: 4px;">
+                ${pos.type} ${pos.lots}L
+              </span>
+            </td>
+            <td style="padding: 12px 14px; font-weight: 700; color: #f0f6fc; font-size: 12.5px;">XAU/USD</td>
+            <td style="padding: 12px 14px; font-family: monospace; font-size: 12.5px; color: #c9d1d9;">$${pos.openPrice.toFixed(2)}</td>
+            <td style="padding: 12px 14px; font-family: monospace; font-size: 12.5px; color: #ffd700;">$${spotPrice.toFixed(2)}</td>
+            <td style="padding: 12px 14px; font-family: monospace; font-size: 12.5px; font-weight: 800; color: ${pnlColor};">
+              ${sign}$${pnl.toFixed(2)}
+            </td>
+            <td style="padding: 12px 14px; text-align: right;">
+              <button type="button" onclick="closeDemoPosition('${pos.id}')" style="background: rgba(239, 83, 80, 0.15); border: 1px solid rgba(239, 83, 80, 0.35); color: #ef5350; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 5px; cursor: pointer; transition: all 0.15s ease;">
+                Close
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+      container.innerHTML = html;
+    }
+    window.renderWalletPositionsTable = renderWalletPositionsTable;
+
+    function renderWalletTransactionsLedger() {
+      const container = document.getElementById('walletLedgerTableBody');
+      if (!container) return;
+
+      const history = demoState.history || [];
+      if (history.length === 0) {
+        container.innerHTML = `
+          <tr>
+            <td style="padding: 12px 14px; color: #8b949e; font-size: 12px;">Genesis</td>
+            <td style="padding: 12px 14px;"><span style="background: rgba(255, 215, 0, 0.12); border: 1px solid rgba(255, 215, 0, 0.3); color: #ffd700; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">INITIAL CAPITAL</span></td>
+            <td style="padding: 12px 14px; font-family: monospace; font-size: 12px; color: #8b949e;">INIT-1000</td>
+            <td style="padding: 12px 14px; font-family: monospace; font-weight: 800; color: #3fb950;">+$1,000.00</td>
+            <td style="padding: 12px 14px; font-family: monospace; font-weight: 700; color: #ffd700;">$1,000.00</td>
+            <td style="padding: 12px 14px; text-align: right;"><span style="color: #3fb950; font-weight: 700; font-size: 11px;">SETTLED</span></td>
+          </tr>
+        `;
+        return;
+      }
+
+      let html = '';
+      history.slice(0, 20).forEach((item, idx) => {
+        const isWin = item.pnl >= 0;
+        const sign = isWin ? '+' : '';
+        const color = isWin ? '#3fb950' : '#ef5350';
+        const typeBadge = isWin 
+          ? `<span style="background: rgba(63, 185, 80, 0.12); border: 1px solid rgba(63, 185, 80, 0.3); color: #3fb950; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">TRADE PROFIT</span>`
+          : `<span style="background: rgba(239, 83, 80, 0.12); border: 1px solid rgba(239, 83, 80, 0.3); color: #ef5350; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">TRADE LOSS</span>`;
+        
+        const dateStr = item.closeTime ? new Date(item.closeTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : `Trade #${idx+1}`;
+        const refId = item.id ? '#' + item.id.slice(-6) : `TXN-${idx+1}`;
+
+        html += `
+          <tr style="border-bottom: 1px solid #21262d;">
+            <td style="padding: 10px 14px; color: #8b949e; font-size: 12px;">${dateStr}</td>
+            <td style="padding: 10px 14px;">${typeBadge}</td>
+            <td style="padding: 10px 14px; font-family: monospace; font-size: 12px; color: #8b949e;">${refId}</td>
+            <td style="padding: 10px 14px; font-family: monospace; font-weight: 800; color: ${color};">${sign}$${item.pnl.toFixed(2)}</td>
+            <td style="padding: 10px 14px; font-family: monospace; font-weight: 700; color: #ffd700;">$${demoState.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td style="padding: 10px 14px; text-align: right;"><span style="color: #3fb950; font-weight: 700; font-size: 11px;">SETTLED</span></td>
+          </tr>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+    window.renderWalletTransactionsLedger = renderWalletTransactionsLedger;
+
+    function submitCustomDemoDeposit() {
+      const input = document.getElementById('walletCustomDepositInput');
+      if (!input) return;
+      const val = parseFloat(input.value);
+      if (isNaN(val) || val <= 0) {
+        if (typeof showSignalToast === 'function') showSignalToast('⚠️ Please enter a valid deposit amount!');
+        return;
+      }
+      depositDemoFunds(val);
+      input.value = '';
+      if (typeof showSignalToast === 'function') {
+        showSignalToast(`✅ Added $${val.toLocaleString()} to Demo Wallet! Balance: $${demoState.balance.toFixed(2)}`);
+      }
+      if (typeof renderWalletPortalData === 'function') renderWalletPortalData();
+    }
+    window.submitCustomDemoDeposit = submitCustomDemoDeposit;
+
+    function simulateWalletWithdrawal() {
+      const input = document.getElementById('walletWithdrawInput');
+      if (!input) return;
+      const val = parseFloat(input.value);
+      if (isNaN(val) || val <= 0) {
+        if (typeof showSignalToast === 'function') showSignalToast('⚠️ Please enter a valid withdrawal amount!');
+        return;
+      }
+      const price = typeof currentLiveSpot !== 'undefined' ? currentLiveSpot : 4007.05;
+      const totalFloating = (typeof getTotalFloatingPnL === 'function') ? getTotalFloatingPnL(price) : 0;
+      const equity = demoState.balance + totalFloating;
+      const usedMargin = (typeof getUsedMargin === 'function') ? getUsedMargin() : 0;
+      const freeMargin = Math.max(0, equity - usedMargin);
+
+      if (val > freeMargin) {
+        if (typeof showSignalToast === 'function') {
+          showSignalToast(`❌ Insufficient Free Margin! Max allowed: $${freeMargin.toFixed(2)}`);
+        }
+        return;
+      }
+
+      demoState.balance = Math.max(0, demoState.balance - val);
+      saveDemoState();
+      renderDemoWalletUI();
+      if (typeof renderWalletPortalData === 'function') renderWalletPortalData();
+      input.value = '';
+      if (typeof showSignalToast === 'function') {
+        showSignalToast(`💸 Simulated Payout of $${val.toLocaleString()} processed!`);
+      }
+    }
+    window.simulateWalletWithdrawal = simulateWalletWithdrawal;
+
+    // ========================================================
+    // TRADER DASHBOARD DATA RENDERER
+    // ========================================================
+    function renderDashboardPortalData(spotPrice) {
+      const price = spotPrice || (typeof currentLiveSpot !== 'undefined' ? currentLiveSpot : 4007.05);
+      const totalTrades = (demoState.positions ? demoState.positions.length : 0) + (demoState.history ? demoState.history.length : 0);
+      const openCount = demoState.positions ? demoState.positions.length : 0;
+      const closedCount = demoState.history ? demoState.history.length : 0;
+
+      const totalFloating = (typeof getTotalFloatingPnL === 'function') ? getTotalFloatingPnL(price) : 0;
+      const equity = demoState.balance + totalFloating;
+
+      let realizedProfit = 0;
+      let realizedLoss = 0;
+      let winCount = 0;
+
+      (demoState.history || []).forEach(h => {
+        if (h.pnl > 0) {
+          realizedProfit += h.pnl;
+          winCount++;
+        } else if (h.pnl < 0) {
+          realizedLoss += Math.abs(h.pnl);
+        }
+      });
+
+      const winRate = closedCount > 0 ? Math.round((winCount / closedCount) * 100) : 0;
+      const netPnL = realizedProfit - realizedLoss;
+
+      const elTotal = document.getElementById('dashTotalTrades');
+      const elOpen = document.getElementById('dashOpenCount');
+      const elClosed = document.getElementById('dashClosedCount');
+      const elEquity = document.getElementById('dashDynamicEquity');
+      const elBal = document.getElementById('dashBalanceDisplay');
+      const elProfit = document.getElementById('dashTotalProfit');
+      const elWinRate = document.getElementById('dashWinRate');
+      const elLoss = document.getElementById('dashTotalLoss');
+      const elNet = document.getElementById('dashNetPnL');
+
+      if (elTotal) elTotal.innerText = totalTrades;
+      if (elOpen) elOpen.innerText = openCount;
+      if (elClosed) elClosed.innerText = closedCount;
+      if (elEquity) {
+        elEquity.innerText = '$' + equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        elEquity.style.color = equity >= demoState.balance ? '#3fb950' : '#ef5350';
+      }
+      if (elBal) elBal.innerText = '$' + demoState.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (elProfit) elProfit.innerText = '+$' + realizedProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (elWinRate) elWinRate.innerText = winRate + '%';
+      if (elLoss) elLoss.innerText = '-$' + realizedLoss.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (elNet) {
+        const sign = netPnL >= 0 ? '+' : '-';
+        elNet.innerText = sign + '$' + Math.abs(netPnL).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        elNet.style.color = netPnL >= 0 ? '#3fb950' : '#ef5350';
+      }
+
+      // Populate closed trades ledger
+      const closedBody = document.getElementById('dashClosedTradesBody');
+      if (closedBody) {
+        const history = demoState.history || [];
+        if (history.length === 0) {
+          closedBody.innerHTML = '<tr><td colspan="6" style="padding: 24px; text-align: center; color: #8b949e;">No closed trades yet. Place and close demo orders to build ledger.</td></tr>';
+        } else {
+          let rows = '';
+          history.slice(0, 15).forEach(h => {
+            const isWin = h.pnl >= 0;
+            const sign = isWin ? '+' : '';
+            const color = isWin ? '#3fb950' : '#ef5350';
+            rows += `
+              <tr style="border-bottom: 1px solid #21262d;">
+                <td style="padding: 10px 14px; font-family: monospace; color: #8b949e;">#${h.id ? h.id.slice(-6) : 'TRD'}</td>
+                <td style="padding: 10px 14px; font-weight: 700; color: ${h.type === 'BUY' ? '#3fb950' : '#ef5350'};">${h.type} ${h.lots}L</td>
+                <td style="padding: 10px 14px; font-family: monospace; color: #c9d1d9;">$${h.openPrice ? h.openPrice.toFixed(2) : '-'}</td>
+                <td style="padding: 10px 14px; font-family: monospace; color: #ffd700;">$${h.closePrice ? h.closePrice.toFixed(2) : '-'}</td>
+                <td style="padding: 10px 14px; font-family: monospace; font-weight: 800; color: ${color};">${sign}$${h.pnl.toFixed(2)}</td>
+                <td style="padding: 10px 14px; text-align: right; color: #8b949e; font-size: 11px;">${h.reason || 'MANUAL'}</td>
+              </tr>
+            `;
+          });
+          closedBody.innerHTML = rows;
+        }
+      }
+    }
+    window.renderDashboardPortalData = renderDashboardPortalData;
+
+    // ========================================================
+    // SIGNALS PORTAL DATA RENDERER
+    // ========================================================
+    function renderSignalsPortalPage(spotPrice) {
+      const container = document.getElementById('signalsPortalCardsGrid');
+      if (!container) return;
+
+      const price = spotPrice || (typeof currentLiveSpot !== 'undefined' ? currentLiveSpot : 4007.05);
+
+      // Construct live active cards
+      let cardsHtml = `
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 20px; box-shadow: 0 4px 18px rgba(0,0,0,0.3);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-size: 11px; font-weight: 800; color: #3fb950; background: rgba(63, 185, 80, 0.12); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(63, 185, 80, 0.3);">
+              🟢 LIVE RUNNING SIGNAL
+            </span>
+            <span style="font-size: 11.5px; color: #8b949e; font-family: monospace;">SIG-CURRENT</span>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #f0f6fc; margin-bottom: 8px;">XAU/USD Institutional SMC Confluence</div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #0d1117; padding: 12px; border-radius: 8px; margin-bottom: 14px;">
+            <div>
+              <div style="font-size: 10px; color: #8b949e; font-weight: 700;">ENTRY</div>
+              <div style="font-size: 13px; font-weight: 800; color: #ffd700; font-family: monospace;">$3,875.64</div>
+            </div>
+            <div>
+              <div style="font-size: 10px; color: #8b949e; font-weight: 700;">STOP LOSS</div>
+              <div style="font-size: 13px; font-weight: 800; color: #ef5350; font-family: monospace;">$3,868.50</div>
+            </div>
+            <div>
+              <div style="font-size: 10px; color: #8b949e; font-weight: 700;">TAKE PROFIT</div>
+              <div style="font-size: 13px; font-weight: 800; color: #3fb950; font-family: monospace;">$3,892.00</div>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: #8b949e;">Status: <strong style="color: #3fb950;">ACTIVE HOLD (1:2.3 RR)</strong></span>
+            <button type="button" onclick="switchPortalView('trade')" style="background: #21262d; border: 1px solid #30363d; color: #ffd700; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 5px; cursor: pointer;">
+              Execute on Chart &rarr;
+            </button>
+          </div>
+        </div>
+
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 20px; box-shadow: 0 4px 18px rgba(0,0,0,0.3);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-size: 11px; font-weight: 800; color: #ffd700; background: rgba(255, 215, 0, 0.12); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(255, 215, 0, 0.3);">
+              ⏳ UPCOMING WATCHLIST
+            </span>
+            <span style="font-size: 11.5px; color: #8b949e; font-family: monospace;">SIG-UPCOMING</span>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #f0f6fc; margin-bottom: 8px;">London High Liquidity Sweep Reversal</div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #0d1117; padding: 12px; border-radius: 8px; margin-bottom: 14px;">
+            <div>
+              <div style="font-size: 10px; color: #8b949e; font-weight: 700;">TRIGGER ZONE</div>
+              <div style="font-size: 13px; font-weight: 800; color: #ffd700; font-family: monospace;">$3,882 - $3,885</div>
+            </div>
+            <div>
+              <div style="font-size: 10px; color: #8b949e; font-weight: 700;">DIRECTION</div>
+              <div style="font-size: 13px; font-weight: 800; color: #ef5350; font-family: monospace;">SHORT / SELL</div>
+            </div>
+            <div>
+              <div style="font-size: 10px; color: #8b949e; font-weight: 700;">TARGET EXP</div>
+              <div style="font-size: 13px; font-weight: 800; color: #3fb950; font-family: monospace;">200 PIPS</div>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: #8b949e;">Condition: <strong style="color: #ffd700;">Awaiting Upper Wick Sweep</strong></span>
+            <span style="font-size: 11px; color: #8b949e; font-family: monospace;">Auto-triggers on breach</span>
+          </div>
+        </div>
+
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 20px; box-shadow: 0 4px 18px rgba(0,0,0,0.3);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-size: 11px; font-weight: 800; color: #8b949e; background: #21262d; padding: 3px 8px; border-radius: 4px; border: 1px solid #30363d;">
+              🏁 CLOSED SIGNAL
+            </span>
+            <span style="font-size: 11.5px; color: #8b949e; font-family: monospace;">SIG-8491</span>
+          </div>
+          <div style="font-size: 16px; font-weight: 800; color: #f0f6fc; margin-bottom: 8px;">London High Rejection Scalp</div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #0d1117; padding: 12px; border-radius: 8px; margin-bottom: 14px;">
+            <div>
+              <div style="font-size: 10px; color: #8b949e; font-weight: 700;">ENTRY</div>
+              <div style="font-size: 13px; font-weight: 800; color: #c9d1d9; font-family: monospace;">$4,042.00</div>
+            </div>
+            <div>
+              <div style="font-size: 10px; color: #8b949e; font-weight: 700;">CLOSED AT</div>
+              <div style="font-size: 13px; font-weight: 800; color: #3fb950; font-family: monospace;">$4,018.00</div>
+            </div>
+            <div>
+              <div style="font-size: 10px; color: #8b949e; font-weight: 700;">RESULT</div>
+              <div style="font-size: 13px; font-weight: 800; color: #3fb950; font-family: monospace;">+240 PIPS (TP HIT)</div>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: #3fb950; font-weight: 700;">Full Target Achieved</span>
+            <span style="font-size: 11px; color: #8b949e;">Audit Confirmed</span>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = cardsHtml;
+    }
+    window.renderSignalsPortalPage = renderSignalsPortalPage;
+
+    function filterSignalsPortal(filter, btn) {
+      const allBtns = document.querySelectorAll('.sig-filter-btn');
+      allBtns.forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+    }
+    window.filterSignalsPortal = filterSignalsPortal;
+
+
+    </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1073,7 +1664,40 @@
       background: #0d1117;
       overflow: hidden;
     }
-    #chart {
+    /* ==========================================
+       INSTANT INTERACTION: ZERO SCROLL, MOUSE & CLICK ANIMATION DELAYS
+       ========================================== */
+    html, body {
+      scroll-behavior: auto !important;
+    }
+    button, a, input, select,
+    .view-btn,
+    .btn-primary-cta,
+    .btn-secondary-cta,
+    .btn-demo-trade,
+    .btn-user-profile-icon,
+    .profile-menu-item,
+    .tv-modal,
+    .tv-dropdown-menu,
+    .profile-dropdown-menu,
+    .faq-answer-wrap,
+    .blinking-dot,
+    .terminal-card,
+    .clean-metric-box {
+      animation: none !important;
+      transition: none !important;
+    }
+    .btn-primary-cta:hover,
+    .btn-secondary-cta:hover,
+    .btn-user-profile-icon:hover,
+    .profile-menu-item:hover,
+    .view-btn:hover,
+    .btn-demo-trade:active,
+    .clean-metric-box:hover {
+      transform: none !important;
+    }
+
+        #chart {
       flex: 1;
       width: 100%;
       height: 100%;
@@ -2298,7 +2922,7 @@
     }
     .btn-primary-cta:hover {
       box-shadow: 0 6px 28px rgba(255, 215, 0, 0.45);
-      transform: translateY(-2px);
+      transform: none !important;
       color: #000;
     }
 
@@ -2854,7 +3478,8 @@
       font-family: 'Space Grotesk', sans-serif;
     }
     .btn-demo-trade:active {
-      transform: scale(0.97);
+      transform: none !important;
+      filter: brightness(0.95);
     }
     .btn-demo-buy {
       background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
@@ -3207,7 +3832,7 @@
     .btn-user-profile-icon:hover {
       background: #21262d;
       border-color: #ffd700;
-      transform: scale(1.05);
+      transform: none !important;
       box-shadow: 0 0 14px rgba(255, 215, 0, 0.45);
     }
     .nav-user-profile-wrapper.open .btn-user-profile-icon {
@@ -3297,7 +3922,7 @@
       100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 83, 80, 0); opacity: 0.8; }
     }
     .blinking-dot {
-      animation: pulse-red-glow 1.5s infinite;
+      animation: none !important;
     }
     #macroNewsAlertBanner {
       display: none;
@@ -3332,14 +3957,233 @@
       border-color: #f59e0b !important;
       color: #f59e0b !important;
     }
-</style>
+
+    /* ========================================================
+       TRADER ADMIN PORTAL & LEFT SIDEBAR (AUTHENTICATED MODE)
+       ======================================================== */
+    #traderAdminSidebar {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 250px;
+      background: #0d1117;
+      border-right: 1px solid #21262d;
+      flex-direction: column;
+      z-index: 100000;
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.45);
+      user-select: none;
+    }
+    body.portal-mode-active #traderAdminSidebar {
+      display: flex;
+    }
+    body.portal-mode-active .navbar {
+      display: none !important;
+    }
+    body.portal-mode-active #macroNewsAlertBanner {
+      display: none !important;
+    }
+    body.portal-mode-active #view-dashboard {
+      display: none !important;
+    }
+    body.portal-mode-active #view-terminal {
+      margin-left: 250px;
+      width: calc(100% - 250px);
+      height: 100vh !important;
+      top: 0 !important;
+    }
+    body.portal-mode-active #view-trader-dashboard,
+    body.portal-mode-active #view-signals-portal,
+    body.portal-mode-active #view-wallet-portal,
+    body.portal-mode-active #view-profile-portal,
+    body.portal-mode-active #view-conditions-portal {
+      margin-left: 250px;
+      width: calc(100% - 250px);
+      box-sizing: border-box;
+    }
+
+    .sidebar-brand-box {
+      padding: 16px 18px;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #11151c;
+    }
+    .portal-badge {
+      background: rgba(255, 215, 0, 0.12);
+      border: 1px solid rgba(255, 215, 0, 0.35);
+      color: #ffd700;
+      font-size: 9.5px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    .sidebar-profile-card {
+      margin: 12px 14px;
+      padding: 12px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: default;
+      pointer-events: none;
+      user-select: none;
+    }
+    .sidebar-profile-card:hover {
+      border-color: #30363d;
+      background: #161b22;
+      transform: none;
+    }
+    .sidebar-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ffd700, #ff9900);
+      color: #0d1117;
+      font-weight: 800;
+      font-size: 13px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    }
+    .sidebar-menu {
+      flex: 1;
+      padding: 6px 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .sidebar-menu::-webkit-scrollbar {
+      width: 4px;
+    }
+    .sidebar-menu::-webkit-scrollbar-thumb {
+      background: #21262d;
+      border-radius: 2px;
+    }
+    .sidebar-menu-category {
+      font-size: 9.5px;
+      font-weight: 800;
+      color: #8b949e;
+      letter-spacing: 0.6px;
+      padding: 10px 10px 4px;
+      text-transform: uppercase;
+    }
+    .admin-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: #c9d1d9;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+    .admin-nav-item:hover {
+      background: #161b22;
+      color: #ffd700;
+      border-color: #21262d;
+    }
+    .admin-nav-item.active {
+      background: rgba(255, 215, 0, 0.12);
+      color: #ffd700;
+      border-color: rgba(255, 215, 0, 0.35);
+      font-weight: 700;
+    }
+    .nav-live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #3fb950;
+      box-shadow: 0 0 6px #3fb950;
+      margin-left: auto;
+    }
+    .nav-badge-hot {
+      font-size: 9px;
+      font-weight: 800;
+      background: rgba(239, 83, 80, 0.2);
+      color: #ef5350;
+      border: 1px solid rgba(239, 83, 80, 0.4);
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-left: auto;
+      letter-spacing: 0.5px;
+    }
+    .sidebar-footer {
+      padding: 12px 14px;
+      border-top: 1px solid #21262d;
+      background: #11151c;
+    }
+    .sign-out-btn:hover {
+      background: rgba(248, 81, 73, 0.12) !important;
+      border-color: rgba(248, 81, 73, 0.35) !important;
+    }
+
+    @media (max-width: 900px) {
+      body.portal-mode-active #traderAdminSidebar {
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+      }
+      body.portal-mode-active.mobile-sidebar-open #traderAdminSidebar {
+        transform: translateX(0);
+      }
+      body.portal-mode-active .navbar,
+      body.portal-mode-active #macroNewsAlertBanner,
+      body.portal-mode-active #view-terminal,
+      body.portal-mode-active #view-trader-dashboard,
+      body.portal-mode-active #view-signals-portal,
+      body.portal-mode-active #view-wallet-portal,
+      body.portal-mode-active #view-profile-portal,
+      body.portal-mode-active #view-conditions-portal {
+        margin-left: 0 !important;
+        width: 100% !important;
+      }
+    }
+
+  </style>
   <script src="/supabase.min.js"></script>
   <script>if (typeof window.supabase === 'undefined') { document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\/script>'); }</script>
   <script>
     // ==========================================
     // INSTANT GLOBAL VIEW SWITCHER & ROUTER (EARLY LOAD)
     // ==========================================
+    function isUserLoggedIn() {
+      if (typeof currentAuthUser !== 'undefined' && currentAuthUser) return true;
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('sb-') !== -1 && k.indexOf('-auth-token') !== -1) {
+            var item = localStorage.getItem(k);
+            if (item && item.indexOf('"access_token"') !== -1) {
+              return true;
+            }
+          }
+        }
+      } catch (e) {}
+      return false;
+    }
+    window.isUserLoggedIn = isUserLoggedIn;
+
     function switchView(viewName) {
+      var loggedIn = isUserLoggedIn();
+      // If user has logged in, FORBID showing the landing page (view-dashboard) - always keep in terminal/dashboard!
+      if (loggedIn) {
+        viewName = 'terminal';
+      }
+
       var dashView = document.getElementById('view-dashboard');
       var termView = document.getElementById('view-terminal');
       var btnDash = document.getElementById('nav-btn-dashboard');
@@ -3351,7 +4195,12 @@
           termView.style.display = 'flex';
           termView.style.visibility = 'visible';
         }
-        if (btnDash) btnDash.classList.remove('active');
+        if (btnDash) {
+          btnDash.classList.remove('active');
+          if (loggedIn) {
+            btnDash.style.display = 'none'; // Logged in user stays on their trading dashboard
+          }
+        }
         if (btnTerm) btnTerm.classList.add('active');
         try {
           history.replaceState(null, null, '#terminal');
@@ -3375,9 +4224,13 @@
           }, delay);
         });
       } else {
+        // Show landing page only when logged out
         if (dashView) dashView.style.display = 'block';
         if (termView) termView.style.display = 'none';
-        if (btnDash) btnDash.classList.add('active');
+        if (btnDash) {
+          btnDash.style.display = '';
+          btnDash.classList.add('active');
+        }
         if (btnTerm) btnTerm.classList.remove('active');
         try {
           history.replaceState(null, null, window.location.pathname + window.location.search);
@@ -3392,8 +4245,10 @@
       var hash = (window.location.hash || '').toLowerCase();
       var path = (window.location.pathname || '').toLowerCase();
       var search = (window.location.search || '').toLowerCase();
-      if (hash === '#terminal' || hash.indexOf('terminal') !== -1 || search.indexOf('terminal') !== -1 || path.indexOf('deep') !== -1) {
+      if (isUserLoggedIn() || hash === '#terminal' || hash.indexOf('terminal') !== -1 || search.indexOf('terminal') !== -1 || path.indexOf('deep') !== -1) {
         switchView('terminal');
+      } else {
+        switchView('dashboard');
       }
     }
     window.addEventListener('hashchange', checkUrlForTerminal);
@@ -3405,6 +4260,90 @@
   </script>
 </head>
 <body>
+  <!-- ========================================================
+       AUTHENTICATED TRADER ADMIN LEFT SIDEBAR (POST-LOGIN)
+       ======================================================== -->
+  <aside id="traderAdminSidebar" aria-label="Trader Portal Sidebar">
+    <!-- Brand Header -->
+    <div class="sidebar-brand-box">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="brand-mark" style="font-family: 'Space Grotesk', sans-serif; font-weight: 900; letter-spacing: -0.5px; font-size: 15px; color: #ffd700;">TP</span>
+        <span style="font-weight: 800; font-size: 14px; color: #f0f6fc; font-family: 'Space Grotesk', sans-serif;">TradingPoint</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span class="portal-badge">⚡ PRO DESK</span>
+        <button type="button" class="portal-mobile-close" onclick="closePortalMobileSidebar()" aria-label="Close Sidebar" style="display: none; background: transparent; border: none; color: #8b949e; cursor: pointer; padding: 4px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- User Profile Card in Sidebar (NON-CLICKABLE AS REQUESTED) -->
+    <div class="sidebar-profile-card" id="sidebarProfileCard" style="cursor: default; pointer-events: none;">
+      <div class="sidebar-avatar" id="sidebarAvatar">TR</div>
+      <div style="overflow: hidden; flex: 1;">
+        <div id="sidebarUserName" style="font-weight: 700; font-size: 12px; color: #f0f6fc; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">Suneel Pirkash</div>
+        <div id="sidebarUserEmail" style="font-size: 10px; color: #8b949e; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">suneel.pirkash@demo.com</div>
+        <div style="margin-top: 5px; display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: 9px; color: #8b949e; font-weight: 700;">DEMO WALLET</span>
+          <span id="sidebarUserBalance" style="font-size: 11.5px; font-weight: 800; color: #ffd700; font-family: 'Space Grotesk', monospace;">$1,000.00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Menu Items -->
+    <nav class="sidebar-menu" aria-label="Portal Navigation">
+      <div class="sidebar-menu-category">TRADING DESK</div>
+      <button type="button" class="admin-nav-item active" id="adminNav_dashboard" onclick="switchPortalView('dashboard')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+        <span>Dashboard</span>
+        <span class="nav-badge-hot" style="background: rgba(255, 215, 0, 0.15); color: #ffd700; border-color: rgba(255, 215, 0, 0.3);">STATS</span>
+      </button>
+
+      <button type="button" class="admin-nav-item" id="adminNav_trade" onclick="switchPortalView('trade')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        <span>Live Trade &amp; Terminal</span>
+        <span class="nav-live-dot" title="Live CFD Feed Active"></span>
+      </button>
+
+      <button type="button" class="admin-nav-item" id="adminNav_signals" onclick="switchPortalView('signals')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        <span>Execution Signals</span>
+        <span class="nav-badge-hot">SMC AI</span>
+      </button>
+
+      <button type="button" class="admin-nav-item" id="adminNav_wallet" onclick="switchPortalView('wallet')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M7 15h0M2 9.5h20"></path><circle cx="16" cy="14" r="1.5"></circle></svg>
+        <span>Wallet</span>
+        <span id="sidebarNavWalletPill" class="nav-badge-hot" style="background: rgba(255, 215, 0, 0.15); color: #ffd700; border-color: rgba(255, 215, 0, 0.3); font-family: monospace; font-size: 9.5px; padding: 2px 6px;">$1,000.00</span>
+      </button>
+
+      <div class="sidebar-menu-category">ACCOUNT &amp; SETTINGS</div>
+      <button type="button" class="admin-nav-item" id="adminNav_profile" onclick="switchPortalView('profile')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span>Profile &amp; Settings</span>
+      </button>
+
+      <button type="button" class="admin-nav-item" id="adminNav_conditions" onclick="switchPortalView('conditions')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span>Trading Conditions</span>
+      </button>
+
+      <button type="button" class="admin-nav-item" onclick="toggleSMCInstitutionalTheme()" title="Toggle Clean SMC Light or Dark Pro mode">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <span>SMC Clean / Dark</span>
+      </button>
+    </nav>
+
+    <!-- Sidebar Footer with Sign Out -->
+    <div class="sidebar-footer">
+      <button type="button" class="admin-nav-item sign-out-btn" onclick="handleSupabaseLogout()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f85149" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        <span style="color: #f85149; font-weight: 700;">Sign Out</span>
+      </button>
+    </div>
+  </aside>
+
 
   <!-- Sticky Top Navigation -->
   <header class="navbar">
@@ -4252,14 +5191,375 @@
   <!-- ========================================================
        PAGE 2: DEEP TECHNICAL & AI PREDICTION TERMINAL
        ======================================================== -->
+  
+  <!-- ========================================================
+       PAGE 1: TRADER DASHBOARD (ADMIN-STYLE STATS & AUDIT)
+       ======================================================== -->
+  <div id="view-trader-dashboard" class="portal-view-page" style="display: none; background: #08090a; padding: 24px 28px; min-height: 100vh; box-sizing: border-box; overflow-y: auto;">
+    <div style="max-width: 1250px; margin: 0 auto;">
+      
+      <!-- Dashboard Top Header -->
+      <div style="background: linear-gradient(180deg, #161b22 0%, #0d1117 100%); border: 1px solid #30363d; border-radius: 14px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 22px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 52px; height: 52px; border-radius: 12px; background: rgba(255, 215, 0, 0.12); border: 1px solid rgba(255, 215, 0, 0.35); color: #ffd700; font-size: 24px; display: grid; place-items: center; box-shadow: 0 0 16px rgba(255, 215, 0, 0.25);">
+            📊
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <h2 style="font-size: 19px; font-weight: 800; color: #f0f6fc; margin: 0; font-family: 'Space Grotesk', sans-serif;">Trader Performance Dashboard</h2>
+              <span style="background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.35); font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 4px;">ACTIVE DESK</span>
+            </div>
+            <p style="color: #8b949e; font-size: 12px; margin: 4px 0 0 0;">Comprehensive administrative audit: total trades, dynamic equity, realized profits, and drawdown</p>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <button type="button" onclick="switchPortalView('trade')" style="background: linear-gradient(135deg, #ffd700, #ffaa00); color: #0d1117; border: none; font-weight: 800; font-size: 12px; padding: 8px 16px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);">
+            <span>📈 Live Terminal</span>
+          </button>
+          <button type="button" onclick="switchPortalView('signals')" style="background: #21262d; border: 1px solid #30363d; color: #ffd700; font-weight: 700; font-size: 12px; padding: 8px 14px; border-radius: 6px; cursor: pointer;">
+            ⚡ Signals Portal
+          </button>
+          <button type="button" onclick="switchPortalView('wallet')" style="background: #21262d; border: 1px solid #30363d; color: #3fb950; font-weight: 700; font-size: 12px; padding: 8px 14px; border-radius: 6px; cursor: pointer;">
+            💰 Wallet Desk
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 Top KPI Cards -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 22px;">
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 18px;">
+          <div style="font-size: 11px; font-weight: 700; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">TOTAL TRADES TAKEN</div>
+          <div id="dashTotalTrades" style="font-size: 28px; font-weight: 900; color: #f0f6fc; font-family: 'Space Grotesk', monospace; margin-bottom: 4px;">0</div>
+          <div style="font-size: 11.5px; color: #8b949e;"><span id="dashOpenCount" style="color: #ffd700; font-weight: 700;">0</span> open · <span id="dashClosedCount" style="color: #8b949e; font-weight: 700;">0</span> closed</div>
+        </div>
+
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 18px;">
+          <div style="font-size: 11px; font-weight: 700; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">DYNAMIC NET EQUITY</div>
+          <div id="dashDynamicEquity" style="font-size: 28px; font-weight: 900; color: #ffd700; font-family: 'Space Grotesk', monospace; margin-bottom: 4px;">$1,000.00</div>
+          <div style="font-size: 11.5px; color: #8b949e;">Balance: <span id="dashBalanceDisplay" style="color: #f0f6fc; font-weight: 700;">$1,000.00</span></div>
+        </div>
+
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 18px;">
+          <div style="font-size: 11px; font-weight: 700; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">TOTAL PROFIT / REALIZED</div>
+          <div id="dashTotalProfit" style="font-size: 28px; font-weight: 900; color: #3fb950; font-family: 'Space Grotesk', monospace; margin-bottom: 4px;">+$0.00</div>
+          <div style="font-size: 11.5px; color: #8b949e;">Win Rate: <span id="dashWinRate" style="color: #3fb950; font-weight: 800;">0%</span></div>
+        </div>
+
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 18px;">
+          <div style="font-size: 11px; font-weight: 700; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">TOTAL LOSS / DRAWDOWN</div>
+          <div id="dashTotalLoss" style="font-size: 28px; font-weight: 900; color: #ef5350; font-family: 'Space Grotesk', monospace; margin-bottom: 4px;">-$0.00</div>
+          <div style="font-size: 11.5px; color: #8b949e;">Net P&amp;L: <span id="dashNetPnL" style="font-weight: 800; color: #f0f6fc;">$0.00</span></div>
+        </div>
+      </div>
+
+      <!-- Closed Trades History Table -->
+      <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <h3 style="font-size: 14px; font-weight: 800; color: #f0f6fc; margin: 0;">📜 Closed Positions Audit Log</h3>
+          <span style="font-size: 11px; color: #8b949e;">Verified STP Ledger</span>
+        </div>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+            <thead>
+              <tr style="border-bottom: 1px solid #30363d; color: #8b949e; font-size: 10.5px; text-transform: uppercase;">
+                <th style="padding: 10px 14px;">Ticket</th>
+                <th style="padding: 10px 14px;">Type &amp; Lots</th>
+                <th style="padding: 10px 14px;">Open Price</th>
+                <th style="padding: 10px 14px;">Close Price</th>
+                <th style="padding: 10px 14px;">Realized PnL</th>
+                <th style="padding: 10px 14px; text-align: right;">Reason</th>
+              </tr>
+            </thead>
+            <tbody id="dashClosedTradesBody">
+              <tr>
+                <td colspan="6" style="padding: 24px; text-align: center; color: #8b949e;">No closed trades yet. Place and close demo orders to build ledger.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================
+       PAGE 2: EXECUTION SIGNALS PORTAL
+       ======================================================== -->
+  <div id="view-signals-portal" class="portal-view-page" style="display: none; background: #08090a; padding: 24px 28px; min-height: 100vh; box-sizing: border-box; overflow-y: auto;">
+    <div style="max-width: 1250px; margin: 0 auto;">
+      
+      <!-- Signals Header Hero -->
+      <div style="background: linear-gradient(180deg, #161b22 0%, #0d1117 100%); border: 1px solid #30363d; border-radius: 14px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 22px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 52px; height: 52px; border-radius: 12px; background: rgba(239, 83, 80, 0.12); border: 1px solid rgba(239, 83, 80, 0.35); color: #ef5350; font-size: 24px; display: grid; place-items: center;">
+            ⚡
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <h2 style="font-size: 19px; font-weight: 800; color: #f0f6fc; margin: 0; font-family: 'Space Grotesk', sans-serif;">Institutional Execution Signals</h2>
+              <span style="background: rgba(255, 215, 0, 0.15); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.35); font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 4px;">SMC AI RADAR</span>
+            </div>
+            <p style="color: #8b949e; font-size: 12px; margin: 4px 0 0 0;">Real-time active signals, upcoming trade setups, and verified algorithmic performance history</p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="sig-filter-btn active" onclick="filterSignalsPortal('all', this)">All Signals</button>
+          <button type="button" class="sig-filter-btn" onclick="filterSignalsPortal('active', this)">Active Now</button>
+          <button type="button" class="sig-filter-btn" onclick="filterSignalsPortal('closed', this)">Closed</button>
+        </div>
+      </div>
+
+      <!-- Signals Cards Grid -->
+      <div id="signalsPortalCardsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; margin-bottom: 24px;">
+        <!-- Dynamically rendered via renderSignalsPortalPage -->
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================
+       PAGE 3: REAL-TIME WALLET & CAPITAL DESK
+       ======================================================== -->
+  <div id="view-wallet-portal" class="portal-view-page" style="display: none; background: #08090a; padding: 24px 28px; min-height: 100vh; box-sizing: border-box; overflow-y: auto;">
+    <div style="max-width: 1250px; margin: 0 auto;">
+      
+      <!-- Wallet Header Hero -->
+      <div style="background: linear-gradient(180deg, #161b22 0%, #0d1117 100%); border: 1px solid #30363d; border-radius: 14px; padding: 22px 26px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 22px; box-shadow: 0 4px 24px rgba(0,0,0,0.45);">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div style="width: 56px; height: 56px; border-radius: 12px; background: rgba(255, 215, 0, 0.12); border: 1px solid rgba(255, 215, 0, 0.35); color: #ffd700; font-size: 26px; display: grid; place-items: center; box-shadow: 0 0 18px rgba(255, 215, 0, 0.25);">
+            💰
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <h2 style="font-size: 20px; font-weight: 800; color: #f0f6fc; margin: 0; font-family: 'Space Grotesk', sans-serif;">Institutional Trading Wallet</h2>
+              <span style="background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.35); font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 4px; display: flex; align-items: center; gap: 5px;">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background: #3fb950; box-shadow: 0 0 6px #3fb950;"></span>
+                REAL-TIME LIVE
+              </span>
+              <span style="background: rgba(88, 166, 255, 0.12); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.3); font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 4px;">
+                1:100 LEVERAGE · STP
+              </span>
+            </div>
+            <p style="color: #8b949e; font-size: 12.5px; margin: 5px 0 0 0;">
+              Real-time balance, dynamic net equity, margin exposure, and institutional financial audit ledger
+            </p>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="background: #11151c; border: 1px solid #21262d; padding: 7px 14px; border-radius: 8px; font-size: 12px;">
+            <span style="color: #8b949e;">XAU/USD Spot:</span>
+            <strong id="walletLiveSpotDisplay" style="color: #ffd700; font-family: monospace; font-size: 13px; margin-left: 6px;">$3,875.64</strong>
+          </div>
+          <button type="button" onclick="switchPortalView('trade')" style="background: linear-gradient(135deg, #ffd700, #ffaa00); color: #0d1117; border: none; font-weight: 800; font-size: 12px; padding: 9px 16px; border-radius: 7px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);">
+            <span>📈 Open Terminal</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 5 Real-Time Bento KPI Cards -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        
+        <!-- Card 1: Balance -->
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 18px; position: relative; overflow: hidden;">
+          <div style="font-size: 10.5px; font-weight: 800; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+            <span>SETTLED BALANCE</span>
+            <span style="color: #ffd700;">💳</span>
+          </div>
+          <div id="walletKpiBalance" style="font-size: 26px; font-weight: 900; color: #ffd700; font-family: 'Space Grotesk', monospace; margin-bottom: 6px;">$1,000.00</div>
+          <div style="font-size: 11px; color: #8b949e;">Cash in Demo Sandbox</div>
+          <div style="display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;">
+            <button type="button" onclick="depositDemoFunds(500)" style="background: #161b22; border: 1px solid #30363d; color: #3fb950; font-weight: 700; font-size: 10px; padding: 4px 8px; border-radius: 4px; cursor: pointer;">+ $500</button>
+            <button type="button" onclick="depositDemoFunds(1000)" style="background: #161b22; border: 1px solid #30363d; color: #3fb950; font-weight: 700; font-size: 10px; padding: 4px 8px; border-radius: 4px; cursor: pointer;">+ $1k</button>
+            <button type="button" onclick="depositDemoFunds(5000)" style="background: #161b22; border: 1px solid #30363d; color: #ffd700; font-weight: 700; font-size: 10px; padding: 4px 8px; border-radius: 4px; cursor: pointer;">+ $5k</button>
+          </div>
+        </div>
+
+        <!-- Card 2: Net Equity -->
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 18px; position: relative; overflow: hidden;">
+          <div style="font-size: 10.5px; font-weight: 800; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+            <span>DYNAMIC NET EQUITY</span>
+            <span style="color: #3fb950;">📊</span>
+          </div>
+          <div id="walletKpiEquity" style="font-size: 26px; font-weight: 900; color: #3fb950; font-family: 'Space Grotesk', monospace; margin-bottom: 6px;">$1,000.00</div>
+          <div style="font-size: 11px; color: #8b949e;">Real-time Total Portfolio Value</div>
+          <div style="font-size: 10.5px; color: #58a6ff; margin-top: 12px;">Live Liquidation Benchmark</div>
+        </div>
+
+        <!-- Card 3: Floating PnL -->
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 18px; position: relative; overflow: hidden;">
+          <div style="font-size: 10.5px; font-weight: 800; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+            <span>UNREALIZED FLOATING PNL</span>
+            <span style="color: #ffd700;">⚡</span>
+          </div>
+          <div id="walletKpiFloatingPnl" style="font-size: 26px; font-weight: 900; color: #8b949e; font-family: 'Space Grotesk', monospace; margin-bottom: 6px;">+$0.00</div>
+          <div style="font-size: 11px; color: #8b949e;"><span id="walletActivePositionsCount">0</span> Active Open Positions</div>
+          <div style="font-size: 10.5px; color: #8b949e; margin-top: 12px;">Updated per 1-second price tick</div>
+        </div>
+
+        <!-- Card 4: Free & Used Margin -->
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 18px; position: relative; overflow: hidden;">
+          <div style="font-size: 10.5px; font-weight: 800; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+            <span>FREE MARGIN</span>
+            <span style="color: #58a6ff;">🛡️</span>
+          </div>
+          <div id="walletKpiFreeMargin" style="font-size: 26px; font-weight: 900; color: #58a6ff; font-family: 'Space Grotesk', monospace; margin-bottom: 6px;">$1,000.00</div>
+          <div style="font-size: 11px; color: #8b949e;">Used Margin: $<span id="walletKpiUsedMargin">0.00</span></div>
+          <div style="font-size: 10.5px; color: #3fb950; margin-top: 12px;">Available for new lot orders</div>
+        </div>
+
+        <!-- Card 5: Margin Health Level -->
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 18px; position: relative; overflow: hidden;">
+          <div style="font-size: 10.5px; font-weight: 800; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+            <span>MARGIN LEVEL &amp; HEALTH</span>
+            <span style="color: #3fb950;">🩺</span>
+          </div>
+          <div id="walletKpiMarginLevel" style="font-size: 22px; font-weight: 900; color: #3fb950; font-family: 'Space Grotesk', monospace; margin-bottom: 6px;">100% (No Debt)</div>
+          <div style="margin-bottom: 6px;">
+            <span id="walletHealthBadge" style="font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(63, 185, 80, 0.4); background: rgba(63, 185, 80, 0.12); color: #3fb950;">
+              HEALTHY · 100% FREE
+            </span>
+          </div>
+          <div style="height: 4px; background: #21262d; border-radius: 2px; margin-top: 8px; overflow: hidden;">
+            <div id="walletHealthBar" style="height: 100%; width: 100%; background: #3fb950; transition: width 0.3s ease;"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Real-Time Open Margin Exposure / Positions Table -->
+      <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 18px rgba(0,0,0,0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 style="font-size: 15px; font-weight: 800; color: #f0f6fc; margin: 0; display: flex; align-items: center; gap: 8px;">
+              <span>📊 Real-Time Margin Exposure</span>
+              <span style="font-size: 11px; background: #21262d; color: #8b949e; padding: 2px 7px; border-radius: 4px; font-weight: 600;">Live Positions</span>
+            </h3>
+            <p style="font-size: 12px; color: #8b949e; margin: 3px 0 0 0;">Active virtual trades affecting net equity in real time</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" onclick="closeAllDemoPositions()" style="background: rgba(239, 83, 80, 0.12); border: 1px solid rgba(239, 83, 80, 0.3); color: #ef5350; font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
+              Close All Positions
+            </button>
+            <button type="button" onclick="switchPortalView('trade')" style="background: #21262d; border: 1px solid #30363d; color: #ffd700; font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
+              + New Trade Order
+            </button>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12.5px;">
+            <thead>
+              <tr style="border-bottom: 1px solid #30363d; color: #8b949e; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px;">
+                <th style="padding: 10px 14px;">Ticket #</th>
+                <th style="padding: 10px 14px;">Type &amp; Lots</th>
+                <th style="padding: 10px 14px;">Instrument</th>
+                <th style="padding: 10px 14px;">Open Price</th>
+                <th style="padding: 10px 14px;">Current Spot</th>
+                <th style="padding: 10px 14px;">Floating PnL</th>
+                <th style="padding: 10px 14px; text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="walletPositionsTableBody">
+              <!-- Dynamically rendered via renderWalletPositionsTable -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Capital Operations & Funds Desk (2 Columns) -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; margin-bottom: 24px;">
+        
+        <!-- Box 1: Simulated Capital Injection -->
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <h3 style="font-size: 14px; font-weight: 800; color: #f0f6fc; margin: 0; display: flex; align-items: center; gap: 6px;">
+              <span>⚡ Deposit Capital Simulator</span>
+            </h3>
+            <span style="font-size: 10px; color: #3fb950; font-weight: 800; background: rgba(63, 185, 80, 0.12); padding: 2px 6px; border-radius: 4px;">INSTANT DEMO</span>
+          </div>
+          <p style="font-size: 12px; color: #8b949e; margin-bottom: 14px;">Inject virtual demo funds into your account to test higher-tier lot sizes and margin scaling.</p>
+
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px;">
+            <button type="button" onclick="depositDemoFunds(1000)" style="background: #161b22; border: 1px solid #30363d; color: #f0f6fc; font-weight: 700; font-size: 11px; padding: 8px 4px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">+$1,000</button>
+            <button type="button" onclick="depositDemoFunds(2500)" style="background: #161b22; border: 1px solid #30363d; color: #f0f6fc; font-weight: 700; font-size: 11px; padding: 8px 4px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">+$2,500</button>
+            <button type="button" onclick="depositDemoFunds(5000)" style="background: #161b22; border: 1px solid #30363d; color: #ffd700; font-weight: 700; font-size: 11px; padding: 8px 4px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">+$5,000</button>
+            <button type="button" onclick="depositDemoFunds(10000)" style="background: #161b22; border: 1px solid #30363d; color: #3fb950; font-weight: 700; font-size: 11px; padding: 8px 4px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">+$10,000</button>
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <input type="number" id="walletCustomDepositInput" placeholder="Custom amount (e.g. 5000)" style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px 12px; color: #f0f6fc; font-size: 12px; font-family: monospace;">
+            <button type="button" onclick="submitCustomDemoDeposit()" style="background: #238636; border: 1px solid rgba(255,255,255,0.1); color: #fff; font-weight: 700; font-size: 12px; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Deposit</button>
+          </div>
+        </div>
+
+        <!-- Box 2: Simulated Payout / Profit Withdrawal -->
+        <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 20px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <h3 style="font-size: 14px; font-weight: 800; color: #f0f6fc; margin: 0; display: flex; align-items: center; gap: 6px;">
+              <span>💸 Profit Withdrawal Simulator</span>
+            </h3>
+            <span style="font-size: 10px; color: #58a6ff; font-weight: 800; background: rgba(88, 166, 255, 0.12); padding: 2px 6px; border-radius: 4px;">FREE MARGIN ONLY</span>
+          </div>
+          <p style="font-size: 12px; color: #8b949e; margin-bottom: 14px;">Simulate cash withdrawals to test account resilience under reduced capital constraints.</p>
+
+          <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+            <input type="number" id="walletWithdrawInput" placeholder="Amount (e.g. 250)" style="flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px 12px; color: #f0f6fc; font-size: 12px; font-family: monospace;">
+            <button type="button" onclick="simulateWalletWithdrawal()" style="background: #21262d; border: 1px solid #30363d; color: #f0f6fc; font-weight: 700; font-size: 12px; padding: 8px 14px; border-radius: 6px; cursor: pointer;">Withdraw</button>
+          </div>
+
+          <div style="border-top: 1px solid #21262d; padding-top: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 11.5px; color: #8b949e;">Need a clean slate?</span>
+            <button type="button" onclick="resetDemoWalletBalance()" style="background: rgba(239, 83, 80, 0.12); border: 1px solid rgba(239, 83, 80, 0.3); color: #ef5350; font-weight: 700; font-size: 11px; padding: 5px 12px; border-radius: 5px; cursor: pointer;">
+              Reset to Base $1,000.00
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Financial Ledger & Audit History -->
+      <div style="background: #11151c; border: 1px solid #21262d; border-radius: 12px; padding: 20px; box-shadow: 0 4px 18px rgba(0,0,0,0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 style="font-size: 15px; font-weight: 800; color: #f0f6fc; margin: 0; display: flex; align-items: center; gap: 8px;">
+              <span>📜 Financial Transaction Ledger</span>
+              <span style="font-size: 10px; background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.3); padding: 2px 6px; border-radius: 4px; font-weight: 800;">AUDIT COMPLIANT</span>
+            </h3>
+            <p style="font-size: 12px; color: #8b949e; margin: 3px 0 0 0;">Comprehensive history of closed trades, profit realization, and balance adjustments</p>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+            <thead>
+              <tr style="border-bottom: 1px solid #30363d; color: #8b949e; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px;">
+                <th style="padding: 10px 14px;">Timestamp</th>
+                <th style="padding: 10px 14px;">Activity Type</th>
+                <th style="padding: 10px 14px;">Reference ID</th>
+                <th style="padding: 10px 14px;">Amount</th>
+                <th style="padding: 10px 14px;">Running Balance</th>
+                <th style="padding: 10px 14px; text-align: right;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="walletLedgerTableBody">
+              <!-- Dynamically populated via renderWalletTransactionsLedger -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
   <div id="view-terminal">
     <!-- Terminal Subheader & Controls -->
     <div class="terminal-sub-header">
       <div class="terminal-nav-left">
-        <a href="#dashboard" class="btn-back-dashboard" onclick="switchView('dashboard'); return false;" style="text-decoration:none;">
-          &larr; Back to Dashboard
-        </a>
-        <span style="color: #30363d;">|</span>
+        
 
         <!-- Symbol Pill -->
         <div class="tv-symbol-pill">
@@ -5749,7 +7049,12 @@
     // ==========================================
     // VIEW SWITCHER (Dashboard vs Terminal)
     // ==========================================
-        function switchView(viewName) {
+    function switchView(viewName) {
+      const loggedIn = (typeof isUserLoggedIn === 'function') ? isUserLoggedIn() : false;
+      if (loggedIn) {
+        viewName = 'terminal';
+      }
+
       const dashView = document.getElementById('view-dashboard');
       const termView = document.getElementById('view-terminal');
       const btnDash = document.getElementById('nav-btn-dashboard');
@@ -5759,7 +7064,10 @@
         if (dashView && termView) {
           dashView.style.display = 'none';
           termView.style.display = 'flex';
-          if (btnDash) btnDash.classList.remove('active');
+          if (btnDash) {
+            btnDash.classList.remove('active');
+            if (loggedIn) btnDash.style.display = 'none';
+          }
           if (btnTerm) btnTerm.classList.add('active');
           
           try {
@@ -5768,7 +7076,6 @@
             window.location.hash = 'terminal';
           }
 
-          // Force multiple resize & layout recalculation ticks so LightweightCharts renders immediately
           [30, 80, 200, 450].forEach(delay => {
             setTimeout(() => {
               window.dispatchEvent(new Event('resize'));
@@ -5791,7 +7098,10 @@
         if (dashView && termView) {
           dashView.style.display = 'block';
           termView.style.display = 'none';
-          if (btnDash) btnDash.classList.add('active');
+          if (btnDash) {
+            btnDash.style.display = '';
+            btnDash.classList.add('active');
+          }
           if (btnTerm) btnTerm.classList.remove('active');
           try {
             history.replaceState(null, null, ' ');
@@ -5807,13 +7117,17 @@
       const hash = (window.location.hash || '').toLowerCase();
       const path = (window.location.pathname || '').toLowerCase();
       const search = (window.location.search || '').toLowerCase();
-      const isTerminal = hash === '#terminal' || 
+      const loggedIn = (typeof isUserLoggedIn === 'function') ? isUserLoggedIn() : false;
+      const isTerminal = loggedIn ||
+                         hash === '#terminal' || 
                          hash.includes('terminal') ||
                          search.includes('terminal') ||
                          path.includes('deep-analysis-gold') ||
                          path.includes('deep_analysis_gold');
       if (isTerminal) {
         switchView('terminal');
+      } else {
+        switchView('dashboard');
       }
     }
     if (document.readyState === 'loading') {
@@ -14726,6 +16040,10 @@ window.addEventListener('resize', () => {
     async function onUserAuthenticated(user) {
       currentAuthUser = user;
       console.log('%c[SUPABASE] User Authenticated:', 'color: #3fb950; font-weight: bold;', user.email);
+      // Immediately switch to the user's trading terminal/dashboard and hide overview button
+      switchView('terminal');
+      const navBtnDash = document.getElementById('nav-btn-dashboard');
+      if (navBtnDash) navBtnDash.style.display = 'none';
       // Update UI navbar
       const navCapsule = document.getElementById('navUserCapsule');
       const navLoginBtn = document.getElementById('navLoginBtn');
@@ -14817,6 +16135,10 @@ window.addEventListener('resize', () => {
 
     function onUserLoggedOut() {
       currentAuthUser = null;
+      const navBtnDash = document.getElementById('nav-btn-dashboard');
+      if (navBtnDash) navBtnDash.style.display = '';
+      // When user logs out, immediately show the overview/landing page
+      switchView('dashboard');
       const navCapsule = document.getElementById('navUserCapsule');
       const navLoginBtn = document.getElementById('navLoginBtn');
       const cloudStatusBadge = document.getElementById('demoCloudStatusBadge');
@@ -14955,8 +16277,12 @@ window.addEventListener('resize', () => {
         if (authMode === 'login') {
           const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
           if (error) throw error;
-          showAuthAlert('Login successful! Syncing cloud wallet...', 'success');
-          setTimeout(() => { closeAuthModal(); }, 600);
+          showAuthAlert('Login successful! Loading your dashboard...', 'success');
+          if (data && data.user) {
+            await onUserAuthenticated(data.user);
+          }
+          switchView('terminal');
+          setTimeout(() => { closeAuthModal(); }, 350);
         } else {
           const { data, error } = await supabaseClient.auth.signUp({
             email,
@@ -14993,12 +16319,21 @@ window.addEventListener('resize', () => {
 
     async function handleSupabaseLogout() {
       if (supabaseClient) {
-        await supabaseClient.auth.signOut();
-        currentAuthUser = null;
-        onUserLoggedOut();
-        if (typeof showSignalToast === 'function') {
-          showSignalToast('Logged out of TradingPoint');
+        try { await supabaseClient.auth.signOut(); } catch (e) {}
+      }
+      currentAuthUser = null;
+      try {
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('sb-') !== -1 && k.indexOf('-auth-token') !== -1) {
+            localStorage.removeItem(k);
+          }
         }
+      } catch (e) {}
+      onUserLoggedOut();
+      switchView('dashboard');
+      if (typeof showSignalToast === 'function') {
+        showSignalToast('Logged out of TradingPoint');
       }
     }
 
@@ -15121,6 +16456,18 @@ window.addEventListener('resize', () => {
     function updateDemoPositionsPnL(spotPrice) {
       if (!spotPrice || demoState.positions.length === 0) {
         renderDemoWalletUI(spotPrice);
+      const dashP = document.getElementById('view-trader-dashboard');
+      if (dashP && dashP.style.display !== 'none' && typeof renderDashboardPortalData === 'function') {
+        renderDashboardPortalData(spotPrice);
+      }
+      const sigP = document.getElementById('view-signals-portal');
+      if (sigP && sigP.style.display !== 'none' && typeof renderSignalsPortalPage === 'function') {
+        renderSignalsPortalPage(spotPrice);
+      }
+      const walP = document.getElementById('view-wallet-portal');
+      if (walP && walP.style.display !== 'none' && typeof renderWalletPortalData === 'function') {
+        renderWalletPortalData(spotPrice);
+      }
         return;
       }
 
