@@ -306,6 +306,7 @@
       var traderDashView = document.getElementById('view-trader-dashboard');
       var signalsPortalView = document.getElementById('view-signals-portal');
       var walletPortalView = document.getElementById('view-wallet-portal');
+      var eduView = document.getElementById('view-education-portal');
       var termView = document.getElementById('view-terminal');
       var profView = document.getElementById('view-profile-portal');
       var condView = document.getElementById('view-conditions-portal');
@@ -317,6 +318,7 @@
         if (termView) { termView.style.display = 'none'; termView.style.visibility = 'hidden'; }
         if (signalsPortalView) signalsPortalView.style.display = 'none';
         if (walletPortalView) walletPortalView.style.display = 'none';
+        if (eduView) eduView.style.display = 'none';
         if (profView) profView.style.display = 'none';
         if (condView) condView.style.display = 'none';
         if (traderDashView) { traderDashView.style.display = 'block'; traderDashView.style.visibility = 'visible'; }
@@ -327,6 +329,7 @@
         if (traderDashView) traderDashView.style.display = 'none';
         if (termView) { termView.style.display = 'none'; termView.style.visibility = 'hidden'; }
         if (walletPortalView) walletPortalView.style.display = 'none';
+        if (eduView) eduView.style.display = 'none';
         if (profView) profView.style.display = 'none';
         if (condView) condView.style.display = 'none';
         if (signalsPortalView) { signalsPortalView.style.display = 'block'; signalsPortalView.style.visibility = 'visible'; }
@@ -337,16 +340,28 @@
         if (traderDashView) traderDashView.style.display = 'none';
         if (termView) { termView.style.display = 'none'; termView.style.visibility = 'hidden'; }
         if (signalsPortalView) signalsPortalView.style.display = 'none';
+        if (eduView) eduView.style.display = 'none';
         if (profView) profView.style.display = 'none';
         if (condView) condView.style.display = 'none';
         if (walletPortalView) { walletPortalView.style.display = 'block'; walletPortalView.style.visibility = 'visible'; }
         if (typeof renderWalletPortalData === 'function') renderWalletPortalData();
         try { history.replaceState(null, null, '#wallet'); } catch (e) { window.location.hash = 'wallet'; }
         window.scrollTo(0, 0);
+      } else if (portalView === 'education') {
+        if (traderDashView) traderDashView.style.display = 'none';
+        if (termView) { termView.style.display = 'none'; termView.style.visibility = 'hidden'; }
+        if (signalsPortalView) signalsPortalView.style.display = 'none';
+        if (walletPortalView) walletPortalView.style.display = 'none';
+        if (profView) profView.style.display = 'none';
+        if (condView) condView.style.display = 'none';
+        if (eduView) { eduView.style.display = 'block'; eduView.style.visibility = 'visible'; }
+        try { history.replaceState(null, null, '#education'); } catch (e) { window.location.hash = 'education'; }
+        window.scrollTo(0, 0);
       } else if (portalView === 'trade' || portalView === 'terminal' || portalView === 'positions') {
         if (traderDashView) traderDashView.style.display = 'none';
         if (signalsPortalView) signalsPortalView.style.display = 'none';
         if (walletPortalView) walletPortalView.style.display = 'none';
+        if (eduView) eduView.style.display = 'none';
         if (profView) profView.style.display = 'none';
         if (condView) condView.style.display = 'none';
         if (termView) {
@@ -375,6 +390,7 @@
         if (traderDashView) traderDashView.style.display = 'none';
         if (signalsPortalView) signalsPortalView.style.display = 'none';
         if (walletPortalView) walletPortalView.style.display = 'none';
+        if (eduView) eduView.style.display = 'none';
         if (termView) termView.style.display = 'none';
         if (condView) condView.style.display = 'none';
         if (profView) profView.style.display = 'block';
@@ -383,6 +399,7 @@
         if (traderDashView) traderDashView.style.display = 'none';
         if (signalsPortalView) signalsPortalView.style.display = 'none';
         if (walletPortalView) walletPortalView.style.display = 'none';
+        if (eduView) eduView.style.display = 'none';
         if (termView) termView.style.display = 'none';
         if (profView) profView.style.display = 'none';
         if (condView) condView.style.display = 'block';
@@ -401,6 +418,7 @@
 
         if (hash === '#wallet') targetView = 'wallet';
         else if (hash === '#signals') targetView = 'signals';
+        else if (hash === '#education') targetView = 'education';
         else if (hash === '#dashboard') targetView = 'dashboard';
         else if (hash === '#trade' || hash === '#terminal') targetView = 'trade';
         else if (hash === '#profile') targetView = 'profile';
@@ -408,7 +426,7 @@
         else {
           var savedView = null;
           try { savedView = sessionStorage.getItem('tradingpoint_active_portal_view') || localStorage.getItem('tradingpoint_active_portal_view'); } catch (e) {}
-          if (savedView && ['dashboard', 'trade', 'signals', 'wallet', 'profile', 'conditions'].includes(savedView)) {
+          if (savedView && ['dashboard', 'trade', 'signals', 'wallet', 'education', 'profile', 'conditions'].includes(savedView)) {
             targetView = savedView;
           }
         }
@@ -561,8 +579,8 @@
               </span>
             </td>
             <td style="padding: 12px 14px; font-weight: 700; color: #f0f6fc; font-size: 12.5px;">XAU/USD</td>
-            <td style="padding: 12px 14px; font-family: monospace; font-size: 12.5px; color: #c9d1d9;">$${pos.openPrice.toFixed(2)}</td>
-            <td style="padding: 12px 14px; font-family: monospace; font-size: 12.5px; color: #ffd700;">$${spotPrice.toFixed(2)}</td>
+            <td style="padding: 12px 14px; font-family: monospace; font-size: 12.5px; color: #c9d1d9;">$${parseFloat(pos.openPrice != null ? pos.openPrice : (pos.entryPrice != null ? pos.entryPrice : 0)).toFixed(2)}</td>
+            <td style="padding: 12px 14px; font-family: monospace; font-size: 12.5px; color: #ffd700;">$${parseFloat(spotPrice != null ? spotPrice : (typeof currentLiveSpot !== 'undefined' ? currentLiveSpot : 3875.50)).toFixed(2)}</td>
             <td style="padding: 12px 14px; font-family: monospace; font-size: 12.5px; font-weight: 800; color: ${pnlColor};">
               ${sign}$${pnl.toFixed(2)}
             </td>
@@ -624,6 +642,19 @@
       container.innerHTML = html;
     }
     window.renderWalletTransactionsLedger = renderWalletTransactionsLedger;
+
+    function depositDemoFunds(amount) {
+      const val = parseFloat(amount);
+      if (isNaN(val) || val <= 0) return;
+      demoState.balance += val;
+      if (typeof saveDemoState === 'function') saveDemoState();
+      if (typeof renderDemoWalletUI === 'function') renderDemoWalletUI();
+      if (typeof renderWalletPortalData === 'function') renderWalletPortalData();
+      if (typeof showSignalToast === 'function') {
+        showSignalToast(`✅ Deposited $${val.toLocaleString()} to Demo Wallet! Balance: $${demoState.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+      }
+    }
+    window.depositDemoFunds = depositDemoFunds;
 
     function submitCustomDemoDeposit() {
       const input = document.getElementById('walletCustomDepositInput');
@@ -2824,6 +2855,332 @@
       box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
     }
 
+
+    /* ==========================================
+       TRADINGPOINT INSTITUTIONAL ACADEMY & EDUCATION CSS
+       ========================================== */
+    .edu-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #c9d1d9;
+    }
+    .edu-hero-banner {
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+      border: 1px solid #30363d;
+      border-radius: 14px;
+      padding: 24px 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.45);
+      position: relative;
+      overflow: hidden;
+    }
+    .edu-hero-banner::after {
+      content: '';
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .edu-layout-grid {
+      display: flex;
+      gap: 26px;
+      align-items: flex-start;
+      position: relative;
+    }
+    .edu-toc-sidebar {
+      width: 300px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 20px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+      scrollbar-width: thin;
+      scrollbar-color: #30363d transparent;
+    }
+    .edu-toc-sidebar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .edu-toc-sidebar::-webkit-scrollbar-thumb {
+      background: #30363d;
+      border-radius: 4px;
+    }
+    .edu-toc-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #8b949e;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .edu-toc-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      color: #8b949e;
+      text-decoration: none;
+      font-size: 12.5px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      margin-bottom: 4px;
+      border-left: 2px solid transparent;
+    }
+    .edu-toc-link:hover {
+      color: #58a6ff;
+      background: rgba(88, 166, 255, 0.08);
+      border-left-color: #58a6ff;
+    }
+    .edu-toc-link.active {
+      color: #58a6ff;
+      background: rgba(88, 166, 255, 0.12);
+      border-left-color: #58a6ff;
+      font-weight: 700;
+    }
+    .edu-toc-badge {
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-left: auto;
+      font-family: monospace;
+    }
+    .edu-content-area {
+      flex: 1;
+      min-width: 0;
+    }
+    .edu-indicator-card {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 14px;
+      padding: 24px 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      scroll-margin-top: 24px;
+    }
+    .edu-indicator-card:hover {
+      border-color: #58a6ff;
+      box-shadow: 0 6px 24px rgba(88, 166, 255, 0.15);
+    }
+    .edu-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #21262d;
+    }
+    .edu-card-title-group h2 {
+      font-size: 19px;
+      font-weight: 800;
+      color: #f0f6fc;
+      margin: 6px 0 4px 0;
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      letter-spacing: -0.3px;
+    }
+    .edu-pill {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .edu-pill-blue { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); }
+    .edu-pill-gold { background: rgba(255, 215, 0, 0.12); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.35); }
+    .edu-pill-green { background: rgba(63, 185, 80, 0.12); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.35); }
+    .edu-pill-purple { background: rgba(163, 113, 247, 0.12); color: #a371f7; border: 1px solid rgba(163, 113, 247, 0.35); }
+    .edu-pill-orange { background: rgba(255, 152, 0, 0.12); color: #ff9800; border: 1px solid rgba(255, 152, 0, 0.35); }
+    .edu-pill-red { background: rgba(255, 82, 82, 0.12); color: #ff5252; border: 1px solid rgba(255, 82, 82, 0.35); }
+    
+    .edu-section-block {
+      margin-bottom: 18px;
+    }
+    .edu-section-heading {
+      font-size: 11px;
+      font-weight: 700;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .edu-prose {
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: #c9d1d9;
+      margin: 0 0 10px 0;
+    }
+    .edu-formula-box {
+      background: #080a0f;
+      border: 1px solid #21262d;
+      border-left: 3px solid #58a6ff;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 10px 0 14px 0;
+      font-family: 'Space Mono', 'SFMono-Regular', Consolas, monospace;
+      font-size: 12px;
+      color: #79c0ff;
+      overflow-x: auto;
+    }
+    .edu-rules-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 14px 0;
+    }
+    .edu-rule-card {
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 12.5px;
+      line-height: 1.55;
+    }
+    .edu-rule-card.buy {
+      background: rgba(63, 185, 80, 0.05);
+      border: 1px solid rgba(63, 185, 80, 0.3);
+    }
+    .edu-rule-card.sell {
+      background: rgba(255, 82, 82, 0.05);
+      border: 1px solid rgba(255, 82, 82, 0.3);
+    }
+    .edu-rule-title {
+      font-weight: 800;
+      font-size: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .edu-rule-title.buy { color: #3fb950; }
+    .edu-rule-title.sell { color: #ff5252; }
+    .edu-rule-list {
+      margin: 0;
+      padding-left: 18px;
+      color: #c9d1d9;
+    }
+    .edu-rule-list li {
+      margin-bottom: 6px;
+    }
+    .edu-rule-list li:last-child {
+      margin-bottom: 0;
+    }
+    .edu-param-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: #11151c;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 12px 0;
+      font-size: 12px;
+    }
+    .edu-param-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .edu-param-label {
+      color: #8b949e;
+      font-weight: 600;
+    }
+    .edu-param-value {
+      color: #f0f6fc;
+      font-weight: 700;
+      font-family: 'Space Grotesk', monospace;
+    }
+    .edu-tags-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed #21262d;
+    }
+    .edu-tag {
+      font-size: 10.5px;
+      font-weight: 600;
+      background: #161b22;
+      color: #8b949e;
+      border: 1px solid #30363d;
+      padding: 2px 7px;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .edu-tag:hover {
+      color: #58a6ff;
+      border-color: #58a6ff;
+      background: rgba(88, 166, 255, 0.08);
+    }
+    .edu-tip-box {
+      background: rgba(255, 215, 0, 0.06);
+      border: 1px solid rgba(255, 215, 0, 0.25);
+      border-left: 3px solid #ffd700;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin: 12px 0 6px 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #e6edf3;
+    }
+    .edu-filter-pill {
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .edu-filter-pill:hover, .edu-filter-pill.active {
+      color: #f0f6fc;
+      background: #21262d;
+      border-color: #58a6ff;
+    }
+    .edu-filter-pill.active {
+      background: rgba(88, 166, 255, 0.15);
+      color: #58a6ff;
+    }
+
+    @media (max-width: 992px) {
+      .edu-layout-grid {
+        flex-direction: column;
+      }
+      .edu-toc-sidebar {
+        width: 100%;
+        position: static;
+        max-height: none;
+      }
+      .edu-rules-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     @media (max-width: 900px) {
       .usecase-grid { grid-template-columns: 1fr; }
       .metrics-summary-grid { grid-template-columns: repeat(2, 1fr); }
@@ -4007,6 +4364,7 @@
     body.portal-mode-active #view-trader-dashboard,
     body.portal-mode-active #view-signals-portal,
     body.portal-mode-active #view-wallet-portal,
+    body.portal-mode-active #view-education-portal,
     body.portal-mode-active #view-profile-portal,
     body.portal-mode-active #view-conditions-portal {
       margin-left: 250px;
@@ -4157,6 +4515,7 @@
       body.portal-mode-active #view-trader-dashboard,
       body.portal-mode-active #view-signals-portal,
       body.portal-mode-active #view-wallet-portal,
+      body.portal-mode-active #view-education-portal,
       body.portal-mode-active #view-profile-portal,
       body.portal-mode-active #view-conditions-portal {
         margin-left: 0 !important;
@@ -4208,6 +4567,7 @@
       var traderDashView = document.getElementById('view-trader-dashboard');
       var signalsPortalView = document.getElementById('view-signals-portal');
       var walletPortalView = document.getElementById('view-wallet-portal');
+      var eduView = document.getElementById('view-education-portal');
       var profView = document.getElementById('view-profile-portal');
       var condView = document.getElementById('view-conditions-portal');
       var btnDash = document.getElementById('nav-btn-dashboard');
@@ -4216,6 +4576,7 @@
       if (traderDashView) traderDashView.style.display = 'none';
       if (signalsPortalView) signalsPortalView.style.display = 'none';
       if (walletPortalView) walletPortalView.style.display = 'none';
+      if (eduView) eduView.style.display = 'none';
       if (profView) profView.style.display = 'none';
       if (condView) condView.style.display = 'none';
 
@@ -4264,7 +4625,7 @@
     function checkUrlForTerminal() {
       var hash = (window.location.hash || '').toLowerCase();
       var loggedIn = (typeof isUserLoggedIn === 'function') ? isUserLoggedIn() : false;
-      var isPortal = loggedIn || ['#terminal', '#trade', '#dashboard', '#signals', '#wallet', '#profile', '#conditions'].includes(hash);
+      var isPortal = loggedIn || ['#terminal', '#trade', '#dashboard', '#signals', '#wallet', '#education', '#profile', '#conditions'].includes(hash);
 
       if (isPortal) {
         if (document.body) document.body.classList.add('portal-mode-active');
@@ -4277,6 +4638,7 @@
         var targetView = 'trade';
         if (hash === '#wallet') targetView = 'wallet';
         else if (hash === '#signals') targetView = 'signals';
+        else if (hash === '#education') targetView = 'education';
         else if (hash === '#dashboard') targetView = 'dashboard';
         else if (hash === '#trade' || hash === '#terminal') targetView = 'trade';
         else if (hash === '#profile') targetView = 'profile';
@@ -4284,7 +4646,7 @@
         else {
           var savedView = null;
           try { savedView = sessionStorage.getItem('tradingpoint_active_portal_view') || localStorage.getItem('tradingpoint_active_portal_view'); } catch (e) {}
-          if (savedView && ['dashboard', 'trade', 'signals', 'wallet', 'profile', 'conditions'].includes(savedView)) targetView = savedView;
+          if (savedView && ['dashboard', 'trade', 'signals', 'wallet', 'education', 'profile', 'conditions'].includes(savedView)) targetView = savedView;
         }
 
         if (typeof switchPortalView === 'function') {
@@ -4363,6 +4725,12 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M7 15h0M2 9.5h20"></path><circle cx="16" cy="14" r="1.5"></circle></svg>
         <span>Wallet</span>
         <span id="sidebarNavWalletPill" class="nav-badge-hot" style="background: rgba(255, 215, 0, 0.15); color: #ffd700; border-color: rgba(255, 215, 0, 0.3); font-family: monospace; font-size: 9.5px; padding: 2px 6px;">$1,000.00</span>
+      </button>
+
+      <button type="button" class="admin-nav-item" id="adminNav_education" onclick="switchPortalView('education')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><polyline points="10 6 14 10 10 14"></polyline></svg>
+        <span>Education &amp; Indicators</span>
+        <span class="nav-badge-hot" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: rgba(56, 189, 248, 0.35);">ACADEMY</span>
       </button>
 
       <div class="sidebar-menu-category">ACCOUNT &amp; SETTINGS</div>
@@ -5600,6 +5968,1012 @@
 
     </div>
   </div>
+
+
+
+  <!-- ==========================================
+       TRADINGPOINT INSTITUTIONAL ACADEMY & INDICATORS EDUCATION PORTAL
+       ========================================== -->
+  <div id="view-education-portal" class="portal-view-page" style="display: none; background: #08090a; padding: 24px 28px; min-height: 100vh; box-sizing: border-box; overflow-y: auto;" itemscope itemtype="https://schema.org/TechArticle">
+    
+    <!-- Structured Data Microdata & Schema.org Metadata -->
+    <meta itemprop="headline" content="TradingPoint Institutional Indicators & Quantitative Trading Academy">
+    <meta itemprop="description" content="Comprehensive quantitative trading documentation, mathematical state machine formulations, and execution rules for Smart Money Concepts (SMC), Liquidity Sweeps, Daily Liquidity Sniper (DLS-1M), VWAP EMA Confluence, and Auto Fibonacci Golden Pocket.">
+    <meta itemprop="author" content="TradingPoint Quantitative Architecture Team">
+    <meta itemprop="keywords" content="Smart Money Concepts, SMC, Fair Value Gap, FVG, Order Block, Liquidity Sweep, Daily Liquidity Sniper, DLS-1M, VWAP, EMA Confluence, Auto Fibonacci Golden Pocket, Breakout Retest, RSI Momentum, Risk Reward Ratio, Gold Trading, XAUUSD">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "headline": "TradingPoint Institutional Indicators & Quantitative Trading Academy",
+      "description": "Comprehensive institutional documentation of SMC, Liquidity Sweeps, DLS-1M Sniper, VWAP Confluence, and Risk Architecture for XAU/USD Gold trading.",
+      "author": {
+        "@type": "Organization",
+        "name": "TradingPoint Financial Technologies"
+      },
+      "educationalLevel": "Institutional / Quantitative Advanced",
+      "about": [
+        {"@type": "Thing", "name": "Smart Money Concepts (SMC)"},
+        {"@type": "Thing", "name": "Fair Value Gap (FVG)"},
+        {"@type": "Thing", "name": "Order Blocks & Liquidity Sweeps"},
+        {"@type": "Thing", "name": "Volume Weighted Average Price (VWAP)"},
+        {"@type": "Thing", "name": "Fibonacci Golden Pocket"},
+        {"@type": "Thing", "name": "Risk Management & Asymmetric RR"}
+      ]
+    }
+    </script>
+
+    <div class="edu-container">
+      
+      <!-- Top Hero Header Banner -->
+      <div class="edu-hero-banner">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; position: relative; z-index: 2;">
+          <div style="display: flex; align-items: center; gap: 18px;">
+            <div style="width: 58px; height: 58px; border-radius: 12px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.35); color: #38bdf8; font-size: 28px; display: grid; place-items: center; box-shadow: 0 0 20px rgba(56, 189, 248, 0.25);">
+              🎓
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <h1 style="font-size: 22px; font-weight: 800; color: #f0f6fc; margin: 0; font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.4px;">
+                  Institutional Trading Academy &amp; Indicator Suite
+                </h1>
+                <span class="edu-pill edu-pill-blue">QUANTITATIVE CORE</span>
+                <span class="edu-pill edu-pill-gold">XAU/USD GOLD PRO</span>
+              </div>
+              <p style="color: #8b949e; font-size: 13px; margin: 6px 0 0 0; line-height: 1.5; max-width: 820px;">
+                Comprehensive algorithmic mechanics, mathematical state machines, order flow psychology, and exact execution rules for every indicator powering the TradingPoint live terminal.
+              </p>
+            </div>
+          </div>
+          
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button type="button" class="btn-engine" onclick="switchPortalView('trade')" style="background: linear-gradient(135deg, #1f6feb 0%, #1158c7 100%); color: #fff; font-weight: 700; padding: 8px 16px; border-radius: 6px; font-size: 12px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 10px rgba(31, 111, 235, 0.4);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              <span>Open Live Terminal</span>
+            </button>
+            <button type="button" class="btn-engine" onclick="switchPortalView('signals')" style="background: #161b22; color: #c9d1d9; border: 1px solid #30363d; padding: 8px 14px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+              ⚡ Live Signals
+            </button>
+          </div>
+        </div>
+
+        <!-- Real-Time Filter & Search Toolbar -->
+        <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #21262d; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; position: relative; z-index: 2;">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <span style="font-size: 11px; font-weight: 700; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px;">Filter Category:</span>
+            <button type="button" class="edu-filter-pill active" onclick="filterEduCategory('all', this)">All Systems (10)</button>
+            <button type="button" class="edu-filter-pill" onclick="filterEduCategory('smc', this)">SMC &amp; Liquidity (3)</button>
+            <button type="button" class="edu-filter-pill" onclick="filterEduCategory('sniper', this)">Sniper &amp; Confluence (2)</button>
+            <button type="button" class="edu-filter-pill" onclick="filterEduCategory('structure', this)">Structure &amp; Fib (2)</button>
+            <button type="button" class="edu-filter-pill" onclick="filterEduCategory('momentum', this)">Momentum &amp; AI (2)</button>
+            <button type="button" class="edu-filter-pill" onclick="filterEduCategory('risk', this)">Risk Protocol (1)</button>
+          </div>
+
+          <div style="min-width: 280px; max-width: 360px; flex: 1;">
+            <div style="position: relative;">
+              <input type="text" id="eduSearchInput" oninput="filterEduCards(this.value)" placeholder="🔍 Search indicators, rules, keywords..." style="width: 100%; box-sizing: border-box; background: #0b0f17; border: 1px solid #30363d; border-radius: 6px; padding: 8px 12px 8px 32px; font-size: 12px; color: #f0f6fc; outline: none;">
+              <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #8b949e; pointer-events: none;">⚡</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Layout: Sticky Table of Contents (Left) + Content Cards (Right) -->
+      <div class="edu-layout-grid">
+        
+        <!-- Sticky Table of Contents Sidebar -->
+        <aside class="edu-toc-sidebar" aria-label="Table of Contents">
+          <div class="edu-toc-title">
+            <span>📚 TABLE OF CONTENTS</span>
+            <span style="color: #38bdf8; font-size: 10px;">10 MODULES</span>
+          </div>
+          
+          <nav id="eduTocNav" style="display: flex; flex-direction: column;">
+            <a href="#sec-overview" class="edu-toc-link active" onclick="scrollToEduSection('sec-overview', event)">
+              <span>📌</span>
+              <span>1. System Architecture</span>
+              <span class="edu-toc-badge" style="color: #38bdf8; background: rgba(56,189,248,0.12);">CORE</span>
+            </a>
+            <a href="#sec-smc-fvg" class="edu-toc-link" onclick="scrollToEduSection('sec-smc-fvg', event)">
+              <span>🏛️</span>
+              <span>2. SMC Zones (FVG &amp; OB)</span>
+              <span class="edu-toc-badge" style="color: #58a6ff; background: rgba(88,166,255,0.12);">WT: 25%</span>
+            </a>
+            <a href="#sec-liquidity-psych" class="edu-toc-link" onclick="scrollToEduSection('sec-liquidity-psych', event)">
+              <span>💧</span>
+              <span>3. Liquidity &amp; Psychology</span>
+              <span class="edu-toc-badge" style="color: #00e5ff; background: rgba(0,229,255,0.12);">WT: 25%</span>
+            </a>
+            <a href="#sec-dls-sniper" class="edu-toc-link" onclick="scrollToEduSection('sec-dls-sniper', event)">
+              <span>🎯</span>
+              <span>4. Daily Liquidity Sniper (1M)</span>
+              <span class="edu-toc-badge" style="color: #ffd700; background: rgba(255,215,0,0.12);">WT: 25%</span>
+            </a>
+            <a href="#sec-vwap-confluence" class="edu-toc-link" onclick="scrollToEduSection('sec-vwap-confluence', event)">
+              <span>⚡</span>
+              <span>5. VWAP + EMA + FVG</span>
+              <span class="edu-toc-badge" style="color: #ffa726; background: rgba(255,167,38,0.12);">WT: 20%</span>
+            </a>
+            <a href="#sec-auto-fib" class="edu-toc-link" onclick="scrollToEduSection('sec-auto-fib', event)">
+              <span>📐</span>
+              <span>6. Auto Fib Golden Pocket</span>
+              <span class="edu-toc-badge" style="color: #3fb950; background: rgba(63,185,80,0.12);">WT: 20%</span>
+            </a>
+            <a href="#sec-breakout-retest" class="edu-toc-link" onclick="scrollToEduSection('sec-breakout-retest', event)">
+              <span>🔄</span>
+              <span>7. Breakout &amp; Retest (20P)</span>
+              <span class="edu-toc-badge" style="color: #ff9800; background: rgba(255,152,0,0.12);">WT: 15%</span>
+            </a>
+            <a href="#sec-momentum-matrix" class="edu-toc-link" onclick="scrollToEduSection('sec-momentum-matrix', event)">
+              <span>📊</span>
+              <span>8. Momentum &amp; RSI Suite</span>
+              <span class="edu-toc-badge" style="color: #a371f7; background: rgba(163,113,247,0.12);">WT: 15%</span>
+            </a>
+            <a href="#sec-ghost-predictor" class="edu-toc-link" onclick="scrollToEduSection('sec-ghost-predictor', event)">
+              <span>👻</span>
+              <span>9. Ghost Candle AI Forecast</span>
+              <span class="edu-toc-badge" style="color: #79c0ff; background: rgba(121,192,255,0.12);">AI</span>
+            </a>
+            <a href="#sec-capital-risk" class="edu-toc-link" onclick="scrollToEduSection('sec-capital-risk', event)">
+              <span>🛡️</span>
+              <span>10. Capital &amp; Risk Protocol</span>
+              <span class="edu-toc-badge" style="color: #00e676; background: rgba(0,230,118,0.12);">1% MAX</span>
+            </a>
+          </nav>
+
+          <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid #21262d; font-size: 11px; color: #8b949e; line-height: 1.5;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>Target Asset:</span>
+              <b style="color: #ffd700;">XAU/USD Spot Gold</b>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>Execution Style:</span>
+              <b style="color: #f0f6fc;">SMC / Order Flow</b>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span>Est. Reading Time:</span>
+              <b style="color: #58a6ff;">~12 Minutes</b>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Right Content Area: Comprehensive Indicator Documentation Cards -->
+        <main class="edu-content-area" id="eduContentMain">
+          
+          <!-- MODULE 1: ARCHITECTURAL OVERVIEW -->
+          <article id="sec-overview" class="edu-indicator-card" data-category="overview" data-keywords="architecture institutional order flow smart money confluence multi timeframe quant latency single source of truth">
+            <div class="edu-card-header">
+              <div class="edu-card-title-group">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="edu-pill edu-pill-blue">FOUNDATIONAL PHILOSOPHY</span>
+                  <span style="font-size: 11px; color: #8b949e; font-family: monospace;">MODULE #01</span>
+                </div>
+                <h2>Institutional Order Flow &amp; Algorithmic State Machine Overview</h2>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="edu-pill edu-pill-gold">LATENCY: ZERO SYNC</span>
+                <span class="edu-pill edu-pill-green">SINGLE SOURCE OF TRUTH</span>
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">🏛️ Core Concept &amp; Institutional Edge</div>
+              <p class="edu-prose">
+                Traditional retail technical analysis relies heavily on lagging indicators (e.g., standard moving average crossovers, simple overbought oscillators) that consistently fail during high-volatility institutional expansion. The TradingPoint terminal operates on an <b>Institutional Order Flow Engine</b>. Financial institutions, central bank clearing desks, and tier-1 algorithmic liquidity providers do not trade retail support/resistance lines; they operate on <b>Liquidity Imbalances (Fair Value Gaps)</b>, <b>Accumulation/Distribution Order Blocks</b>, and <b>Session Stop-Hunts</b>.
+              </p>
+              <p class="edu-prose">
+                Every tick received via our real-time WebSocket pipeline is immediately dispatched through a deterministic candle buffer. Six specialized mathematical routines evaluate liquidity depth, directional momentum, session boundaries, and Fibonacci harmonic retracements simultaneously to generate high-probability trade setups with strict 1:2.5+ risk-to-reward ratios.
+              </p>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">⚙️ Multi-Engine Weighted Confluence Formula</div>
+              <p class="edu-prose">
+                The overall Directional Bias and Signal Confidence percentage are computed using dynamic modular weighting:
+              </p>
+              <div class="edu-formula-box">
+Composite Score = ∑ (Weight_i × SignalState_i)
+Where:
+• SMC Zones (15M FVG & OB):        Weight = 25% (0.25)
+• Liquidity Hunter & Psychology:   Weight = 25% (0.25)
+• Daily Liquidity Sniper (DLS-1M):  Weight = 25% (0.25)
+• VWAP + EMA + FVG Engine:          Weight = 20% (0.20)
+• Auto Fib Golden Pocket:           Weight = 20% (0.20)
+• Dynamic Breakout (20-Period):     Weight = 15% (0.15)
+Confidence % = (Active Bullish / Bearish Weight) ÷ (Total Enabled Weight) × 100%
+              </div>
+            </div>
+
+            <div class="edu-tags-cloud">
+              <span class="edu-tag">#InstitutionalTrading</span>
+              <span class="edu-tag">#SmartMoneyConcepts</span>
+              <span class="edu-tag">#OrderFlow</span>
+              <span class="edu-tag">#MarketStructure</span>
+              <span class="edu-tag">#MultiEngineConfluence</span>
+              <span class="edu-tag">#XAUUSD</span>
+              <span class="edu-tag">#QuantitativeFinance</span>
+              <span class="edu-tag">#TradingPointAcademy</span>
+            </div>
+          </article>
+
+
+          <!-- MODULE 2: SMC ZONES (15M FVG & ORDER BLOCKS) -->
+          <article id="sec-smc-fvg" class="edu-indicator-card" data-category="smc" data-keywords="smc fair value gap fvg order block supply demand mitigation mean threshold 50 equilibrium imbalance bos choch 15m">
+            <div class="edu-card-header">
+              <div class="edu-card-title-group">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="edu-pill edu-pill-blue">🏛️ SMC &amp; ORDER FLOW</span>
+                  <span style="font-size: 11px; color: #8b949e; font-family: monospace;">CODE: smcZones</span>
+                </div>
+                <h2>Smart Money Concepts (SMC): 15M Fair Value Gaps (FVG) &amp; Order Blocks</h2>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="edu-pill edu-pill-gold">WEIGHT: 25%</span>
+                <span class="edu-pill edu-pill-green">TIMEFRAME: 15M</span>
+                <span class="edu-pill edu-pill-blue">RR: 1:3.0 - 1:5.0+</span>
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">💡 Base Concept &amp; Why It Exists</div>
+              <p class="edu-prose">
+                A <b>Fair Value Gap (FVG)</b> represents an aggressive three-candle imbalance in market liquidity. When large interbank algorithms inject massive block orders into XAU/USD, price expands violently in one direction. In this rapid expansion, only one side of the market is matched with orders, leaving a price void. Market mechanics dictate that price will frequently retrace into this void (called <b>Mitigation</b>) to fill unexecuted liquidity before resuming the macro trend.
+              </p>
+              <p class="edu-prose">
+                <b>Order Blocks (OB)</b> represent the institutional origin of the move: the final bearish candle before a bullish impulse displacement (Demand OB), or the final bullish candle before a bearish impulse displacement (Supply OB).
+              </p>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">📐 Mathematical Formula &amp; Algorithmic State Machine</div>
+              <div class="edu-formula-box">
+// Evaluated across consecutive candles [t-2, t-1, t]
+Bullish FVG Condition: Low[t] > High[t-2]   (Gap = Low[t] - High[t-2] > MinimumSpread)
+Bearish FVG Condition: High[t] < Low[t-2]   (Gap = Low[t-2] - High[t] > MinimumSpread)
+
+// 50% Mean Threshold (Equilibrium Midline)
+MeanThreshold_FVG = (FVG_UpperBoundary + FVG_LowerBoundary) / 2.0
+
+// Mitigation Retest Condition
+Mitigated_Bullish = (CurrentPrice <= FVG_UpperBoundary) && (CurrentPrice >= MeanThreshold_FVG)
+Mitigated_Bearish = (CurrentPrice >= FVG_LowerBoundary) && (CurrentPrice <= MeanThreshold_FVG)
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">🎯 Exact Buy &amp; Sell Execution Rules</div>
+              <div class="edu-rules-grid">
+                <!-- Buy Setup -->
+                <div class="edu-rule-card buy">
+                  <div class="edu-rule-title buy">
+                    <span>🟢</span>
+                    <span>Bullish FVG / Demand OB Buy Setup</span>
+                  </div>
+                  <ul class="edu-rule-list">
+                    <li><b>Market Structure:</b> Higher Highs &amp; Higher Lows (BOS confirmed on 15M).</li>
+                    <li><b>Trigger:</b> Price pulls back and wicks into a Bullish FVG zone (#00E676 0.15 opacity).</li>
+                    <li><b>Mitigation Check:</b> Candle body respects the 50% Mean Threshold line without closing below it.</li>
+                    <li><b>Entry Point:</b> At the moment of mitigation tap or rejection wick close.</li>
+                    <li><b>Stop Loss (SL):</b> 5 pips below the Demand Order Block low.</li>
+                    <li><b>Take Profit (TP):</b> Recent swing high (1:3 RR), trailing remainder to external buy-side liquidity.</li>
+                  </ul>
+                </div>
+
+                <!-- Sell Setup -->
+                <div class="edu-rule-card sell">
+                  <div class="edu-rule-title sell">
+                    <span>🔴</span>
+                    <span>Bearish FVG / Supply OB Sell Setup</span>
+                  </div>
+                  <ul class="edu-rule-list">
+                    <li><b>Market Structure:</b> Lower Lows &amp; Lower Highs (Bearish CHoCH/BOS on 15M).</li>
+                    <li><b>Trigger:</b> Price retraces upward into a Bearish FVG zone (#FF5252 0.15 opacity).</li>
+                    <li><b>Mitigation Check:</b> Candle body respects the 50% Mean Threshold line without closing above it.</li>
+                    <li><b>Entry Point:</b> At the moment of mitigation tap or rejection wick close.</li>
+                    <li><b>Stop Loss (SL):</b> 5 pips above the Supply Order Block high.</li>
+                    <li><b>Take Profit (TP):</b> Recent swing low (1:3 RR), trailing remainder to external sell-side liquidity.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="edu-param-row">
+              <div class="edu-param-item"><span class="edu-param-label">Target Asset:</span> <span class="edu-param-value">XAU/USD Gold</span></div>
+              <div class="edu-param-item"><span class="edu-param-label">Primary Timeframe:</span> <span class="edu-param-value">15M</span></div>
+              <div class="edu-param-item"><span class="edu-param-label">Risk/Reward:</span> <span class="edu-param-value">1:3.0 - 1:5.0</span></div>
+              <div class="edu-param-item"><span class="edu-param-label">On-Chart Overlay:</span> <span class="edu-param-value">Green / Red FVG Boxes + Dashed 50% Midline</span></div>
+            </div>
+
+            <div class="edu-tip-box">
+              <b>⚡ Institutional Pro Tip:</b> Never enter an FVG if the candle body closes cleanly through the 50% Mean Threshold. A full body close through the midline indicates that the institutional block order has been invalidated and the imbalance will act as an inverted breaker zone.
+            </div>
+
+            <div class="edu-tags-cloud">
+              <span class="edu-tag">#FairValueGap</span>
+              <span class="edu-tag">#FVG</span>
+              <span class="edu-tag">#OrderBlock</span>
+              <span class="edu-tag">#MeanThreshold</span>
+              <span class="edu-tag">#SmartMoneyConcepts</span>
+              <span class="edu-tag">#BOS</span>
+              <span class="edu-tag">#CHoCH</span>
+              <span class="edu-tag">#Equilibrium</span>
+              <span class="edu-tag">#InstitutionalOrderFlow</span>
+            </div>
+          </article>
+
+
+          <!-- MODULE 3: LIQUIDITY & CANDLE PSYCHOLOGY ENGINE -->
+          <article id="sec-liquidity-psych" class="edu-indicator-card" data-category="smc" data-keywords="liquidity candle psychology stop hunt sweep wick absorption session pools ash asl lsh lsl eqh eql institutional raid">
+            <div class="edu-card-header">
+              <div class="edu-card-title-group">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="edu-pill edu-pill-blue">💧 ORDER FLOW &amp; STOP HUNTS</span>
+                  <span style="font-size: 11px; color: #8b949e; font-family: monospace;">CODE: liquidityPsychology</span>
+                </div>
+                <h2>Liquidity &amp; Candle Psychology Engine (Session Sweeps &amp; Wick Absorption)</h2>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="edu-pill edu-pill-gold">WEIGHT: 25%</span>
+                <span class="edu-pill edu-pill-green">TIMEFRAME: 5M / 15M</span>
+                <span class="edu-pill edu-pill-blue">RR: 1:3.5+</span>
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">💡 Base Concept &amp; Institutional Stop Hunts</div>
+              <p class="edu-prose">
+                Institutional market makers cannot execute 10,000+ lots of Gold in a thin market without causing massive slippage. To acquire sufficient volume, they must trigger large clusters of resting orders. Retail traders consistently place stop loss orders immediately above obvious highs (Session Highs, Equal Highs - EQH) and below obvious lows (Session Lows, Equal Lows - EQL).
+              </p>
+              <p class="edu-prose">
+                The Liquidity Engine monitors <b>Asia Session High/Low (ASH/ASL)</b>, <b>London Session High/Low (LSH/LSL)</b>, and <b>Equal Highs/Lows</b>. When price sweeps these levels with a high-velocity wick and instantly pulls back inside the range, institutional absorption is confirmed and a <code>⚡ Liquidity Purged</code> signal is generated.
+              </p>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">📐 Algorithmic Multi-Bar Wick Absorption Formula</div>
+              <div class="edu-formula-box">
+// Wick-to-Body Absorption Ratio Calculation
+TotalCandleRange = High[t] - Low[t]
+UpperWick = High[t] - max(Open[t], Close[t])
+LowerWick = min(Open[t], Close[t]) - Low[t]
+
+BullishAbsorptionRatio = LowerWick / TotalCandleRange >= 0.50  (50%+ Lower Rejection Wick)
+BearishAbsorptionRatio = UpperWick / TotalCandleRange >= 0.50  (50%+ Upper Rejection Wick)
+
+// 5-Candle Psychology Window Confirmation
+SweepConfirmed = (High[t] > SessionHigh && Close[t] < SessionHigh) ||
+                 (Low[t] < SessionLow && Close[t] > SessionLow)
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">🎯 Exact Execution Rules</div>
+              <div class="edu-rules-grid">
+                <!-- Buy Setup -->
+                <div class="edu-rule-card buy">
+                  <div class="edu-rule-title buy">🟢 Liquidity Purged BUY Setup</div>
+                  <ul class="edu-rule-list">
+                    <li>Price sweeps below previous session low (ASL / LSL) or Equal Lows (EQL).</li>
+                    <li>Strong rejection wick forms (Lower Wick >= 50% of candle range).</li>
+                    <li>Candle closes back ABOVE the session low level.</li>
+                    <li><b>Entry:</b> Market BUY on candle close post-sweep.</li>
+                    <li><b>Stop Loss (SL):</b> 5 pips below the sweep wick low.</li>
+                    <li><b>Take Profit (TP):</b> Opposite Session High (ASH / LSH).</li>
+                  </ul>
+                </div>
+
+                <!-- Sell Setup -->
+                <div class="edu-rule-card sell">
+                  <div class="edu-rule-title sell">🔴 Liquidity Purged SELL Setup</div>
+                  <ul class="edu-rule-list">
+                    <li>Price sweeps above previous session high (ASH / LSH) or Equal Highs (EQH).</li>
+                    <li>Strong rejection wick forms (Upper Wick >= 50% of candle range).</li>
+                    <li>Candle closes back BELOW the session high level.</li>
+                    <li><b>Entry:</b> Market SELL on candle close post-sweep.</li>
+                    <li><b>Stop Loss (SL):</b> 5 pips above the sweep wick high.</li>
+                    <li><b>Take Profit (TP):</b> Opposite Session Low (ASL / LSL).</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="edu-tip-box">
+              <b>⚡ Order Flow Psychology:</b> When price penetrates a key high and wicks back, retail breakout buyers are trapped in losing longs, while retail short sellers had their stop losses triggered. Smart money now holds all the liquidity and the market reverses aggressively towards the opposite liquidity pool.
+            </div>
+
+            <div class="edu-tags-cloud">
+              <span class="edu-tag">#LiquiditySweep</span>
+              <span class="edu-tag">#StopHunt</span>
+              <span class="edu-tag">#WickAbsorption</span>
+              <span class="edu-tag">#CandlePsychology</span>
+              <span class="edu-tag">#AsiaSession</span>
+              <span class="edu-tag">#LondonSession</span>
+              <span class="edu-tag">#EqualHighsLows</span>
+              <span class="edu-tag">#LiquidityPurged</span>
+            </div>
+          </article>
+
+
+          <!-- MODULE 4: DAILY LIQUIDITY SNIPER (DLS-1M) -->
+          <article id="sec-dls-sniper" class="edu-indicator-card" data-category="sniper" data-keywords="daily liquidity sniper dls pdh pdl previous day high low 1 minute micro breakout breaker scalping sniper entry">
+            <div class="edu-card-header">
+              <div class="edu-card-title-group">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="edu-pill edu-pill-gold">🎯 SNIPER ENGINE</span>
+                  <span style="font-size: 11px; color: #8b949e; font-family: monospace;">CODE: dailyLiquiditySniper</span>
+                </div>
+                <h2>Daily Liquidity Sniper (DLS-1M: 1D Sweep + 1M Micro Breakout)</h2>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="edu-pill edu-pill-gold">WEIGHT: 25%</span>
+                <span class="edu-pill edu-pill-green">TIMEFRAME: 1D MACRO + 1M TRIGGER</span>
+                <span class="edu-pill edu-pill-blue">RR: 1:4.0 - 1:10.0+</span>
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">💡 Base Concept &amp; Institutional Edge</div>
+              <p class="edu-prose">
+                The <b>Daily Liquidity Sniper (DLS-1M)</b> solves the most common problem in retail trading: entering too early during a trending expansion. The system establishes institutional boundaries by dynamically plotting the <b>Previous Day High (PDH)</b> and <b>Previous Day Low (PDL)</b> across the chart.
+              </p>
+              <p class="edu-prose">
+                When price is trapped between PDH and PDL, <b>no trades are taken</b> (avoiding range chop). When price breaches PDH or PDL on the macro scale, the system activates the 1-Minute micro execution engine, waiting for the first institutional reversal candle and a confirmed breakout of its opposite boundary.
+              </p>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">📐 Mathematical Execution Algorithm</div>
+              <div class="edu-formula-box">
+PDH = High of Candle[Day - 1]
+PDL = Low of Candle[Day - 1]
+PDM (Previous Day Midpoint) = (PDH + PDL) / 2.0
+
+// Trigger State Machine:
+1. Short Condition (PDH Sweep):
+   - CurrentSpotPrice > PDH
+   - Wait for first solid 1-Minute Red Body Candle (Close_1M < Open_1M) above or rejecting PDH
+   - Entry Trigger: Next 1M Candle Low < Low(FirstRedCandle) -> Instant SELL
+
+2. Long Condition (PDL Sweep):
+   - CurrentSpotPrice < PDL
+   - Wait for first solid 1-Minute Green Body Candle (Close_1M > Open_1M) below or rejecting PDL
+   - Entry Trigger: Next 1M Candle High > High(FirstGreenCandle) -> Instant BUY
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">🎯 Step-by-Step Sniper Execution Checklist</div>
+              <div class="edu-rules-grid">
+                <!-- Buy Setup -->
+                <div class="edu-rule-card buy">
+                  <div class="edu-rule-title buy">🟢 DLS-1M BUY (Long) Setup</div>
+                  <ul class="edu-rule-list">
+                    <li>1. Price sweeps BELOW Previous Day Low (PDL line).</li>
+                    <li>2. Do not enter immediately; let buyers show absorption.</li>
+                    <li>3. Wait for the <b>First Solid Green Candle</b> to close below PDL.</li>
+                    <li>4. <b>Trigger:</b> The instant the next candle breaks ABOVE the Green Candle's High, enter BUY.</li>
+                    <li>5. <b>Stop Loss:</b> 1 pip below the low of that green candle.</li>
+                    <li>6. <b>Take Profit:</b> TP1 at Previous Day Midpoint (PDM), TP2 at PDH (1:5 to 1:12 RR).</li>
+                  </ul>
+                </div>
+
+                <!-- Sell Setup -->
+                <div class="edu-rule-card sell">
+                  <div class="edu-rule-title sell">🔴 DLS-1M SELL (Short) Setup</div>
+                  <ul class="edu-rule-list">
+                    <li>1. Price sweeps ABOVE Previous Day High (PDH line).</li>
+                    <li>2. Do not enter immediately; let sellers absorb the liquidity.</li>
+                    <li>3. Wait for the <b>First Solid Red Candle</b> to close above PDH.</li>
+                    <li>4. <b>Trigger:</b> The instant the next candle breaks BELOW the Red Candle's Low, enter SELL.</li>
+                    <li>5. <b>Stop Loss:</b> 1 pip above the high of that red candle.</li>
+                    <li>6. <b>Take Profit:</b> TP1 at Previous Day Midpoint (PDM), TP2 at PDL (1:5 to 1:12 RR).</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="edu-tip-box">
+              <b>⚡ Risk/Reward Tool Automation:</b> When DLS-1M triggers, the dashboard immediately plots an institutional TradingView Risk/Reward box on the chart showing exact entry price, tight SL, and asymmetric 1:4+ TP levels.
+            </div>
+
+            <div class="edu-tags-cloud">
+              <span class="edu-tag">#DailyLiquiditySniper</span>
+              <span class="edu-tag">#DLS1M</span>
+              <span class="edu-tag">#PreviousDayHigh</span>
+              <span class="edu-tag">#PreviousDayLow</span>
+              <span class="edu-tag">#PDH_PDL</span>
+              <span class="edu-tag">#1MinuteSniper</span>
+              <span class="edu-tag">#MicroBreakout</span>
+              <span class="edu-tag">#AsymmetricRR</span>
+            </div>
+          </article>
+
+
+          <!-- MODULE 5: VWAP + EMA + FVG CONFLUENCE ENGINE -->
+          <article id="sec-vwap-confluence" class="edu-indicator-card" data-category="sniper" data-keywords="vwap volume weighted average price ema 20 ema 50 fvg confluence mitigation trend filter intraday session">
+            <div class="edu-card-header">
+              <div class="edu-card-title-group">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="edu-pill edu-pill-orange">⚡ TREND CONFLUENCE</span>
+                  <span style="font-size: 11px; color: #8b949e; font-family: monospace;">CODE: vwapEmaFvg</span>
+                </div>
+                <h2>VWAP + EMA 20/50 + FVG Confluence Engine</h2>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="edu-pill edu-pill-gold">WEIGHT: 20%</span>
+                <span class="edu-pill edu-pill-green">TIMEFRAME: 5M / 15M</span>
+                <span class="edu-pill edu-pill-blue">RR: 1:2.5 - 1:4.0</span>
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">💡 Base Concept &amp; Institutional Baseline</div>
+              <p class="edu-prose">
+                <b>Volume-Weighted Average Price (VWAP)</b> is the primary benchmark price metric used by institutional hedge funds, central banks, and execution algorithms. Large funds measure execution quality against VWAP; buying below VWAP represents an institutional discount, while selling above VWAP represents an institutional premium.
+              </p>
+              <p class="edu-prose">
+                This engine combines the <b>Session VWAP Baseline</b> with <b>Dynamic EMA 20/50 Trend Slope Filtering</b> and <b>15M FVG Mitigation Snipers</b>. A trade is only triggered when all three components align simultaneously, eliminating counter-trend churn.
+              </p>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">📐 Mathematical Formulations</div>
+              <div class="edu-formula-box">
+// 1. Intraday Session VWAP (Reset at 00:00 UTC)
+TypicalPrice_i = (High_i + Low_i + Close_i) / 3.0
+VWAP_t = ∑(TypicalPrice_i × Volume_i) / ∑(Volume_i)
+
+// 2. Exponential Moving Average (EMA 20 & EMA 50)
+α = 2.0 / (N + 1.0)
+EMA_t = Close_t × α + EMA_{t-1} × (1.0 - α)
+
+// 3. Confluence Rules:
+Bullish Confluence = (CurrentPrice > VWAP) && (EMA20 > VWAP) && (EMA20 > EMA50) && (FVG_Tap_Bullish)
+Bearish Confluence = (CurrentPrice < VWAP) && (EMA20 < VWAP) && (EMA20 < EMA50) && (FVG_Tap_Bearish)
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">🎯 Execution Rules</div>
+              <div class="edu-rules-grid">
+                <div class="edu-rule-card buy">
+                  <div class="edu-rule-title buy">🟢 VWAP Confluence BUY</div>
+                  <ul class="edu-rule-list">
+                    <li>Price is trading above Session VWAP (Macro Buyer Bias).</li>
+                    <li>EMA 20 slope is positive and positioned above VWAP.</li>
+                    <li>Price executes a healthy pullback to touch VWAP or an active Bullish FVG.</li>
+                    <li>Rejection wick confirms support off VWAP/FVG.</li>
+                    <li><b>SL:</b> 10 pips below VWAP.</li>
+                    <li><b>TP:</b> Recent swing high (1:2.5 RR minimum).</li>
+                  </ul>
+                </div>
+                <div class="edu-rule-card sell">
+                  <div class="edu-rule-title sell">🔴 VWAP Confluence SELL</div>
+                  <ul class="edu-rule-list">
+                    <li>Price is trading below Session VWAP (Macro Seller Bias).</li>
+                    <li>EMA 20 slope is negative and positioned below VWAP.</li>
+                    <li>Price executes a healthy pullback up to touch VWAP or an active Bearish FVG.</li>
+                    <li>Rejection wick confirms resistance off VWAP/FVG.</li>
+                    <li><b>SL:</b> 10 pips above VWAP.</li>
+                    <li><b>TP:</b> Recent swing low (1:2.5 RR minimum).</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="edu-tags-cloud">
+              <span class="edu-tag">#VWAP</span>
+              <span class="edu-tag">#VolumeWeightedAveragePrice</span>
+              <span class="edu-tag">#EMA20</span>
+              <span class="edu-tag">#EMA50</span>
+              <span class="edu-tag">#FVGConfluence</span>
+              <span class="edu-tag">#InstitutionalBenchmark</span>
+              <span class="edu-tag">#TrendFollowing</span>
+            </div>
+          </article>
+
+
+          <!-- MODULE 6: AUTO FIBONACCI GOLDEN POCKET ENGINE -->
+          <article id="sec-auto-fib" class="edu-indicator-card" data-category="structure" data-keywords="auto fibonacci golden pocket 0.618 0.786 0.50 equilibrium retracement harmonic extension swing anchor">
+            <div class="edu-card-header">
+              <div class="edu-card-title-group">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="edu-pill edu-pill-green">📐 HARMONIC STRUCTURE</span>
+                  <span style="font-size: 11px; color: #8b949e; font-family: monospace;">CODE: autoFib</span>
+                </div>
+                <h2>Auto Fibonacci Golden Pocket Engine (0.50 / 0.618 / 0.786)</h2>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="edu-pill edu-pill-gold">WEIGHT: 20%</span>
+                <span class="edu-pill edu-pill-green">TIMEFRAME: 15M / 1H</span>
+                <span class="edu-pill edu-pill-blue">RR: 1:3.0+</span>
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">💡 Base Concept &amp; Institutional Golden Pocket</div>
+              <p class="edu-prose">
+                The Golden Ratio ($\Phi \approx 1.618$) and its mathematical derivatives govern capital allocation algorithms. The zone between the <b>61.8% ($0.618$)</b> and <b>78.6% ($0.786$)</b> retracement levels is known as the <b>Golden Pocket</b>. Institutional smart money reloads primary trend positions inside this pocket because it offers deep discount pricing with minimal capital risk.
+              </p>
+              <p class="edu-prose">
+                The Auto Fib engine computes dynamic swing anchor points over the trailing 50 candles, continuously rendering the 0.50 Equilibrium, 0.618 Golden Ratio, and 0.786 Institutional Pocket directly onto the chart canvas.
+              </p>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">📐 Mathematical Formulations</div>
+              <div class="edu-formula-box">
+SwingHigh = max(High[t-50 ... t])
+SwingLow  = min(Low[t-50 ... t])
+Range = SwingHigh - SwingLow
+
+Fib_500 = SwingLow + 0.500 * Range  (Equilibrium Midline)
+Fib_618 = SwingLow + 0.618 * Range  (Golden Ratio Entry)
+Fib_786 = SwingLow + 0.786 * Range  (Deep Institutional Discount/Premium)
+Fib_Extension_1 = SwingHigh + 0.272 * Range (-0.272 Target)
+Fib_Extension_2 = SwingHigh + 0.618 * Range (-0.618 Target)
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">🎯 Execution Checklist</div>
+              <div class="edu-rules-grid">
+                <div class="edu-rule-card buy">
+                  <div class="edu-rule-title buy">🟢 Golden Pocket BUY (Deep Discount)</div>
+                  <ul class="edu-rule-list">
+                    <li>Market makes an impulse expansion higher, establishing a new Swing High.</li>
+                    <li>Price retraces down into the 0.618 - 0.786 Golden Pocket zone.</li>
+                    <li>Golden Pocket aligns with an unmitigated 15M Bullish FVG or Demand Order Block.</li>
+                    <li>Enter BUY upon bullish rejection candle close.</li>
+                    <li><b>SL:</b> Below the 0.886 level or Swing Low.</li>
+                    <li><b>TP:</b> TP1 at 0.00 Swing High, TP2 at -0.272 Fib Extension.</li>
+                  </ul>
+                </div>
+                <div class="edu-rule-card sell">
+                  <div class="edu-rule-title sell">🔴 Golden Pocket SELL (Deep Premium)</div>
+                  <ul class="edu-rule-list">
+                    <li>Market makes an impulse expansion lower, establishing a new Swing Low.</li>
+                    <li>Price retraces up into the 0.618 - 0.786 Golden Pocket zone.</li>
+                    <li>Golden Pocket aligns with an unmitigated 15M Bearish FVG or Supply Order Block.</li>
+                    <li>Enter SELL upon bearish rejection candle close.</li>
+                    <li><b>SL:</b> Above the 0.886 level or Swing High.</li>
+                    <li><b>TP:</b> TP1 at 0.00 Swing Low, TP2 at -0.272 Fib Extension.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="edu-tags-cloud">
+              <span class="edu-tag">#AutoFib</span>
+              <span class="edu-tag">#FibonacciRetracement</span>
+              <span class="edu-tag">#GoldenPocket</span>
+              <span class="edu-tag">#Fibonacci618</span>
+              <span class="edu-tag">#Fibonacci786</span>
+              <span class="edu-tag">#Equilibrium</span>
+              <span class="edu-tag">#HarmonicTrading</span>
+            </div>
+          </article>
+
+
+          <!-- MODULE 7: BREAKOUT & RETEST ENGINE -->
+          <article id="sec-breakout-retest" class="edu-indicator-card" data-category="structure" data-keywords="breakout retest dynamic channel 20 period volume expansion pullback threshold consolidation">
+            <div class="edu-card-header">
+              <div class="edu-card-title-group">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="edu-pill edu-pill-orange">🔄 STRUCTURAL RANGE BREAK</span>
+                  <span style="font-size: 11px; color: #8b949e; font-family: monospace;">CODE: breakout</span>
+                </div>
+                <h2>Breakout &amp; Retest Engine (20-Period Dynamic Channel)</h2>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="edu-pill edu-pill-gold">WEIGHT: 15%</span>
+                <span class="edu-pill edu-pill-green">TIMEFRAME: 15M / 1H</span>
+                <span class="edu-pill edu-pill-blue">RR: 1:2.5+</span>
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">💡 Base Concept &amp; Why Breakouts Fail</div>
+              <p class="edu-prose">
+                Over 80% of breakouts bought at market immediately fail because retail traders chase high-volume expansion candles. The Breakout &amp; Retest Engine enforces a two-step validation: first, a verified candle body close outside the 20-period dynamic channel boundaries; second, an orderly low-volume pullback retesting the broken boundary as new support/resistance.
+              </p>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">🎯 Execution Rules</div>
+              <div class="edu-rules-grid">
+                <div class="edu-rule-card buy">
+                  <div class="edu-rule-title buy">🟢 Bullish Breakout &amp; Retest</div>
+                  <ul class="edu-rule-list">
+                    <li>Candle closes above the 20-period dynamic channel upper boundary.</li>
+                    <li>Wait for price to pull back to retest the broken boundary from above.</li>
+                    <li>Rejection wick confirms previous resistance has converted to support.</li>
+                    <li><b>SL:</b> 10 pips below the retest level.</li>
+                    <li><b>TP:</b> 1:2.5+ RR measured from channel height.</li>
+                  </ul>
+                </div>
+                <div class="edu-rule-card sell">
+                  <div class="edu-rule-title sell">🔴 Bearish Breakdown &amp; Retest</div>
+                  <ul class="edu-rule-list">
+                    <li>Candle closes below the 20-period dynamic channel lower boundary.</li>
+                    <li>Wait for price to retrace to retest the broken boundary from below.</li>
+                    <li>Rejection wick confirms previous support has converted to resistance.</li>
+                    <li><b>SL:</b> 10 pips above the retest level.</li>
+                    <li><b>TP:</b> 1:2.5+ RR measured from channel height.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="edu-tags-cloud">
+              <span class="edu-tag">#BreakoutRetest</span>
+              <span class="edu-tag">#DynamicChannel</span>
+              <span class="edu-tag">#SupportResistance</span>
+              <span class="edu-tag">#VolumeConfirmation</span>
+              <span class="edu-tag">#PriceAction</span>
+            </div>
+          </article>
+
+
+          <!-- MODULE 8: MOMENTUM & RSI SUITE -->
+          <article id="sec-momentum-matrix" class="edu-indicator-card" data-category="momentum" data-keywords="momentum rsi 14 ema ribbon divergence hidden divergence overbought oversold macd relative strength">
+            <div class="edu-card-header">
+              <div class="edu-card-title-group">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="edu-pill edu-pill-purple">📊 MOMENTUM &amp; DIVERGENCE</span>
+                  <span style="font-size: 11px; color: #8b949e; font-family: monospace;">CODE: momentumSuite</span>
+                </div>
+                <h2>Multi-Timeframe Trend &amp; RSI Momentum Matrix</h2>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="edu-pill edu-pill-gold">WEIGHT: 15%</span>
+                <span class="edu-pill edu-pill-green">TIMEFRAME: 5M / 15M / 1H</span>
+                <span class="edu-pill edu-pill-blue">RR: 1:2.5+</span>
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">💡 Base Concept &amp; Hidden Institutional Divergence</div>
+              <p class="edu-prose">
+                The Momentum Suite utilizes an EMA 20/50 dynamic ribbon combined with a 14-period Relative Strength Index (RSI). Rather than trading standard overbought/oversold levels (which remain saturated during strong trends), the system scans for <b>Hidden Divergence</b>. Hidden divergence occurs when price makes a higher low during an uptrend while the RSI prints a lower low, confirming strong institutional accumulation before the next expansion leg.
+              </p>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">🎯 Execution Rules</div>
+              <div class="edu-rules-grid">
+                <div class="edu-rule-card buy">
+                  <div class="edu-rule-title buy">🟢 Hidden Bullish Divergence BUY</div>
+                  <ul class="edu-rule-list">
+                    <li>EMA 20 is above EMA 50 (Uptrend).</li>
+                    <li>Price prints a Higher Low while RSI 14 prints a Lower Low (Hidden Divergence).</li>
+                    <li>RSI curls upward out of the 35–45 zone.</li>
+                    <li><b>SL:</b> 5 pips below recent swing low.</li>
+                    <li><b>TP:</b> 1:2.5 RR or RSI reaching 70+.</li>
+                  </ul>
+                </div>
+                <div class="edu-rule-card sell">
+                  <div class="edu-rule-title sell">🔴 Hidden Bearish Divergence SELL</div>
+                  <ul class="edu-rule-list">
+                    <li>EMA 20 is below EMA 50 (Downtrend).</li>
+                    <li>Price prints a Lower High while RSI 14 prints a Higher High (Hidden Divergence).</li>
+                    <li>RSI curls downward out of the 55–65 zone.</li>
+                    <li><b>SL:</b> 5 pips above recent swing high.</li>
+                    <li><b>TP:</b> 1:2.5 RR or RSI reaching 30-.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="edu-tags-cloud">
+              <span class="edu-tag">#RSIDivergence</span>
+              <span class="edu-tag">#HiddenDivergence</span>
+              <span class="edu-tag">#EMARibbon</span>
+              <span class="edu-tag">#MomentumMatrix</span>
+              <span class="edu-tag">#RelativeStrengthIndex</span>
+            </div>
+          </article>
+
+
+          <!-- MODULE 9: GHOST CANDLE & AI TARGET PREDICTOR -->
+          <article id="sec-ghost-predictor" class="edu-indicator-card" data-category="momentum" data-keywords="ghost candle ai predictor target forward projection path trajectory liquidity magnet">
+            <div class="edu-card-header">
+              <div class="edu-card-title-group">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="edu-pill edu-pill-blue">👻 PREDICTIVE VECTOR ENGINE</span>
+                  <span style="font-size: 11px; color: #8b949e; font-family: monospace;">CODE: ghost</span>
+                </div>
+                <h2>Ghost Candle &amp; AI Target Predictor (Forward 3-Bar Trajectory)</h2>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="edu-pill edu-pill-blue">AI FORECAST</span>
+                <span class="edu-pill edu-pill-green">FORWARD: 3 CANDLES</span>
+                <span class="edu-pill edu-pill-gold">LIQUIDITY MAGNETS</span>
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">💡 Base Concept &amp; Vector Mechanics</div>
+              <p class="edu-prose">
+                Financial markets are not random walks; price is an auction mechanism pulled towards unfilled institutional liquidity magnets (unmitigated FVGs, session high/low pools, and previous day levels). The <b>Ghost Candle Engine</b> projects the forward 3-candle probable path using real-time order flow delta and distance-to-magnet calculations. If price drops through a demand zone or breaches Stop Loss, active ghost projections are instantly terminated and recalculated to maintain zero false assumptions.
+              </p>
+            </div>
+
+            <div class="edu-tags-cloud">
+              <span class="edu-tag">#GhostCandles</span>
+              <span class="edu-tag">#AITargetPredictor</span>
+              <span class="edu-tag">#LiquidityMagnet</span>
+              <span class="edu-tag">#ForwardTrajectory</span>
+              <span class="edu-tag">#PredictiveTrading</span>
+            </div>
+          </article>
+
+
+          <!-- MODULE 10: INSTITUTIONAL CAPITAL & RISK PROTOCOL -->
+          <article id="sec-capital-risk" class="edu-indicator-card" data-category="risk" data-keywords="capital risk management position sizing 1 percent rule lot size calculator asymmetric rr partial profit 80 20 break even trailing stop">
+            <div class="edu-card-header">
+              <div class="edu-card-title-group">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span class="edu-pill edu-pill-green">🛡️ CAPITAL PRESERVATION</span>
+                  <span style="font-size: 11px; color: #8b949e; font-family: monospace;">PROTOCOL: 1% MAX RISK</span>
+                </div>
+                <h2>Institutional Capital &amp; Risk Management Execution Protocol</h2>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span class="edu-pill edu-pill-green">MAX DRAWDOWN: &lt; 5%</span>
+                <span class="edu-pill edu-pill-gold">PROFIT FACTOR: 2.5+</span>
+                <span class="edu-pill edu-pill-blue">MIN RR: 1:2.5</span>
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">💡 The Mathematical Truth of Long-Term Edge</div>
+              <p class="edu-prose">
+                No technical strategy or indicator can survive without strict mathematical risk parameters. Professional institutional prop firms fail traders not because of wrong direction, but because of poor risk management. The TradingPoint dashboard enforces the <b>1% Maximum Capital Risk Rule</b>. With an asymmetric 1:3 risk-to-reward ratio, even a trader with a modest 40% win rate generates substantial risk-adjusted compounding returns.
+              </p>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">📐 Mathematical Lot Size &amp; Asymmetric Compounding Formulas</div>
+              <div class="edu-formula-box">
+// 1. Exact Dollar Risk Allocation
+MaxDollarRisk = AccountBalance × 0.01  (Strict 1% Maximum)
+
+// 2. Dynamic Gold Lot Sizing (XAU/USD: 1 Standard Lot = 100 Troy Oz, $1 Move = $100)
+StopLossPips = abs(EntryPrice - StopLossPrice)
+PipValuePerLot = 100.0  (Standard Lot Multiplier)
+ExactLotSize = MaxDollarRisk / (StopLossPips × PipValuePerLot)
+
+// 3. Asymmetric Profit Factor Requirement
+RiskToReward = abs(TakeProfitPrice - EntryPrice) / abs(EntryPrice - StopLossPrice) >= 2.5
+
+// 4. Institutional 80/20 Partial Close Rule
+Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 20% Runner
+              </div>
+            </div>
+
+            <div class="edu-section-block">
+              <div class="edu-section-heading">🛡️ The Four Golden Rules of Prop Firm Execution</div>
+              <div class="edu-rules-grid">
+                <div class="edu-rule-card buy">
+                  <div class="edu-rule-title buy">1. The 1% Capital Cap</div>
+                  <p class="edu-prose" style="font-size: 12px; margin: 0;">Never risk more than 1% of total account balance on a single trade. A consecutive string of 5 losses results in less than 5% total drawdown, easily recovered in 2 winning trades.</p>
+                </div>
+                <div class="edu-rule-card buy">
+                  <div class="edu-rule-title buy">2. The 80/20 Partial Take Profit Rule</div>
+                  <p class="edu-prose" style="font-size: 12px; margin: 0;">When price hits Take Profit 1 (TP1), lock in 80% of the profit immediately. Move your Stop Loss to Break-Even (Risk-Free). The remaining 20% runs risk-free to macro liquidity pools.</p>
+                </div>
+                <div class="edu-rule-card sell">
+                  <div class="edu-rule-title sell">3. Zero Revenge Trading</div>
+                  <p class="edu-prose" style="font-size: 12px; margin: 0;">If Stop Loss is hit, do not immediately re-enter in the opposite direction. Wait for a new 15M candle close and a confirmed fresh setup from the multi-engine confluence matrix.</p>
+                </div>
+                <div class="edu-rule-card sell">
+                  <div class="edu-rule-title sell">4. Direction Synchronization Check</div>
+                  <p class="edu-prose" style="font-size: 12px; margin: 0;">Always verify that the on-chart Risk/Reward box direction (Short vs Long) aligns 100% with the right-side Execution Signal Card before placing any live CFD order.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="edu-tags-cloud">
+              <span class="edu-tag">#RiskManagement</span>
+              <span class="edu-tag">#LotSizeCalculator</span>
+              <span class="edu-tag">#PositionSizing</span>
+              <span class="edu-tag">#1PercentRule</span>
+              <span class="edu-tag">#RiskRewardRatio</span>
+              <span class="edu-tag">#PropFirmRules</span>
+              <span class="edu-tag">#BreakEvenStop</span>
+              <span class="edu-tag">#CapitalPreservation</span>
+              <span class="edu-tag">#InstitutionalDiscipline</span>
+            </div>
+          </article>
+
+        </main>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Real-Time Filter & Scroll JavaScript for Education Portal -->
+  <script>
+  function filterEduCards(query) {
+    var q = (query || '').toLowerCase().trim();
+    var cards = document.querySelectorAll('.edu-indicator-card');
+    var activeCount = 0;
+    
+    cards.forEach(function(card) {
+      if (!q) {
+        card.style.display = 'block';
+        activeCount++;
+        return;
+      }
+      var text = card.textContent.toLowerCase();
+      var keywords = (card.getAttribute('data-keywords') || '').toLowerCase();
+      if (text.indexOf(q) !== -1 || keywords.indexOf(q) !== -1) {
+        card.style.display = 'block';
+        activeCount++;
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  function filterEduCategory(cat, btn) {
+    var pills = document.querySelectorAll('.edu-filter-pill');
+    pills.forEach(function(p) { p.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+
+    var searchInput = document.getElementById('eduSearchInput');
+    if (searchInput) searchInput.value = '';
+
+    var cards = document.querySelectorAll('.edu-indicator-card');
+    cards.forEach(function(card) {
+      var cardCat = card.getAttribute('data-category') || '';
+      if (cat === 'all' || cardCat === cat) {
+        card.style.display = 'block';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  function scrollToEduSection(sectionId, event) {
+    if (event) event.preventDefault();
+    var elem = document.getElementById(sectionId);
+    if (elem) {
+      elem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Update TOC link active state
+      var links = document.querySelectorAll('.edu-toc-link');
+      links.forEach(function(l) { l.classList.remove('active'); });
+      var targetLink = document.querySelector('.edu-toc-link[href="#' + sectionId + '"]');
+      if (targetLink) targetLink.classList.add('active');
+    }
+  }
+
+  // Scrollspy observer for sticky TOC
+  if (typeof window !== 'undefined' && 'IntersectionObserver' in window) {
+    document.addEventListener('DOMContentLoaded', function() {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            var id = entry.target.id;
+            var links = document.querySelectorAll('.edu-toc-link');
+            links.forEach(function(l) {
+              if (l.getAttribute('href') === '#' + id) {
+                l.classList.add('active');
+              } else {
+                l.classList.remove('active');
+              }
+            });
+          }
+        });
+      }, { rootMargin: '-20% 0px -70% 0px' });
+
+      document.querySelectorAll('.edu-indicator-card').forEach(function(card) {
+        observer.observe(card);
+      });
+    });
+  }
+  </script>
 
 
   <div id="view-terminal">
@@ -7175,6 +8549,9 @@
     window.switchView = switchView;
 
     function highlightCurrentNav() {
+      if (document.body && document.body.classList.contains('portal-mode-active')) {
+        return;
+      }
       const hash = (window.location.hash || '').toLowerCase();
       const path = (window.location.pathname || '').toLowerCase();
       const search = (window.location.search || '').toLowerCase();
@@ -16226,6 +17603,35 @@ window.addEventListener('resize', () => {
 
     function onUserLoggedOut() {
       currentAuthUser = null;
+      var curHash = (window.location.hash || '').toLowerCase();
+      var isPortal = (document.body && document.body.classList.contains('portal-mode-active')) ||
+                     !!localStorage.getItem('tradingpoint_local_user') ||
+                     ['#terminal', '#trade', '#dashboard', '#signals', '#wallet', '#education', '#profile', '#conditions'].includes(curHash);
+
+      if (isPortal) {
+        // Keep demo sandbox mode active for Suneel Pirkash
+        if (document.body) document.body.classList.add('portal-mode-active');
+        if (!localStorage.getItem('tradingpoint_local_user')) {
+          try {
+            localStorage.setItem('tradingpoint_local_user', JSON.stringify({ email: 'suneel.pirkash@demo.com', name: 'Suneel Pirkash' }));
+          } catch (e) {}
+        }
+        const lockedOverlay = document.getElementById('demoTradeLockedOverlay');
+        if (lockedOverlay) lockedOverlay.style.display = 'none';
+        const cloudStatusBadge = document.getElementById('demoCloudStatusBadge');
+        if (cloudStatusBadge) {
+          cloudStatusBadge.innerText = '⚡ DEMO SANDBOX (SUNEEL)';
+          cloudStatusBadge.style.color = '#ffd700';
+          cloudStatusBadge.style.borderColor = 'rgba(255, 215, 0, 0.4)';
+          cloudStatusBadge.style.background = 'rgba(255, 215, 0, 0.1)';
+        }
+        loadLocalDemoState();
+        renderDemoWalletUI();
+        renderDemoPositionsList();
+        if (typeof renderWalletPortalData === 'function') renderWalletPortalData();
+        return;
+      }
+
       if (document.body) {
         document.body.classList.remove('portal-mode-active');
       }
@@ -16462,8 +17868,12 @@ window.addEventListener('resize', () => {
       // A $1.00 move in gold price = $1.00 * (Lots * 100) USD
       // e.g., 0.01 Lot on +$1.00 move = $1.00 USD
       // e.g., 0.10 Lot on +$1.00 move = $10.00 USD
-      const priceDiff = pos.type === 'BUY' ? (currentPrice - pos.entryPrice) : (pos.entryPrice - currentPrice);
-      const pnl = priceDiff * pos.lots * CONTRACT_SIZE;
+      const entry = parseFloat(pos.entryPrice != null ? pos.entryPrice : (pos.openPrice != null ? pos.openPrice : (pos.entry_price || 0)));
+      const curr = parseFloat(currentPrice != null ? currentPrice : (typeof currentLiveSpot !== 'undefined' ? currentLiveSpot : 3875.50));
+      const lots = parseFloat(pos.lots || 0.01);
+      const contract = typeof CONTRACT_SIZE !== 'undefined' ? CONTRACT_SIZE : 100;
+      const priceDiff = pos.type === 'BUY' ? (curr - entry) : (entry - curr);
+      const pnl = priceDiff * lots * contract;
       return Math.round(pnl * 100) / 100;
     }
 
