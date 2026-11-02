@@ -14490,7 +14490,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       const rawGaps = [];
 
-      // 1. Scan 15M Imbalances
+      // 1. Scan 15M Imbalances (Fair Value Gaps)
       for (let i = 2; i < candles.length; i++) {
         const c1 = candles[i - 2];
         const c2 = candles[i - 1];
@@ -14502,7 +14502,6 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           const bottom = c1.high;
           const gap = Number((top - bottom).toFixed(2));
           if (gap >= 0.80) {
-            // Check if subsequent price completely broke below bottom (fully invalidated)
             let fullyFilled = false;
             let tapped = false;
             let rejCandle = null;
@@ -14601,8 +14600,9 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         }
       }
 
-      // 3. STRICT CONSOLIDATION: Pick ONLY ONE Key Supply Zone & ONE Key Demand Zone!
-      // This completely eliminates visual clutter and overlapping stacked boxes.
+      // 3. STRICT INSTITUTIONAL CONSOLIDATION & DEDUPLICATION:
+      // Pick EXACTLY ONE Key Supply Zone above market & ONE Key Demand Zone below market!
+      // Merges overlapping Order Blocks & Fair Value Gaps to completely eliminate clutter.
       const unmitigatedSupply = [
         ...rawGaps.filter(g => g.type === 'BEARISH_FVG' && g.top >= currentPrice - 0.5),
         ...rawOBs.filter(o => o.type === 'SUPPLY_OB' && o.top >= currentPrice - 0.5)
@@ -14614,54 +14614,89 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       ].sort((a, b) => b.top - a.top); // closest below price first
 
       const consolidatedZones = [];
+      const consolidatedOBs = [];
 
-      // Primary Key Supply Zone (15M Bearish FVG)
+      // Primary Key Supply Zone (Single institutional zone above price)
       if (unmitigatedSupply.length > 0) {
         const primary = unmitigatedSupply[0];
         let top = primary.top;
         let bottom = primary.bottom;
+        let hasOB = primary.type === 'SUPPLY_OB';
+        let hasFVG = primary.type === 'BEARISH_FVG';
         for (const s of unmitigatedSupply.slice(1, 3)) {
           if (Math.abs(s.bottom - bottom) <= 4.0 || Math.abs(s.top - top) <= 4.0) {
             top = Math.max(top, s.top);
             bottom = Math.min(bottom, s.bottom);
+            if (s.type === 'SUPPLY_OB') hasOB = true;
+            if (s.type === 'BEARISH_FVG') hasFVG = true;
           }
         }
-        consolidatedZones.push({
+        const label = hasOB ? 'Supply OB' : '15m FVG';
+        const eqLevel = Number(((top + bottom) / 2).toFixed(2));
+        const supplyZone = {
           type: 'BEARISH_FVG',
-          label: '15m FVG',
+          label,
           top,
           bottom,
           gap: Number((top - bottom).toFixed(2)),
-          eqLevel: Number(((top + bottom) / 2).toFixed(2)),
+          eqLevel,
           time: primary.time,
           hasTapped: Math.abs(currentPrice - bottom) <= 4.0 || currentPrice >= bottom,
-          color: 'rgba(255, 82, 82, 0.15)', // Bearish FVG #FF5252 0.15 opacity
-          borderColor: 'rgba(255, 82, 82, 0.65)'
+          color: 'rgba(239, 83, 80, 0.06)',
+          borderColor: 'rgba(239, 83, 80, 0.45)'
+        };
+        consolidatedZones.push(supplyZone);
+        consolidatedOBs.push({
+          type: 'SUPPLY_OB',
+          label,
+          top,
+          bottom,
+          eqLevel,
+          time: primary.time,
+          color: 'rgba(239, 83, 80, 0.06)',
+          borderColor: 'rgba(239, 83, 80, 0.45)'
         });
       }
 
-      // Primary Key Demand Zone (15M Bullish FVG)
+      // Primary Key Demand Zone (Single institutional zone below price)
       if (unmitigatedDemand.length > 0) {
         const primary = unmitigatedDemand[0];
         let top = primary.top;
         let bottom = primary.bottom;
+        let hasOB = primary.type === 'DEMAND_OB';
+        let hasFVG = primary.type === 'BULLISH_FVG';
         for (const d of unmitigatedDemand.slice(1, 3)) {
           if (Math.abs(d.top - top) <= 4.0 || Math.abs(d.bottom - bottom) <= 4.0) {
             top = Math.max(top, d.top);
             bottom = Math.min(bottom, d.bottom);
+            if (d.type === 'DEMAND_OB') hasOB = true;
+            if (d.type === 'BULLISH_FVG') hasFVG = true;
           }
         }
-        consolidatedZones.push({
+        const label = hasOB ? 'Demand OB' : '15m FVG';
+        const eqLevel = Number(((top + bottom) / 2).toFixed(2));
+        const demandZone = {
           type: 'BULLISH_FVG',
-          label: '15m FVG',
+          label,
           top,
           bottom,
           gap: Number((top - bottom).toFixed(2)),
-          eqLevel: Number(((top + bottom) / 2).toFixed(2)),
+          eqLevel,
           time: primary.time,
           hasTapped: Math.abs(currentPrice - top) <= 4.0 || currentPrice <= top,
-          color: 'rgba(0, 230, 118, 0.15)', // Bullish FVG #00E676 0.15 opacity
-          borderColor: 'rgba(0, 230, 118, 0.65)'
+          color: 'rgba(38, 166, 154, 0.06)',
+          borderColor: 'rgba(38, 166, 154, 0.45)'
+        };
+        consolidatedZones.push(demandZone);
+        consolidatedOBs.push({
+          type: 'DEMAND_OB',
+          label,
+          top,
+          bottom,
+          eqLevel,
+          time: primary.time,
+          color: 'rgba(38, 166, 154, 0.06)',
+          borderColor: 'rgba(38, 166, 154, 0.45)'
         });
       }
 
@@ -14802,18 +14837,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         };
       }
 
-      // Format Order Blocks with 50% equilibrium dashed lines
-      const formattedOBs = rawOBs.map(ob => ({
-        ...ob,
-        eqLevel: Number(((ob.top + ob.bottom) / 2).toFixed(2)),
-        color: ob.type === 'SUPPLY_OB' ? 'rgba(255, 82, 82, 0.18)' : 'rgba(0, 230, 118, 0.18)',
-        borderColor: ob.type === 'SUPPLY_OB' ? 'rgba(255, 82, 82, 0.75)' : 'rgba(0, 230, 118, 0.75)'
-      }));
-
-      return { fvgList: consolidatedZones, obList: formattedOBs.slice(-4), activeRRSetup: activeRR };
+      return { fvgList: consolidatedZones, obList: consolidatedOBs, activeRRSetup: activeRR };
     }
 
-    // Professional Lightweight Canvas SMC Zone Renderer (Clean & Left-Aligned)
+    // Professional Lightweight Canvas SMC Zone Renderer (Clean, Institutional & Anti-Collision)
     function drawSMCZonesOnCanvas(smcData) {
       if (!smcEnabled || !drawingCtx || !drawingCanvas || !candleSeries || !chart || !smcData) return;
 
@@ -14829,6 +14856,22 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         lastCandleX = chart.timeScale().timeToCoordinate(rawCandleData[rawCandleData.length - 1].time);
       }
 
+      // Check active Position Box for collision avoidance
+      const activePos = (window.activeTradingPointPosition && window.activeTradingPointPosition.status === 'ACTIVE')
+        ? window.activeTradingPointPosition
+        : (showRROverlay && smcData.activeRRSetup ? smcData.activeRRSetup : null);
+
+      let posEntryY = null;
+      let posSLY = null;
+      let posStartX = null;
+      if (activePos && candleSeries) {
+        posEntryY = candleSeries.priceToCoordinate(Number(activePos.entry));
+        posSLY = candleSeries.priceToCoordinate(Number(activePos.sl));
+        if (activePos.startTime && chart.timeScale) {
+          try { posStartX = chart.timeScale().timeToCoordinate(activePos.startTime); } catch (e) {}
+        }
+      }
+
       zones.forEach(zone => {
         const yTop = candleSeries.priceToCoordinate(zone.top);
         const yBottom = candleSeries.priceToCoordinate(zone.bottom);
@@ -14837,13 +14880,12 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           const topY = Math.max(0, Math.min(yTop, yBottom));
           const botY = Math.min(canvasCssHeight, Math.max(yTop, yBottom));
           
-          // SCREEN SCALE ACCURACY: Constrain height to max 26% of chart height so it never overwhelms candles
-          const maxHeight = Math.round(canvasCssHeight * 0.26);
+          // Constrain height to max 22% of chart height so it never overwhelms candles
+          const maxHeight = Math.round(canvasCssHeight * 0.22);
           const rawH = Math.max(6, botY - topY);
           const height = Math.min(maxHeight, rawH);
 
           // Candle-anchored width:
-          // In TradingView SMC, an FVG starts at its formation candle and projects forward to the current market
           let startX = 20;
           if (zone.time && chart.timeScale) {
             const tX = chart.timeScale().timeToCoordinate(zone.time);
@@ -14855,32 +14897,45 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
             }
           }
 
+          // Institutional projection: extend comfortably forward to provide breathing room
+          const forwardPadding = 65;
           const endX = (lastCandleX !== null && lastCandleX > startX) 
-            ? Math.min(canvasCssWidth - 65, Math.round(lastCandleX + 28))
-            : Math.round(canvasCssWidth - 75);
-          const width = Math.max(50, endX - startX);
+            ? Math.max(startX + 140, Math.min(canvasCssWidth - 65, Math.round(lastCandleX + forwardPadding)))
+            : Math.max(startX + 140, canvasCssWidth - 75);
+          const width = Math.max(60, endX - startX);
 
-          const isSupply = zone.type === 'BEARISH_FVG';
+          const isSupply = (zone.type === 'BEARISH_FVG' || zone.type === 'SUPPLY_OB');
 
-          // 1. Ultra-clean subtle institutional opacity (0.08)
-          drawingCtx.fillStyle = isSupply ? 'rgba(239, 83, 80, 0.08)' : 'rgba(38, 166, 154, 0.08)';
+          // 1. Ultra-clean subtle institutional opacity (0.06)
+          drawingCtx.fillStyle = isSupply ? 'rgba(239, 83, 80, 0.06)' : 'rgba(38, 166, 154, 0.06)';
           drawingCtx.fillRect(startX, topY, width, height);
 
           // 2. Crisp, fine border
-          drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.55)' : 'rgba(38, 166, 154, 0.55)';
+          drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.40)' : 'rgba(38, 166, 154, 0.40)';
           drawingCtx.lineWidth = 1;
           drawingCtx.setLineDash([4, 3]);
           drawingCtx.strokeRect(startX, topY, width, height);
           drawingCtx.setLineDash([]);
 
           // 3. Crisp single badge inside the box
-          const labelText = '15m FVG';
+          const labelText = zone.label || (isSupply ? 'Supply OB' : 'Demand OB');
           drawingCtx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
           const metrics = drawingCtx.measureText(labelText);
           const badgeW = Math.round(metrics.width + 10);
           const badgeH = 15;
-          const badgeX = startX + 6;
-          const badgeY = Math.max(4, Math.min(canvasCssHeight - badgeH - 4, topY + Math.max(1, (height - badgeH) / 2)));
+          let badgeX = startX + 6;
+          // Place badge neatly at top of zone (or middle if height is very small)
+          let badgeY = (height >= 20) 
+            ? Math.max(3, topY + 2) 
+            : Math.max(3, Math.min(canvasCssHeight - badgeH - 3, topY + Math.max(1, (height - badgeH) / 2)));
+
+          // Collision Avoidance: If position box pill is sitting at startX + 4 at this vertical level,
+          // shift badge horizontally to startX + 130 so they NEVER collide!
+          if (posEntryY !== null && Math.abs(badgeY - posEntryY) < 18) {
+            badgeX = Math.min(endX - badgeW - 10, startX + 130);
+          } else if (posSLY !== null && Math.abs(badgeY - posSLY) < 18) {
+            badgeX = Math.min(endX - badgeW - 10, startX + 130);
+          }
 
           drawingCtx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
           drawingCtx.beginPath();
@@ -14897,24 +14952,26 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           drawingCtx.textBaseline = 'middle';
           drawingCtx.fillText(labelText, badgeX + 5, badgeY + (badgeH / 2));
 
-          // Range text next to pill
-          const rangeTxt = `$${zone.bottom.toFixed(1)} - $${zone.top.toFixed(1)}`;
-          drawingCtx.font = '500 8.5px monospace';
-          drawingCtx.fillStyle = isSMCInstitutionalClean ? 'rgba(18, 18, 18, 0.65)' : 'rgba(200, 210, 225, 0.65)';
-          drawingCtx.fillText(rangeTxt, badgeX + badgeW + 6, badgeY + (badgeH / 2));
+          // Range text next to pill (only if space permits and no collision)
+          if (width >= 170 && badgeX === startX + 6) {
+            const rangeTxt = `$${zone.bottom.toFixed(1)} - $${zone.top.toFixed(1)}`;
+            drawingCtx.font = '500 8.5px monospace';
+            drawingCtx.fillStyle = isSMCInstitutionalClean ? 'rgba(18, 18, 18, 0.65)' : 'rgba(200, 210, 225, 0.65)';
+            drawingCtx.fillText(rangeTxt, badgeX + badgeW + 6, badgeY + (badgeH / 2));
+          }
 
-          // 4. 50% Equilibrium level
+          // 4. 50% Equilibrium level (only if box height >= 16px and width >= 140px)
           const isMitigated = zone.hasTapped || 
             (currentPrice >= Math.min(zone.bottom, zone.top) && currentPrice <= Math.max(zone.bottom, zone.top)) ||
             (Math.abs(currentPrice - zone.bottom) <= 4.0) ||
             (Math.abs(currentPrice - zone.top) <= 4.0);
 
-          if (isMitigated) {
+          if (isMitigated && height >= 16) {
             const eq = zone.eqLevel;
             const eqY = candleSeries.priceToCoordinate(eq);
             if (eqY !== null && eqY >= topY - 2 && eqY <= topY + height + 2) {
               drawingCtx.save();
-              drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.75)' : 'rgba(38, 166, 154, 0.75)';
+              drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.60)' : 'rgba(38, 166, 154, 0.60)';
               drawingCtx.lineWidth = 1;
               drawingCtx.setLineDash([3, 3]);
               drawingCtx.beginPath();
@@ -14922,11 +14979,18 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
               drawingCtx.lineTo(endX, eqY);
               drawingCtx.stroke();
 
-              const eqTxt = `50% EQ $${eq.toFixed(1)}`;
-              drawingCtx.font = '600 8px monospace';
-              drawingCtx.fillStyle = isSupply ? '#ff5252' : '#26a69a';
-              drawingCtx.textAlign = 'right';
-              drawingCtx.fillText(eqTxt, endX - 4, eqY - 3);
+              // Suppress text if box is narrow or if colliding with badge or position box
+              let canDrawEQText = (width >= 140) && (Math.abs(eqY - (badgeY + badgeH / 2)) >= 10);
+              if (posEntryY !== null && Math.abs(eqY - posEntryY) < 14) canDrawEQText = false;
+              if (posSLY !== null && Math.abs(eqY - posSLY) < 14) canDrawEQText = false;
+
+              if (canDrawEQText) {
+                const eqTxt = `50% EQ $${eq.toFixed(1)}`;
+                drawingCtx.font = '600 8px monospace';
+                drawingCtx.fillStyle = isSupply ? '#ff5252' : '#26a69a';
+                drawingCtx.textAlign = 'right';
+                drawingCtx.fillText(eqTxt, endX - 4, eqY - 3);
+              }
               drawingCtx.restore();
             }
           }
@@ -14934,18 +14998,25 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       });
     }
 
-    // Order Block Renderer with distinct boundaries & 50% equilibrium dashed lines
+    // Order Block Renderer (Strict Anti-Duplication: Skips zones already drawn by SMC renderer)
     function drawOrderBlocksOnCanvas(smcData) {
       if (!smcEnabled || !drawingCtx || !drawingCanvas || !candleSeries || !chart || !smcData) return;
       const obs = smcData.obList || [];
       if (!Array.isArray(obs) || obs.length === 0) return;
+
+      // Filter out any OBs that are already represented in smcData.fvgList (Zero duplicate boxes!)
+      const fvgList = smcData.fvgList || [];
+      const distinctOBs = obs.filter(ob => {
+        return !fvgList.some(fvg => Math.abs(fvg.bottom - ob.bottom) <= 4.0 || Math.abs(fvg.top - ob.top) <= 4.0);
+      });
+      if (distinctOBs.length === 0) return;
 
       let lastCandleX = null;
       if (rawCandleData && rawCandleData.length && chart.timeScale) {
         lastCandleX = chart.timeScale().timeToCoordinate(rawCandleData[rawCandleData.length - 1].time);
       }
 
-      obs.forEach(ob => {
+      distinctOBs.forEach(ob => {
         const yTop = candleSeries.priceToCoordinate(ob.top);
         const yBottom = candleSeries.priceToCoordinate(ob.bottom);
         if (yTop === null || yBottom === null) return;
@@ -14953,12 +15024,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         const topY = Math.max(0, Math.min(yTop, yBottom));
         const botY = Math.min(canvasCssHeight, Math.max(yTop, yBottom));
         
-        // Strict height limit: max 24% of canvas height so it never swamps the screen
-        const maxH = Math.round(canvasCssHeight * 0.24);
+        const maxH = Math.round(canvasCssHeight * 0.22);
         const rawH = Math.max(5, botY - topY);
         const height = Math.min(maxH, rawH);
 
-        // Localized candle coordinate:
         let startX = 25;
         if (ob.time && chart.timeScale) {
           const tX = chart.timeScale().timeToCoordinate(ob.time);
@@ -14971,24 +15040,22 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         }
 
         const endX = (lastCandleX !== null && lastCandleX > startX) 
-          ? Math.min(canvasCssWidth - 65, Math.round(lastCandleX + 25))
-          : Math.round(canvasCssWidth - 75);
-        const width = Math.max(45, endX - startX);
+          ? Math.max(startX + 140, Math.min(canvasCssWidth - 65, Math.round(lastCandleX + 50)))
+          : Math.max(startX + 140, canvasCssWidth - 75);
+        const width = Math.max(50, endX - startX);
 
         const isSupply = (ob.type === 'SUPPLY_OB');
 
-        // Subtle institutional box fill (0.08)
-        drawingCtx.fillStyle = isSupply ? 'rgba(239, 83, 80, 0.08)' : 'rgba(38, 166, 154, 0.08)';
+        drawingCtx.fillStyle = isSupply ? 'rgba(239, 83, 80, 0.06)' : 'rgba(38, 166, 154, 0.06)';
         drawingCtx.fillRect(startX, topY, width, height);
 
-        drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.55)' : 'rgba(38, 166, 154, 0.55)';
+        drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.40)' : 'rgba(38, 166, 154, 0.40)';
         drawingCtx.lineWidth = 1;
         drawingCtx.setLineDash([4, 3]);
         drawingCtx.strokeRect(startX, topY, width, height);
         drawingCtx.setLineDash([]);
 
-        // Label pill
-        const obLabel = isSupply ? 'Supply OB' : 'Demand OB';
+        const obLabel = ob.label || (isSupply ? 'Supply OB' : 'Demand OB');
         drawingCtx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
         const txtW = drawingCtx.measureText(obLabel).width;
         const pillW = Math.round(txtW + 10);
@@ -15006,30 +15073,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         drawingCtx.textAlign = 'left';
         drawingCtx.textBaseline = 'middle';
         drawingCtx.fillText(obLabel, pillX + 5, pillY + (pillH / 2));
-
-        // 50% Equilibrium dashed line
-        const eq = ob.eqLevel || ((ob.top + ob.bottom) / 2);
-        const eqY = candleSeries.priceToCoordinate(eq);
-        if (eqY !== null && eqY >= topY - 1 && eqY <= topY + height + 1) {
-          drawingCtx.save();
-          drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.75)' : 'rgba(38, 166, 154, 0.75)';
-          drawingCtx.lineWidth = 1;
-          drawingCtx.setLineDash([2, 2]);
-          drawingCtx.beginPath();
-          drawingCtx.moveTo(startX, eqY);
-          drawingCtx.lineTo(endX, eqY);
-          drawingCtx.stroke();
-
-          drawingCtx.font = '600 8px monospace';
-          drawingCtx.fillStyle = isSupply ? '#ef5350' : '#26a69a';
-          drawingCtx.textAlign = 'right';
-          drawingCtx.fillText(`50% EQ $${eq.toFixed(1)}`, endX - 4, eqY - 3);
-          drawingCtx.restore();
-        }
       });
     }
 
-    // Legacy OB stub (merged into primary zones)
+        // Legacy OB stub (merged into primary zones)
     function drawLegacyOBStub(smcData) {
       if (Array.isArray(smcData.obList)) {
         smcData.obList.forEach(ob => {
