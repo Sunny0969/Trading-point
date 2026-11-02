@@ -7889,6 +7889,21 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
             </div>
 
             <!-- Indicator: SMC M5 Pullback Sniper (BOS + OB + Fibo 0.618) -->
+            <!-- Indicator: SMC Bearish Reversal & Continuation Engine -->
+            <div class="tv-ind-row" onclick="clickModularToggle('smcRev', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #60a5fa;">⚡ SMC Bearish Reversal &amp; Continuation</b>
+                  <span style="font-size: 9px; background: rgba(96,165,250,0.18); color: #60a5fa; padding: 1px 4px; border-radius: 4px; font-weight: 700;">1:5.0 RR · SMC-REV</span>
+                </div>
+                <small>Uptrend Exhaustion Peak, CHoCH Neckline Breakdown &amp; Supply Continuation Retest to Macro Target</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-smcRev" onchange="toggleModularIndicator('smcRev')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
             <!-- Indicator: AMD FVG Trade Setup [LuxAlgo] -->
             <div class="tv-ind-row" onclick="clickModularToggle('amdFvg', event)">
               <div class="tv-ind-info">
@@ -8163,6 +8178,14 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         <!-- Fibonacci Retracement -->
         <button class="tv-tool-btn" id="tool-fib" title="Fibonacci Retracement (Auto Swings)" onclick="toggleFibRetracement()">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 5h20M2 10h20M2 14h20M2 19h20"/></svg>
+        </button>
+        <!-- SMC Bearish Reversal & Continuation Engine Shortcut -->
+        <button class="tv-tool-btn" id="tool-smc-rev" title="SMC Bearish Reversal &amp; Continuation Engine (CHoCH to BOS Continuation)" onclick="toggleModularIndicator('smcRev')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2">
+            <path d="M4 16l6-6 4 4 6-8"/>
+            <path d="M14 6h6v6"/>
+            <circle cx="10" cy="10" r="1.5" fill="#60a5fa"/>
+          </svg>
         </button>
         <!-- AMD-FVG Trade Setup [LuxAlgo] Shortcut -->
         <button class="tv-tool-btn" id="tool-amd-fvg" title="AMD FVG Trade Setup [LuxAlgo] (Exclusive PO3 Engine)" onclick="toggleModularIndicator('amdFvg')">
@@ -9907,6 +9930,12 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     // 5 CORE COMPRESSED MODULAR INDICATORS CONFIG
     // ==========================================
     const DEFAULT_INDICATOR_CONFIG = {
+      smcRev: (function() {
+        try {
+          const v = localStorage.getItem('indicator_smc_rev_active');
+          return v !== null ? (v === 'true') : false;
+        } catch (e) { return false; }
+      })(), // Dedicated: SMC Bearish Reversal & Continuation Engine (CHoCH to BOS Continuation) - Weight: 30
       amdFvg: (function() {
         try {
           const v = localStorage.getItem('indicator_amd_fvg_active');
@@ -9943,6 +9972,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     };
 
     const MODULE_WEIGHTS = {
+      smcRev: 30,
       amdFvg: 30,
       lsExp: 30,
       smcZones: 25,
@@ -9971,6 +10001,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     })();
     window.indicatorSettings = indicatorSettings;
 
+    var smcRevEnabled = !!indicatorSettings.smcRev;
+    window.smcRevEnabled = smcRevEnabled;
+    window.latestSMC_BearishReversal = null;
+    window.activeSMCRevPosition = null;
     var amdFvgEnabled = !!indicatorSettings.amdFvg;
     window.amdFvgEnabled = amdFvgEnabled;
     window.latestAMDFVG = null;
@@ -10336,7 +10370,12 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       const cur = !!indicatorSettings[moduleName];
       const newVal = explicitVal !== undefined ? !!explicitVal : !cur;
       indicatorSettings[moduleName] = newVal;
-      if (moduleName === 'smcInducementSupply') {
+      if (moduleName === 'smcRev') {
+        try {
+          localStorage.setItem('indicator_smc_rev_active', newVal ? 'true' : 'false');
+          window.smcRevEnabled = newVal;
+        } catch (e) {}
+      } else if (moduleName === 'smcInducementSupply') {
         try {
           localStorage.setItem('indicator_smc_inducement_active', newVal ? 'true' : 'false');
           window.smcInducementSupplyEnabled = newVal;
@@ -10368,6 +10407,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       applyModularVisuals(moduleName, newVal);
 
       const tabMap = {
+        smcRev: 'SMC_REV',
         amdFvg: 'AMD_FVG',
         lsExp: 'LS_EXP',
         smcZones: 'SMC',
@@ -10395,6 +10435,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       redrawDrawings();
 
       const labels = {
+        smcRev: 'SMC Bearish Reversal & Continuation Engine',
         amdFvg: 'AMD FVG Trade Setup [LuxAlgo]',
         smcZones: 'SMC Zones (OB & FVG)',
         smcPullbackSniper: 'SMC M5 Pullback Sniper (BOS + OB + 0.618 Fibo)',
@@ -10472,6 +10513,15 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     }
 
     function applyModularVisuals(moduleName, isChecked) {
+      if (moduleName === 'smcRev') {
+        smcRevEnabled = isChecked;
+        window.smcRevEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_smc_rev_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+        const railRevBtn = document.getElementById('tool-smc-rev');
+        if (railRevBtn) railRevBtn.classList.toggle('active', isChecked);
+      } else
       if (moduleName === 'amdFvg') {
         amdFvgEnabled = isChecked;
         window.amdFvgEnabled = isChecked;
@@ -14172,11 +14222,578 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       ctx.restore();
     }
     window.drawAMD_FVG_Overlay = drawAMD_FVG_Overlay;
+    // =========================================================================
+    // SMC BEARISH REVERSAL & CONTINUATION ENGINE (CHOCH TO BOS CONTINUATION)
+    // =========================================================================
+    function evaluateSMC_BearishReversal(candles, currentPrice) {
+      if (!candles || candles.length < 35) {
+        return {
+          exclusive: true,
+          indicatorName: "SMC Bearish Reversal & Continuation",
+          direction: "NEUTRAL",
+          isTriggered: false,
+          status: "MONITORING STRUCTURE",
+          stateBadge: "MONITORING STRUCTURE",
+          entry: "--",
+          sl: "--",
+          tp: "--",
+          rr: "1 : 5.0",
+          reason: "Connecting to institutional market candles to detect structure..."
+        };
+      }
+
+      const currentBar = candles[candles.length - 1];
+      const spot = (typeof currentPrice === 'number' && !isNaN(currentPrice) && currentPrice > 0)
+        ? currentPrice
+        : currentBar.close;
+
+      // Coordinate Freeze check: If an active position exists, maintain coordinates
+      if (window.activeSMCRevPosition && window.activeSMCRevPosition.status === 'ACTIVE') {
+        const pos = window.activeSMCRevPosition;
+        const entryNum = parseFloat(pos.entry);
+        const slNum = parseFloat(pos.sl);
+        const tpNum = parseFloat(pos.tp);
+
+        let isCompleted = false;
+        let completionReason = '';
+
+        if (spot <= tpNum) {
+          isCompleted = true;
+          completionReason = `Macro Target reached @ $${tpNum.toFixed(2)} (+${pos.rr || '1:5.0'} Secured)!`;
+        } else if (spot >= slNum) {
+          isCompleted = true;
+          completionReason = `Invalidation hit @ Stop Loss $${slNum.toFixed(2)}.`;
+        }
+
+        if (isCompleted) {
+          window.activeSMCRevPosition.status = 'COMPLETED';
+          window.activeSMCRevPosition.completedReason = completionReason;
+        } else {
+          return pos;
+        }
+      }
+
+      // Scan recent window from latest bars backward up to 25 offsets
+      for (let offset = 0; offset <= 20; offset++) {
+        const sub = (offset === 0) ? candles : candles.slice(0, candles.length - offset);
+        if (sub.length < 35) break;
+
+        const lookback = Math.min(60, sub.length);
+        const windowBars = sub.slice(-lookback);
+        const cur = sub[sub.length - 1];
+
+        // 1. Identify Macro Origin Low (Base of the entire move)
+        let macroLow = Infinity;
+        let macroLowIdx = 0;
+        const baseWindow = Math.min(20, Math.floor(windowBars.length * 0.35));
+        for (let i = 0; i < baseWindow; i++) {
+          if (windowBars[i].low < macroLow) {
+            macroLow = windowBars[i].low;
+            macroLowIdx = i;
+          }
+        }
+
+        // 2. Identify Peak High (REVERSAL Zone)
+        let peakHigh = -Infinity;
+        let peakIdx = -1;
+        for (let i = baseWindow; i < windowBars.length - 3; i++) {
+          if (windowBars[i].high > peakHigh) {
+            peakHigh = windowBars[i].high;
+            peakIdx = i;
+          }
+        }
+        if (peakIdx === -1) continue;
+
+        // 3. Find Higher Low before Peak High (CHoCH level)
+        let chochSwingLow = Infinity;
+        let chochLowIdx = -1;
+        for (let i = Math.max(0, peakIdx - 12); i < peakIdx; i++) {
+          if (windowBars[i].low < chochSwingLow) {
+            chochSwingLow = windowBars[i].low;
+            chochLowIdx = i;
+          }
+        }
+        if (chochLowIdx === -1) continue;
+
+        // 4. Verify CHoCH Break (Price closed below the Higher Low)
+        let isChochBroken = false;
+        let chochBreakIdx = -1;
+        for (let i = peakIdx + 1; i < windowBars.length; i++) {
+          if (windowBars[i].close < chochSwingLow) {
+            isChochBroken = true;
+            chochBreakIdx = i;
+            break;
+          }
+        }
+        if (!isChochBroken) continue;
+
+        // 5. Locate Continuation Zone (Supply block formed between Peak and CHoCH break)
+        let contHigh = -Infinity;
+        let contLow = Infinity;
+        for (let i = peakIdx; i <= chochBreakIdx; i++) {
+          if (windowBars[i].close > windowBars[i].open) { // Up-candle before drop
+            contHigh = Math.max(contHigh, windowBars[i].high);
+            contLow = Math.min(contLow, windowBars[i].low);
+          }
+        }
+        if (contHigh === -Infinity) {
+          contHigh = (peakHigh + chochSwingLow) / 2;
+          contLow = contHigh - 2.0;
+        }
+
+        // 6. Check Retest & Rejection at Continuation Zone
+        const hasRetested = cur.high >= contLow && cur.close <= (contHigh + 0.80);
+        const barRange = cur.high - cur.low;
+        const upperWick = cur.high - Math.max(cur.open, cur.close);
+        const isRejection = (upperWick / (barRange + 0.001)) >= 0.25;
+        const isBearish = cur.close < cur.open || upperWick > (cur.close - cur.low);
+
+        if (hasRetested && (isRejection || isBearish)) {
+          const entry = cur.close.toFixed(2);
+          const sl = (contHigh + 1.20).toFixed(2);
+          const risk = parseFloat(sl) - parseFloat(entry);
+          const tp = macroLow.toFixed(2);
+          const reward = parseFloat(entry) - parseFloat(tp);
+          const rr = (reward / (risk || 1)).toFixed(1);
+
+          const setupResult = {
+            exclusive: true,
+            indicatorName: "SMC Bearish Reversal & Continuation",
+            direction: "SELL / SHORT",
+            type: "SHORT",
+            isTriggered: true,
+            status: "CONTINUATION CONFIRMED",
+            stateBadge: "CONTINUATION CONFIRMED",
+            entry: entry,
+            sl: sl,
+            tp: tp,
+            risk: risk.toFixed(2),
+            reward: reward.toFixed(2),
+            rr: `1 : ${rr}`,
+            rrRatio: rr,
+            macroOriginLow: macroLow.toFixed(2),
+            reversalPeak: {
+              high: peakHigh.toFixed(2),
+              time: windowBars[peakIdx].time
+            },
+            chochLevel: chochSwingLow.toFixed(2),
+            chochTime: windowBars[chochBreakIdx].time,
+            continuationZone: {
+              high: contHigh.toFixed(2),
+              low: contLow.toFixed(2),
+              startTime: windowBars[peakIdx].time
+            },
+            targetLevel: tp,
+            startTime: cur.time,
+            reason: `Bullish trend exhausted. Bearish CHoCH confirmed below $${chochSwingLow.toFixed(2)}. Price retested Continuation Supply Block ($${contLow.toFixed(2)}-$${contHigh.toFixed(2)}) and broke secondary BOS. Macro distribution targeted to major origin low $${tp}.`
+          };
+
+          if (offset === 0 || (spot < parseFloat(sl) && spot > parseFloat(tp))) {
+            window.activeSMCRevPosition = setupResult;
+          }
+          return setupResult;
+        }
+      }
+
+      // If no triggered setup firing right now, return live structural state
+      const lookback = Math.min(60, candles.length);
+      const windowBars = candles.slice(-lookback);
+      let macroLow = Math.min(...windowBars.slice(0, 15).map(c => c.low));
+      let peakHigh = -Infinity;
+      let peakIdx = -1;
+      for (let i = 10; i < windowBars.length - 2; i++) {
+        if (windowBars[i].high > peakHigh) {
+          peakHigh = windowBars[i].high;
+          peakIdx = i;
+        }
+      }
+
+      let chochSwingLow = Infinity;
+      if (peakIdx !== -1) {
+        for (let i = Math.max(0, peakIdx - 12); i < peakIdx; i++) {
+          if (windowBars[i].low < chochSwingLow) chochSwingLow = windowBars[i].low;
+        }
+      }
+
+      let isChochBroken = false;
+      let contHigh = (peakHigh + chochSwingLow) / 2;
+      let contLow = contHigh - 2.0;
+
+      if (peakIdx !== -1 && chochSwingLow !== Infinity) {
+        for (let i = peakIdx + 1; i < windowBars.length; i++) {
+          if (windowBars[i].close < chochSwingLow) {
+            isChochBroken = true;
+            break;
+          }
+        }
+      }
+
+      if (isChochBroken) {
+        const risk = Math.max(2.0, (contHigh + 1.20) - contLow);
+        const reward = Math.max(5.0, contLow - macroLow);
+        const rr = (reward / risk).toFixed(1);
+        return {
+          exclusive: true,
+          indicatorName: "SMC Bearish Reversal & Continuation",
+          direction: "PREPARING SHORT",
+          type: "SHORT",
+          isTriggered: false,
+          status: "CHOCH BREAK DETECTED",
+          stateBadge: "CHOCH CONFIRMED - AWAITING RETEST",
+          entry: "$" + contLow.toFixed(2),
+          sl: "$" + (contHigh + 1.20).toFixed(2),
+          tp: "$" + macroLow.toFixed(2),
+          rr: `1 : ${rr}`,
+          rrRatio: rr,
+          macroOriginLow: macroLow.toFixed(2),
+          reversalPeak: { high: peakHigh.toFixed(2), time: windowBars[peakIdx].time },
+          chochLevel: chochSwingLow.toFixed(2),
+          continuationZone: { high: contHigh.toFixed(2), low: contLow.toFixed(2) },
+          targetLevel: macroLow.toFixed(2),
+          reason: `Bearish CHoCH confirmed below $${chochSwingLow.toFixed(2)}. Continuation zone formed ($${contLow.toFixed(2)}-$${contHigh.toFixed(2)}). Awaiting pullback retest.`
+        };
+      }
+
+      return {
+        exclusive: true,
+        indicatorName: "SMC Bearish Reversal & Continuation",
+        direction: "NEUTRAL",
+        isTriggered: false,
+        status: "MONITORING STRUCTURE",
+        stateBadge: "MONITORING STRUCTURE",
+        entry: "--",
+        sl: "--",
+        tp: "--",
+        rr: "1 : 5.0",
+        macroOriginLow: macroLow.toFixed(2),
+        reversalPeak: { high: peakHigh !== -Infinity ? peakHigh.toFixed(2) : "--" },
+        chochLevel: chochSwingLow !== Infinity ? chochSwingLow.toFixed(2) : "--",
+        continuationZone: { high: contHigh.toFixed(2), low: contLow.toFixed(2) },
+        reason: "Monitoring uptrend exhaustion, higher low neckline support & CHoCH breakdown in Gold."
+      };
+    }
+    window.evaluateSMC_BearishReversal = evaluateSMC_BearishReversal;
+
+    // =========================================================================
+    // SMC BEARISH REVERSAL & CONTINUATION CANVAS OVERLAY RENDERER
+    // =========================================================================
+    function drawSMC_BearishReversalOverlay(ctx, revData, candles) {
+      if (!ctx || !candleSeries || !chart || !chart.timeScale) return;
+      if (typeof indicatorSettings !== 'undefined' && !indicatorSettings.smcRev) return;
+
+      const setup = revData || window.latestSMC_BearishReversal;
+      if (!setup) return;
+
+      ctx.save();
+
+      // 1. REVERSAL Peak Box (Phase 2): Subtle soft-blue bounding box over the peak labeled: REVERSAL
+      if (setup.reversalPeak && setup.reversalPeak.high && setup.reversalPeak.high !== '--') {
+        const peakPrice = Number(setup.reversalPeak.high);
+        const topYRaw = candleSeries.priceToCoordinate(peakPrice);
+        const botYRaw = candleSeries.priceToCoordinate(peakPrice - 3.50);
+
+        if (topYRaw !== null && botYRaw !== null) {
+          const topY = Math.min(topYRaw, botYRaw);
+          const height = Math.max(16, Math.abs(botYRaw - topYRaw));
+
+          let peakX = null;
+          if (setup.reversalPeak.time) {
+            try {
+              peakX = chart.timeScale().timeToCoordinate(setup.reversalPeak.time);
+            } catch (e) {}
+          }
+          if (peakX === null && candles && candles.length) {
+            try {
+              peakX = chart.timeScale().timeToCoordinate(candles[Math.max(0, candles.length - 20)].time);
+            } catch (e) {}
+          }
+
+          const startX = (peakX !== null && peakX > 20) ? Math.max(20, peakX - 45) : 30;
+          const endX = (peakX !== null) ? Math.min(canvasCssWidth - 65, peakX + 75) : 150;
+          const width = Math.max(65, endX - startX);
+
+          // Subtle soft-blue bounding box
+          ctx.fillStyle = 'rgba(96, 165, 250, 0.12)';
+          ctx.fillRect(startX, topY, width, height);
+
+          ctx.strokeStyle = 'rgba(96, 165, 250, 0.65)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(startX, topY, width, height);
+
+          // Reversal Peak Badge
+          const revLabel = `REVERSAL PEAK $${peakPrice.toFixed(1)}`;
+          ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const bw = ctx.measureText(revLabel).width + 8;
+          const bh = 14;
+          const bx = startX + 5;
+          const by = Math.max(4, topY - bh - 2);
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.strokeStyle = '#60a5fa';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(bx, by, bw, bh);
+
+          ctx.fillStyle = '#60a5fa';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(revLabel, bx + 4, by + bh / 2);
+        }
+      }
+
+      // 2. CHOCH Neckline (Phase 3): Crisp solid blue line across HigherLow labeled: CHOCH
+      if (setup.chochLevel && setup.chochLevel !== '--') {
+        const chochPrice = Number(setup.chochLevel);
+        const yChoch = candleSeries.priceToCoordinate(chochPrice);
+
+        if (yChoch !== null && yChoch > 10 && yChoch < canvasCssHeight - 10) {
+          let startX = 25;
+          if (setup.chochTime) {
+            try {
+              const cx = chart.timeScale().timeToCoordinate(setup.chochTime);
+              if (cx !== null && cx > 10 && cx < canvasCssWidth) startX = Math.round(cx);
+            } catch (e) {}
+          }
+          const endX = canvasCssWidth - 65;
+
+          // Solid blue line
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(startX, yChoch);
+          ctx.lineTo(endX, yChoch);
+          ctx.stroke();
+
+          // CHOCH Pill Label
+          const chochLabel = `CHOCH $${chochPrice.toFixed(1)}`;
+          ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const cw = ctx.measureText(chochLabel).width + 8;
+          const ch = 14;
+          const cx = Math.max(10, Math.min(canvasCssWidth - cw - 70, startX + 15));
+          const cy = yChoch - ch / 2;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+          ctx.fillRect(cx, cy, cw, ch);
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(cx, cy, cw, ch);
+
+          ctx.fillStyle = '#93c5fd';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(chochLabel, cx + 4, cy + ch / 2);
+        }
+      }
+
+      // 3. CONTINUATION Zone Retest Box (Phase 4): Semi-transparent blue box labeled: CONTINUATION
+      if (setup.continuationZone && setup.continuationZone.high && setup.continuationZone.low) {
+        const contHigh = Number(setup.continuationZone.high);
+        const contLow = Number(setup.continuationZone.low);
+        const topYRaw = candleSeries.priceToCoordinate(contHigh);
+        const botYRaw = candleSeries.priceToCoordinate(contLow);
+
+        if (topYRaw !== null && botYRaw !== null) {
+          const topY = Math.min(topYRaw, botYRaw);
+          const height = Math.max(12, Math.abs(botYRaw - topYRaw));
+
+          let startX = 60;
+          if (setup.continuationZone.startTime) {
+            try {
+              const sx = chart.timeScale().timeToCoordinate(setup.continuationZone.startTime);
+              if (sx !== null && sx > 10) startX = Math.round(sx);
+            } catch (e) {}
+          }
+          const endX = canvasCssWidth - 65;
+          const width = Math.max(70, endX - startX);
+
+          // Semi-transparent blue box
+          ctx.fillStyle = 'rgba(59, 130, 246, 0.18)';
+          ctx.fillRect(startX, topY, width, height);
+
+          ctx.strokeStyle = 'rgba(59, 130, 246, 0.75)';
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(startX, topY, width, height);
+
+          // Continuation Label
+          const contLabel = `CONTINUATION ZONE $${contLow.toFixed(1)} - $${contHigh.toFixed(1)}`;
+          ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const cw = ctx.measureText(contLabel).width + 8;
+          const ch = 14;
+          const cx = startX + 6;
+          const cy = Math.max(4, topY - ch - 2);
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+          ctx.fillRect(cx, cy, cw, ch);
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(cx, cy, cw, ch);
+
+          ctx.fillStyle = '#60a5fa';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(contLabel, cx + 4, cy + ch / 2);
+        }
+      }
+
+      // 4. Macro Origin Low Target Line: Labeled TARGET
+      if (setup.macroOriginLow || setup.targetLevel) {
+        const targetPrice = Number(setup.macroOriginLow || setup.targetLevel);
+        const yTarget = candleSeries.priceToCoordinate(targetPrice);
+
+        if (yTarget !== null && yTarget > 10 && yTarget < canvasCssHeight - 10) {
+          const startX = 25;
+          const endX = canvasCssWidth - 65;
+
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(startX, yTarget);
+          ctx.lineTo(endX, yTarget);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Target Label Pill
+          const targetLabel = `TARGET (Macro Origin Low) $${targetPrice.toFixed(1)}`;
+          ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const tw = ctx.measureText(targetLabel).width + 8;
+          const th = 14;
+          const tx = endX - tw - 10;
+          const ty = yTarget - th / 2;
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+          ctx.fillRect(tx, ty, tw, th);
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(tx, ty, tw, th);
+
+          ctx.fillStyle = '#38bdf8';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(targetLabel, tx + 4, ty + th / 2);
+        }
+      }
+
+      // 5. Execution Tool (TradingView Short Position Tool with Extended Reward to Macro Target)
+      if (setup.isTriggered && setup.entry && setup.sl && setup.tp) {
+        const yEntryRaw = candleSeries.priceToCoordinate(Number(setup.entry));
+        const ySLRaw = candleSeries.priceToCoordinate(Number(setup.sl));
+        const yTPRaw = candleSeries.priceToCoordinate(Number(setup.tp));
+
+        if (yEntryRaw !== null) {
+          const yEntry = Math.max(20, Math.min(canvasCssHeight - 20, yEntryRaw));
+          const ySL = (ySLRaw !== null) ? ySLRaw : Math.max(10, yEntry - 45);
+          const yTP = (yTPRaw !== null) ? yTPRaw : Math.min(canvasCssHeight - 15, yEntry + 160);
+
+          let lastCandleX = null;
+          if (candles && candles.length) {
+            try {
+              lastCandleX = chart.timeScale().timeToCoordinate(candles[candles.length - 1].time);
+            } catch (e) {}
+          }
+          let startX = (lastCandleX !== null) ? Math.max(30, lastCandleX - 90) : 60;
+          if (setup.startTime && chart.timeScale()) {
+            try {
+              const sx = chart.timeScale().timeToCoordinate(setup.startTime);
+              if (sx !== null && sx > 20 && sx < canvasCssWidth - 60) startX = Math.round(sx);
+            } catch (e) {}
+          }
+          const endX = (lastCandleX !== null && lastCandleX > startX)
+            ? Math.max(startX + 95, lastCandleX + 45)
+            : Math.max(startX + 95, canvasCssWidth - 65);
+          const boxW = Math.max(90, endX - startX);
+
+          const riskTopY = Math.min(yEntry, ySL);
+          const riskHeight = Math.max(14, Math.abs(yEntry - riskTopY));
+
+          const rewTopY = yEntry;
+          const rewHeight = Math.max(25, Math.abs(yTP - yEntry));
+
+          // 1. Soft grey Risk Box (SL)
+          ctx.fillStyle = 'rgba(148, 163, 184, 0.16)';
+          ctx.fillRect(startX, riskTopY, boxW, riskHeight);
+          ctx.strokeStyle = 'rgba(248, 81, 73, 0.70)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(startX, riskTopY, boxW, riskHeight);
+
+          // 2. Extended light blue Reward Box (TP)
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.16)';
+          ctx.fillRect(startX, rewTopY, boxW, rewHeight);
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(startX, rewTopY, boxW, rewHeight);
+
+          // White Entry Line
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(startX, yEntry);
+          ctx.lineTo(endX, yEntry);
+          ctx.stroke();
+
+          // Labels
+          ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+
+          // SL Pill
+          const slTxt = `STOP LOSS $${Number(setup.sl).toFixed(2)}`;
+          const slW = ctx.measureText(slTxt).width + 8;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+          ctx.fillRect(startX + 4, riskTopY + 2, slW, 14);
+          ctx.fillStyle = '#f85149';
+          ctx.fillText(slTxt, startX + 8, riskTopY + 9);
+
+          // TP Pill (Macro Target)
+          const tpTxt = `MACRO TARGET $${Number(setup.tp).toFixed(2)} (${setup.rr || '1:5.0'} RR)`;
+          const tpW = ctx.measureText(tpTxt).width + 8;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+          ctx.fillRect(startX + 4, rewTopY + rewHeight - 16, tpW, 14);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillText(tpTxt, startX + 8, rewTopY + rewHeight - 9);
+
+          // Entry Pill
+          const entTxt = `ENTRY $${Number(setup.entry).toFixed(2)}`;
+          const entW = ctx.measureText(entTxt).width + 8;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+          ctx.fillRect(startX + 4, yEntry - 7, entW, 14);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(entTxt, startX + 8, yEntry);
+        }
+      }
+
+      ctx.restore();
+    }
+    window.drawSMC_BearishReversalOverlay = drawSMC_BearishReversalOverlay;
+
 
 
     function updateModularEngineTelemetry(candles, currentSpot) {
       if (!candles || candles.length < 5) return;
       const spot = (typeof currentSpot === 'number' && currentSpot > 0) ? currentSpot : candles[candles.length - 1].close;
+
+      // Dedicated: SMC BEARISH REVERSAL & CONTINUATION ENGINE (SMC-REV)
+      const smcRevResult = evaluateSMC_BearishReversal(candles, spot);
+      window.latestSMC_BearishReversal = smcRevResult;
+      if (smcRevResult) {
+        modularEngineState.indicators.SMC_REV = {
+          status: smcRevResult.status,
+          stateBadge: smcRevResult.stateBadge,
+          direction: smcRevResult.direction,
+          entry: (smcRevResult.entry && smcRevResult.entry.startsWith('$')) ? smcRevResult.entry : (smcRevResult.entry && smcRevResult.entry !== '--' ? '$' + smcRevResult.entry : '--'),
+          sl: (smcRevResult.sl && smcRevResult.sl.startsWith('$')) ? smcRevResult.sl : (smcRevResult.sl && smcRevResult.sl !== '--' ? '$' + smcRevResult.sl : '--'),
+          tp: (smcRevResult.tp && smcRevResult.tp.startsWith('$')) ? smcRevResult.tp : (smcRevResult.tp && smcRevResult.tp !== '--' ? '$' + smcRevResult.tp : '--'),
+          rr: smcRevResult.rr || '1 : 5.0',
+          reason: smcRevResult.reason
+        };
+      } else {
+        modularEngineState.indicators.SMC_REV = {
+          status: 'MONITORING STRUCTURE',
+          stateBadge: 'MONITORING STRUCTURE',
+          direction: 'NEUTRAL',
+          entry: '--',
+          sl: '--',
+          tp: '--',
+          rr: '1 : 5.0',
+          reason: 'Monitoring uptrend exhaustion, higher low neckline support & CHoCH breakdown.'
+        };
+      }
 
       // Dedicated: AMD FVG TRADE SETUP [LUXALGO] (EXCLUSIVE PO3 ENGINE)
       const amdResult = evaluateAMDFVGSetup(candles, spot);
@@ -14207,8 +14824,12 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         };
       }
 
-      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.amdFvg) {
-        modularEngineState.activeTab = 'AMD_FVG';
+      if (typeof indicatorSettings !== 'undefined') {
+        if (indicatorSettings.smcRev && (!indicatorSettings.amdFvg || modularEngineState.activeTab === 'SMC_REV')) {
+          modularEngineState.activeTab = 'SMC_REV';
+        } else if (indicatorSettings.amdFvg && (!indicatorSettings.smcRev || modularEngineState.activeTab === 'AMD_FVG')) {
+          modularEngineState.activeTab = 'AMD_FVG';
+        }
       }
 
       // Dedicated: SMC LIQUIDITY SWEEP & PROJECTION ENGINE (LS-EXP)
@@ -14612,22 +15233,25 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         badgeBorder = 'rgba(234, 179, 8, 0.4)';
       }
 
+      const isSmcRevIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.smcRev;
       const isAmdFvgIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.amdFvg;
-      if (isAmdFvgIsolated) {
+      if (isSmcRevIsolated) {
+        modularEngineState.activeTab = 'SMC_REV';
+      } else if (isAmdFvgIsolated) {
         modularEngineState.activeTab = 'AMD_FVG';
       }
-      const tabs = ['AMD_FVG', 'LS_EXP', 'SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
+      const tabs = ['SMC_REV', 'AMD_FVG', 'LS_EXP', 'SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
 
       container.innerHTML = `
         <div class="terminal-card clean-signal-card" style="padding: 12px; margin-top: 10px; border-radius: 12px; background: rgba(18, 20, 26, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);">
           <!-- Header -->
           <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
-            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #ffd700; display: flex; align-items: center; gap: 6px;">
-              <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ffd700; box-shadow: 0 0 8px #ffd700;"></span>
-              ${activeTab === 'AMD_FVG' ? '⚡ AMD FVG TRADE SETUP [PO3]' : (activeTab === 'LS_EXP' ? '⚡ LS-EXP: LIQUIDITY SWEEP & EXPANSION' : (activeTab === 'OB_FIBO' ? '⚡ SMC PULLBACK SNIPER (OB + 0.618 FIB)' : (activeTab === 'CHOCH_SUPPLY' ? '⚡ SMC INDUCEMENT & CHOCH SUPPLY SNIPER' : (activeTab === 'VWAP_FVG' ? 'VWAP + FVG' : activeTab))))}
+            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${activeTab === 'SMC_REV' ? '#60a5fa' : (activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700')}; display: flex; align-items: center; gap: 6px;">
+              <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: ${activeTab === 'SMC_REV' ? '#60a5fa' : (activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700')}; box-shadow: 0 0 8px ${activeTab === 'SMC_REV' ? '#60a5fa' : (activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700')};"></span>
+              ${activeTab === 'SMC_REV' ? '⚡ SMC BEARISH REVERSAL & CONTINUATION' : (activeTab === 'AMD_FVG' ? '⚡ AMD FVG TRADE SETUP [PO3]' : (activeTab === 'LS_EXP' ? '⚡ LS-EXP: LIQUIDITY SWEEP & EXPANSION' : (activeTab === 'OB_FIBO' ? '⚡ SMC PULLBACK SNIPER (OB + 0.618 FIB)' : (activeTab === 'CHOCH_SUPPLY' ? '⚡ SMC INDUCEMENT & CHOCH SUPPLY SNIPER' : (activeTab === 'VWAP_FVG' ? 'VWAP + FVG' : activeTab)))))}
             </span>
             <span style="font-size: 10px; padding: 2px 7px; border-radius: 10px; background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; font-family: monospace; font-weight: 700;">
-              ${(activeTab === 'LS_EXP' || activeTab === 'OB_FIBO' || activeTab === 'CHOCH_SUPPLY') && activeData.stateBadge ? activeData.stateBadge : activeData.direction}
+              ${(activeTab === 'SMC_REV' || activeTab === 'LS_EXP' || activeTab === 'OB_FIBO' || activeTab === 'CHOCH_SUPPLY') && activeData.stateBadge ? activeData.stateBadge : activeData.direction}
             </span>
           </div>
 
@@ -14641,7 +15265,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
               return `
                 <button type="button" onclick="switchModularTab('${tab}')"
                         style="flex: 1; min-width: 50px; font-size: 9.5px; padding: 4px 6px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease; ${activeStyle}">
-                  ${tab === 'AMD_FVG' ? 'AMD-FVG ⚡' : (tab === 'VWAP_FVG' ? 'VWAP+FVG' : (tab === 'OB_FIBO' ? 'OB+FIB 🎯' : (tab === 'CHOCH_SUPPLY' ? 'CHOCH ⚡' : tab)))}
+                  ${tab === 'SMC_REV' ? 'SMC-REV ⚡' : (tab === 'AMD_FVG' ? 'AMD-FVG ⚡' : (tab === 'VWAP_FVG' ? 'VWAP+FVG' : (tab === 'OB_FIBO' ? 'OB+FIB 🎯' : (tab === 'CHOCH_SUPPLY' ? 'CHOCH ⚡' : tab))))}
                 </button>
               `;
             }).join('')}
@@ -14665,7 +15289,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
           <!-- Status & RR -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); font-size: 10px; color: #8b949e;">
-            <span style="color: ${activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700'}; font-weight: 600;">Phase: <span style="color: #f0f6fc;">${activeData.status}</span></span>
+            <span style="color: ${activeTab === 'SMC_REV' ? '#60a5fa' : (activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700')}; font-weight: 600;">Phase: <span style="color: #f0f6fc;">${activeData.status}</span></span>
             <span style="font-family: monospace; font-weight: 700; color: #3fb950;">RR: ${activeData.rr}</span>
           </div>
           ${activeData.session ? `
@@ -14676,7 +15300,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
           <!-- Reasoning Footnote -->
           <div style="margin-top: 5px; font-size: 10.5px; color: #8b949e; display: flex; align-items: flex-start; gap: 4px; line-height: 1.35;">
-            <span style="color: #ffd700; font-weight: 700;">↳</span>
+            <span style="color: ${activeTab === 'SMC_REV' ? '#60a5fa' : (activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700')}; font-weight: 700;">↳</span>
             <span>${activeData.reason}</span>
           </div>
         </div>
@@ -16184,11 +16808,18 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       drawingCtx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
       drawMacroNewsReleaseMarker(drawingCtx);
 
+      const isSmcRevIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.smcRev;
       const isAmdFvgIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.amdFvg;
 
-      if (isAmdFvgIsolated) {
-        // EXCLUSIVE ISOLATION MODE:
-        // Chart par se baaqi purane overlays (fibonacci lines, generic OBs, extra arrows) temporary hide/suppress ho jayein.
+      if (isSmcRevIsolated) {
+        // EXCLUSIVE ISOLATION MODE: SMC BEARISH REVERSAL & CONTINUATION
+        // Chart par generic extra lines aur clutter automatically hide ho jayein.
+        // Sirf relevant high-timeframe BOS, CHoCH neckline, "REVERSAL" peak box, aur "CONTINUATION" entry box clean visual design mein display hon.
+        if (typeof drawSMC_BearishReversalOverlay === 'function') {
+          drawSMC_BearishReversalOverlay(drawingCtx, window.latestSMC_BearishReversal, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
+        }
+      } else if (isAmdFvgIsolated) {
+        // EXCLUSIVE ISOLATION MODE: AMD FVG TRADE SETUP
         if (typeof drawAMD_FVG_Overlay === 'function') {
           drawAMD_FVG_Overlay(drawingCtx, window.latestAMDFVG, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
         }
@@ -18048,8 +18679,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           activeMarkers = activeMarkers.filter(m => m.shape !== 'arrowDown' && m.text !== 'SELL' && m.position !== 'aboveBar');
         }
       }
-      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.amdFvg) {
-        // Exclusive Isolation Mode: Suppress generic signal arrows for AMD-FVG clarity
+      if (typeof indicatorSettings !== 'undefined' && (indicatorSettings.smcRev || indicatorSettings.amdFvg)) {
+        // Exclusive Isolation Mode: Suppress generic signal arrows for clean chart
         activeMarkers = [];
       }
       applyMarkersToChart(activeMarkers);
