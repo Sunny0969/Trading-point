@@ -7889,6 +7889,21 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
             </div>
 
             <!-- Indicator: SMC M5 Pullback Sniper (BOS + OB + Fibo 0.618) -->
+            <!-- Indicator: AMD FVG Trade Setup [LuxAlgo] -->
+            <div class="tv-ind-row" onclick="clickModularToggle('amdFvg', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #a78bfa;">⚡ AMD FVG Trade Setup [LuxAlgo]</b>
+                  <span style="font-size: 9px; background: rgba(167,139,250,0.18); color: #a78bfa; padding: 1px 4px; border-radius: 4px; font-weight: 700;">1:2.0 RR · PO3</span>
+                </div>
+                <small>Power of 3 (PO3): 30-Bar Accumulation, Liquidity Manipulation Sweep &amp; 14-ATR FVG Distribution</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-amdFvg" onchange="toggleModularIndicator('amdFvg')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
             <!-- Indicator: LS-EXP (Liquidity Sweep & Path Expansion) -->
             <div class="tv-ind-row" onclick="clickModularToggle('lsExp', event)">
               <div class="tv-ind-info">
@@ -8148,6 +8163,13 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         <!-- Fibonacci Retracement -->
         <button class="tv-tool-btn" id="tool-fib" title="Fibonacci Retracement (Auto Swings)" onclick="toggleFibRetracement()">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 5h20M2 10h20M2 14h20M2 19h20"/></svg>
+        </button>
+        <!-- AMD-FVG Trade Setup [LuxAlgo] Shortcut -->
+        <button class="tv-tool-btn" id="tool-amd-fvg" title="AMD FVG Trade Setup [LuxAlgo] (Exclusive PO3 Engine)" onclick="toggleModularIndicator('amdFvg')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2">
+            <rect x="3" y="10" width="5" height="9" rx="1" fill="rgba(167,139,250,0.2)"/>
+            <path d="M8 10l3-6 3 14 3-8h4"/>
+          </svg>
         </button>
         <!-- SMC Zones Toggle -->
         <button class="tv-tool-btn active" id="tool-smc" title="Smart Money Concepts (15m FVG &amp; Order Blocks)" onclick="toggleSMCZones()">
@@ -9885,6 +9907,12 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     // 5 CORE COMPRESSED MODULAR INDICATORS CONFIG
     // ==========================================
     const DEFAULT_INDICATOR_CONFIG = {
+      amdFvg: (function() {
+        try {
+          const v = localStorage.getItem('indicator_amd_fvg_active');
+          return v !== null ? (v === 'true') : false;
+        } catch (e) { return false; }
+      })(), // Dedicated: AMD FVG Trade Setup [LuxAlgo] (Exclusive PO3 Engine) - Weight: 30
       lsExp: (function() {
         try {
           const v = localStorage.getItem('indicator_ls_exp_active');
@@ -9915,6 +9943,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     };
 
     const MODULE_WEIGHTS = {
+      amdFvg: 30,
       lsExp: 30,
       smcZones: 25,
       smcInducementSupply: 25,
@@ -9942,6 +9971,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     })();
     window.indicatorSettings = indicatorSettings;
 
+    var amdFvgEnabled = !!indicatorSettings.amdFvg;
+    window.amdFvgEnabled = amdFvgEnabled;
+    window.latestAMDFVG = null;
+    window.activeAMDFVGPosition = null;
     let currentSMCZones = { fvgList: [], obList: [] };
     var currentLiquidityPools = null;
     var smcEnabled = !!indicatorSettings.smcZones;
@@ -10335,6 +10368,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       applyModularVisuals(moduleName, newVal);
 
       const tabMap = {
+        amdFvg: 'AMD_FVG',
         lsExp: 'LS_EXP',
         smcZones: 'SMC',
         smcPullbackSniper: 'OB_FIBO',
@@ -10361,6 +10395,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       redrawDrawings();
 
       const labels = {
+        amdFvg: 'AMD FVG Trade Setup [LuxAlgo]',
         smcZones: 'SMC Zones (OB & FVG)',
         smcPullbackSniper: 'SMC M5 Pullback Sniper (BOS + OB + 0.618 Fibo)',
         smcInducementSupply: 'SMC Inducement & CHoCH Supply Sniper',
@@ -10437,6 +10472,15 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     }
 
     function applyModularVisuals(moduleName, isChecked) {
+      if (moduleName === 'amdFvg') {
+        amdFvgEnabled = isChecked;
+        window.amdFvgEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_amd_fvg_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+        const railAmdBtn = document.getElementById('tool-amd-fvg');
+        if (railAmdBtn) railAmdBtn.classList.toggle('active', isChecked);
+      } else
       if (moduleName === 'lsExp') {
         lsExpEnabled = isChecked;
         window.lsExpEnabled = isChecked;
@@ -13649,10 +13693,523 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       ctx.restore();
     }
     window.drawSMC_InducementSupplyOverlay = drawSMC_InducementSupplyOverlay;
+    // =========================================================================
+    // AMD FVG TRADE SETUP [LUXALGO] ENGINE (POWER OF 3 - EXCLUSIVE PO3 ENGINE)
+    // =========================================================================
+    function evaluateAMDFVGSetup(candles, currentPrice) {
+      const ACC_LEN = 30;
+      const MAX_WINDOW = 10;
+      const ATR_LEN = 14;
+      const SL_MULT = 2.0;
+      const RR_RATIO = 2.0;
+      const MIN_GAP_ATR_MULT = 0.1;
+      const ACC_MAX_PCT = 0.0035; // 0.35% range max (Gold adaptive)
+
+      if (!candles || candles.length < (ACC_LEN + MAX_WINDOW + ATR_LEN)) return null;
+
+      const spot = (typeof currentPrice === 'number' && !isNaN(currentPrice) && currentPrice > 0)
+        ? currentPrice
+        : (candles[candles.length - 1].close || 4007.05);
+
+      // Session calculation (New York: 08:00 - 17:00 EST)
+      const now = new Date();
+      let isNYSession = false;
+      try {
+        const estStr = now.toLocaleString("en-US", { timeZone: "America/New_York", hour: 'numeric', hour12: false });
+        const estHour = parseInt(estStr, 10);
+        isNYSession = (estHour >= 8 && estHour < 17);
+      } catch (e) {
+        const utcHour = now.getUTCHours();
+        isNYSession = (utcHour >= 13 && utcHour < 22);
+      }
+      const sessionLabel = isNYSession
+        ? "New York Active (08:00 - 17:00 EST)"
+        : "New York Standby (Outside 08:00 - 17:00 EST)";
+
+      // If active frozen position exists, maintain coordinates
+      if (window.activeAMDFVGPosition && window.activeAMDFVGPosition.status === 'ACTIVE') {
+        const pos = window.activeAMDFVGPosition;
+        const isSell = (pos.direction === 'SELL' || pos.direction === 'SELL / SHORT' || pos.type === 'SHORT');
+        const entryNum = parseFloat(pos.entry);
+        const slNum = parseFloat(pos.sl);
+        const tpNum = parseFloat(pos.tp);
+
+        let isCompleted = false;
+        let completionReason = '';
+
+        if (isSell) {
+          if (spot <= tpNum) {
+            isCompleted = true;
+            completionReason = `Take Profit reached @ $${tpNum.toFixed(2)} (+1:2.0 RR Target Secured)!`;
+          } else if (spot >= slNum) {
+            isCompleted = true;
+            completionReason = `Invalidation hit @ Stop Loss $${slNum.toFixed(2)}.`;
+          }
+        } else {
+          if (spot >= tpNum) {
+            isCompleted = true;
+            completionReason = `Take Profit reached @ $${tpNum.toFixed(2)} (+1:2.0 RR Target Secured)!`;
+          } else if (spot <= slNum) {
+            isCompleted = true;
+            completionReason = `Invalidation hit @ Stop Loss $${slNum.toFixed(2)}.`;
+          }
+        }
+
+        if (isCompleted) {
+          window.activeAMDFVGPosition.status = 'COMPLETED';
+          window.activeAMDFVGPosition.completedReason = completionReason;
+        } else {
+          pos.session = sessionLabel;
+          pos.isNYSession = isNYSession;
+          return pos;
+        }
+      }
+
+      // 1. Calculate ATR(14)
+      let trSum = 0;
+      for (let i = candles.length - ATR_LEN; i < candles.length; i++) {
+        const tr = Math.max(
+          candles[i].high - candles[i].low,
+          Math.abs(candles[i].high - candles[i - 1].close),
+          Math.abs(candles[i].low - candles[i - 1].close)
+        );
+        trSum += tr;
+      }
+      const atr = trSum / ATR_LEN;
+
+      // 2. Scan recent setups from recent candles backwards up to 30 bars
+      for (let offset = 0; offset <= 25; offset++) {
+        const endIdx = candles.length - 1 - offset;
+        if (endIdx < (ACC_LEN + MAX_WINDOW + ATR_LEN)) break;
+
+        const subCandles = candles.slice(0, endIdx + 1);
+
+        for (let w = 1; w <= MAX_WINDOW; w++) {
+          const accEnd = subCandles.length - w;
+          const accStart = accEnd - ACC_LEN;
+          if (accStart < 0) continue;
+
+          const accCandles = subCandles.slice(accStart, accEnd);
+          const accHigh = Math.max(...accCandles.map(c => c.high));
+          const accLow = Math.min(...accCandles.map(c => c.low));
+          const accRangePct = (accHigh - accLow) / accLow;
+
+          if (accRangePct > ACC_MAX_PCT) continue;
+
+          // Scan manipulation in window
+          const manipWindow = subCandles.slice(accEnd);
+          let manipHigh = -Infinity;
+          let manipHighIdx = -1;
+          let manipLow = Infinity;
+          let manipLowIdx = -1;
+
+          manipWindow.forEach((bar, idx) => {
+            if (bar.high > accHigh && bar.high > manipHigh) {
+              manipHigh = bar.high;
+              manipHighIdx = accEnd + idx;
+            }
+            if (bar.low < accLow && bar.low < manipLow) {
+              manipLow = bar.low;
+              manipLowIdx = accEnd + idx;
+            }
+          });
+
+          const currentBar = subCandles[subCandles.length - 1];
+          const prev2Bar = (subCandles.length >= 3) ? subCandles[subCandles.length - 3] : null;
+
+          // Check Bearish Setup (SELL)
+          if (manipHighIdx !== -1 && prev2Bar) {
+            const hasBearishFVG = currentBar.high < prev2Bar.low;
+            const fvgGap = prev2Bar.low - currentBar.high;
+
+            if (hasBearishFVG && fvgGap >= (MIN_GAP_ATR_MULT * atr)) {
+              const entry = Number(currentBar.close).toFixed(2);
+              const sl = (manipHigh + (SL_MULT * atr)).toFixed(2);
+              const risk = parseFloat(sl) - parseFloat(entry);
+              const tp = (parseFloat(entry) - (risk * RR_RATIO)).toFixed(2);
+
+              const setupResult = {
+                exclusive: true,
+                indicatorName: "AMD FVG Trade Setup [LuxAlgo]",
+                isTriggered: true,
+                status: "DISTRIBUTION ACTIVE (1:2 RR)",
+                direction: "SELL / SHORT",
+                type: "SHORT",
+                entry: entry,
+                sl: sl,
+                tp: tp,
+                risk: risk.toFixed(2),
+                reward: (risk * RR_RATIO).toFixed(2),
+                rrRatio: "2.0",
+                rr: "1 : 2.0",
+                atr: atr.toFixed(2),
+                session: sessionLabel,
+                isNYSession: isNYSession,
+                startTime: currentBar.time,
+                triggerTime: currentBar.time,
+                accBox: {
+                  high: accHigh,
+                  low: accLow,
+                  startTime: candles[accStart].time,
+                  endTime: candles[accEnd - 1].time,
+                  rangePct: (accRangePct * 100).toFixed(2)
+                },
+                manipulation: {
+                  level: manipHigh,
+                  time: candles[manipHighIdx].time,
+                  type: "BEARISH_SWEEP"
+                },
+                fvg: {
+                  top: prev2Bar.low,
+                  bottom: currentBar.high,
+                  gap: fvgGap.toFixed(2)
+                },
+                reason: `30-bar accumulation completed. Upper liquidity swept via manipulation. 14-ATR filtered FVG confirmed. Institutional distribution underway.`
+              };
+
+              // Coordinate freeze: lock active setup
+              if (offset === 0 || (spot < parseFloat(sl) && spot > parseFloat(tp))) {
+                window.activeAMDFVGPosition = setupResult;
+              }
+              return setupResult;
+            }
+          }
+
+          // Check Bullish Setup (BUY)
+          if (manipLowIdx !== -1 && prev2Bar) {
+            const hasBullishFVG = currentBar.low > prev2Bar.high;
+            const fvgGap = currentBar.low - prev2Bar.high;
+
+            if (hasBullishFVG && fvgGap >= (MIN_GAP_ATR_MULT * atr)) {
+              const entry = Number(currentBar.close).toFixed(2);
+              const sl = (manipLow - (SL_MULT * atr)).toFixed(2);
+              const risk = parseFloat(entry) - parseFloat(sl);
+              const tp = (parseFloat(entry) + (risk * RR_RATIO)).toFixed(2);
+
+              const setupResult = {
+                exclusive: true,
+                indicatorName: "AMD FVG Trade Setup [LuxAlgo]",
+                isTriggered: true,
+                status: "DISTRIBUTION ACTIVE (1:2 RR)",
+                direction: "BUY / LONG",
+                type: "LONG",
+                entry: entry,
+                sl: sl,
+                tp: tp,
+                risk: risk.toFixed(2),
+                reward: (risk * RR_RATIO).toFixed(2),
+                rrRatio: "2.0",
+                rr: "1 : 2.0",
+                atr: atr.toFixed(2),
+                session: sessionLabel,
+                isNYSession: isNYSession,
+                startTime: currentBar.time,
+                triggerTime: currentBar.time,
+                accBox: {
+                  high: accHigh,
+                  low: accLow,
+                  startTime: candles[accStart].time,
+                  endTime: candles[accEnd - 1].time,
+                  rangePct: (accRangePct * 100).toFixed(2)
+                },
+                manipulation: {
+                  level: manipLow,
+                  time: candles[manipLowIdx].time,
+                  type: "BULLISH_SWEEP"
+                },
+                fvg: {
+                  top: currentBar.low,
+                  bottom: prev2Bar.high,
+                  gap: fvgGap.toFixed(2)
+                },
+                reason: `30-bar accumulation completed. Lower liquidity swept via manipulation. 14-ATR filtered FVG confirmed. Institutional distribution underway.`
+              };
+
+              // Coordinate freeze: lock active setup
+              if (offset === 0 || (spot > parseFloat(sl) && spot < parseFloat(tp))) {
+                window.activeAMDFVGPosition = setupResult;
+              }
+              return setupResult;
+            }
+          }
+        }
+      }
+
+      // Check current live bar Phase 1 / Phase 2
+      const accCandles = candles.slice(-(ACC_LEN + MAX_WINDOW), -MAX_WINDOW);
+      const accHigh = Math.max(...accCandles.map(c => c.high));
+      const accLow = Math.min(...accCandles.map(c => c.low));
+      const accRangePct = (accHigh - accLow) / accLow;
+
+      const recentBars = candles.slice(-MAX_WINDOW);
+      let manipHigh = -Infinity;
+      let manipLow = Infinity;
+      recentBars.forEach(b => {
+        if (b.high > accHigh && b.high > manipHigh) manipHigh = b.high;
+        if (b.low < accLow && b.low < manipLow) manipLow = b.low;
+      });
+
+      if (manipHigh !== -Infinity) {
+        return {
+          exclusive: true,
+          indicatorName: "AMD FVG Trade Setup [LuxAlgo]",
+          isTriggered: false,
+          status: "MANIPULATION DETECTED",
+          direction: "PREPARING SHORT",
+          entry: "$" + spot.toFixed(2),
+          sl: "$" + (manipHigh + (SL_MULT * atr)).toFixed(2),
+          tp: "$" + (spot - 2 * (manipHigh + 2 * atr - spot)).toFixed(2),
+          rr: "1 : 2.0",
+          atr: atr.toFixed(2),
+          session: sessionLabel,
+          isNYSession: isNYSession,
+          accBox: { high: accHigh, low: accLow, rangePct: (accRangePct * 100).toFixed(2) },
+          manipulation: { level: manipHigh, type: "BEARISH_SWEEP" },
+          reason: `Price swept above 30-bar accumulation high ($${accHigh.toFixed(2)}) to $${manipHigh.toFixed(2)}. Awaiting FVG confirmation candle close.`
+        };
+      }
+
+      if (manipLow !== Infinity) {
+        return {
+          exclusive: true,
+          indicatorName: "AMD FVG Trade Setup [LuxAlgo]",
+          isTriggered: false,
+          status: "MANIPULATION DETECTED",
+          direction: "PREPARING LONG",
+          entry: "$" + spot.toFixed(2),
+          sl: "$" + (manipLow - (SL_MULT * atr)).toFixed(2),
+          tp: "$" + (spot + 2 * (spot - (manipLow - 2 * atr))).toFixed(2),
+          rr: "1 : 2.0",
+          atr: atr.toFixed(2),
+          session: sessionLabel,
+          isNYSession: isNYSession,
+          accBox: { high: accHigh, low: accLow, rangePct: (accRangePct * 100).toFixed(2) },
+          manipulation: { level: manipLow, type: "BULLISH_SWEEP" },
+          reason: `Price swept below 30-bar accumulation low ($${accLow.toFixed(2)}) to $${manipLow.toFixed(2)}. Awaiting FVG confirmation candle close.`
+        };
+      }
+
+      // Check current 30-bar accumulation
+      const current30 = candles.slice(-ACC_LEN);
+      const c30High = Math.max(...current30.map(c => c.high));
+      const c30Low = Math.min(...current30.map(c => c.low));
+      const c30RangePct = (c30High - c30Low) / c30Low;
+
+      if (c30RangePct <= ACC_MAX_PCT) {
+        return {
+          exclusive: true,
+          indicatorName: "AMD FVG Trade Setup [LuxAlgo]",
+          isTriggered: false,
+          status: "ACCUMULATING",
+          direction: "NEUTRAL",
+          entry: "--",
+          sl: "--",
+          tp: "--",
+          rr: "1 : 2.0",
+          atr: atr.toFixed(2),
+          session: sessionLabel,
+          isNYSession: isNYSession,
+          accBox: { high: c30High, low: c30Low, rangePct: (c30RangePct * 100).toFixed(2) },
+          reason: `30-bar consolidation active ($${c30Low.toFixed(2)} - $${c30High.toFixed(2)}). Tight range ${(c30RangePct * 100).toFixed(2)}%. Awaiting institutional liquidity sweep.`
+        };
+      }
+
+      return {
+        exclusive: true,
+        indicatorName: "AMD FVG Trade Setup [LuxAlgo]",
+        isTriggered: false,
+        status: "SCANNING",
+        direction: "NEUTRAL",
+        entry: "--",
+        sl: "--",
+        tp: "--",
+        rr: "1 : 2.0",
+        atr: atr.toFixed(2),
+        session: sessionLabel,
+        isNYSession: isNYSession,
+        reason: "Scanning 30-bar consolidation (< 0.35% range) in Gold. Awaiting Accumulation -> Manipulation -> FVG sequence."
+      };
+    }
+    window.evaluateAMDFVGSetup = evaluateAMDFVGSetup;
+
+    // =========================================================================
+    // AMD FVG TRADE SETUP [LUXALGO] CANVAS OVERLAY RENDERER
+    // =========================================================================
+    function drawAMD_FVG_Overlay(ctx, amdData, candles) {
+      if (!ctx || !candleSeries || !chart || !chart.timeScale) return;
+      if (typeof indicatorSettings !== 'undefined' && !indicatorSettings.amdFvg) return;
+
+      const setup = amdData || window.latestAMDFVG;
+      if (!setup) return;
+
+      ctx.save();
+
+      // 1. Accumulation Box (Phase 1): Shaded grey bounding box labeled [ACCUMULATION]
+      if (setup.accBox && setup.accBox.high && setup.accBox.low) {
+        const topYRaw = candleSeries.priceToCoordinate(Number(setup.accBox.high));
+        const botYRaw = candleSeries.priceToCoordinate(Number(setup.accBox.low));
+
+        if (topYRaw !== null && botYRaw !== null) {
+          const topY = Math.min(topYRaw, botYRaw);
+          const height = Math.max(14, Math.abs(botYRaw - topYRaw));
+
+          let startX = 25;
+          if (setup.accBox.startTime) {
+            try {
+              const tX = chart.timeScale().timeToCoordinate(setup.accBox.startTime);
+              if (tX !== null && tX > 10 && tX < canvasCssWidth) startX = Math.round(tX);
+            } catch (e) {}
+          }
+
+          let endX = startX + 180;
+          if (setup.accBox.endTime) {
+            try {
+              const eX = chart.timeScale().timeToCoordinate(setup.accBox.endTime);
+              if (eX !== null && eX > startX) endX = Math.round(eX);
+            } catch (e) {}
+          } else if (setup.manipulation && setup.manipulation.time) {
+            try {
+              const mX = chart.timeScale().timeToCoordinate(setup.manipulation.time);
+              if (mX !== null && mX > startX) endX = Math.round(mX);
+            } catch (e) {}
+          }
+          endX = Math.min(canvasCssWidth - 65, endX);
+          const width = Math.max(60, endX - startX);
+
+          // Shaded grey accumulation bounding box
+          ctx.fillStyle = 'rgba(140, 150, 165, 0.08)';
+          ctx.fillRect(startX, topY, width, height);
+
+          ctx.strokeStyle = 'rgba(140, 150, 165, 0.45)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(startX, topY, width, height);
+          ctx.setLineDash([]);
+
+          // Accumulation Badge
+          const accLabel = `[ACCUMULATION] $${Number(setup.accBox.low).toFixed(1)} - $${Number(setup.accBox.high).toFixed(1)}`;
+          ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const bw = ctx.measureText(accLabel).width + 8;
+          const bh = 14;
+          const bx = startX + 5;
+          const by = Math.max(4, topY - bh - 2);
+
+          ctx.fillStyle = 'rgba(18, 20, 26, 0.92)';
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.strokeStyle = 'rgba(140, 150, 165, 0.50)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(bx, by, bw, bh);
+
+          ctx.fillStyle = '#8b949e';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(accLabel, bx + 4, by + bh / 2);
+        }
+      }
+
+      // 2. Manipulation Arrow / Badge (Phase 2): Subtle badge at the sweep wick labeled [MANIPULATION]
+      if (setup.manipulation && setup.manipulation.level && chart.timeScale) {
+        let manipX = null;
+        if (setup.manipulation.time) {
+          try {
+            manipX = chart.timeScale().timeToCoordinate(setup.manipulation.time);
+          } catch (e) {}
+        }
+        if (manipX === null && candles && candles.length) {
+          try {
+            manipX = chart.timeScale().timeToCoordinate(candles[candles.length - 3].time);
+          } catch (e) {}
+        }
+        const manipY = candleSeries.priceToCoordinate(Number(setup.manipulation.level));
+
+        if (manipX !== null && manipY !== null && manipX >= 10 && manipX <= canvasCssWidth - 40) {
+          const isBearishSweep = (setup.manipulation.type === 'BEARISH_SWEEP');
+          const sweepColor = isBearishSweep ? '#f85149' : '#3fb950';
+          const glowColor = isBearishSweep ? 'rgba(248, 81, 73, 0.75)' : 'rgba(63, 185, 80, 0.75)';
+
+          // Manipulation Sweep Node
+          ctx.shadowColor = glowColor;
+          ctx.shadowBlur = 8;
+          ctx.fillStyle = sweepColor;
+          ctx.beginPath();
+          ctx.arc(manipX, manipY, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Manipulation Badge
+          const manipTag = `[MANIPULATION SWEEP $${Number(setup.manipulation.level).toFixed(1)}]`;
+          ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const tw = ctx.measureText(manipTag).width + 8;
+          const th = 15;
+          const tx = Math.max(10, Math.min(canvasCssWidth - tw - 65, manipX - tw / 2));
+          const ty = isBearishSweep ? Math.max(6, manipY - th - 5) : Math.min(canvasCssHeight - th - 6, manipY + 6);
+
+          ctx.fillStyle = 'rgba(18, 20, 26, 0.95)';
+          ctx.fillRect(tx, ty, tw, th);
+          ctx.strokeStyle = sweepColor;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(tx, ty, tw, th);
+
+          ctx.fillStyle = sweepColor;
+          ctx.textBaseline = 'middle';
+          ctx.fillText(manipTag, tx + 4, ty + th / 2);
+        }
+      }
+
+      // 3. Execution Tool (Phase 4): Red Risk Box (SL) and Blue/Green Reward Box (TP) projecting 1:2 RR
+      if (setup.isTriggered && setup.entry && setup.sl && setup.tp) {
+        drawRiskRewardOverlay(ctx, {
+          type: setup.type || (setup.direction.includes('SELL') ? 'SHORT' : 'LONG'),
+          entry: Number(setup.entry),
+          sl: Number(setup.sl),
+          tp: Number(setup.tp),
+          risk: Number(setup.risk || Math.abs(Number(setup.entry) - Number(setup.sl))),
+          reward: Number(setup.reward || Math.abs(Number(setup.tp) - Number(setup.entry))),
+          rrRatio: setup.rrRatio || '2.0',
+          startTime: setup.startTime
+        });
+      }
+
+      ctx.restore();
+    }
+    window.drawAMD_FVG_Overlay = drawAMD_FVG_Overlay;
+
 
     function updateModularEngineTelemetry(candles, currentSpot) {
       if (!candles || candles.length < 5) return;
       const spot = (typeof currentSpot === 'number' && currentSpot > 0) ? currentSpot : candles[candles.length - 1].close;
+
+      // Dedicated: AMD FVG TRADE SETUP [LUXALGO] (EXCLUSIVE PO3 ENGINE)
+      const amdResult = evaluateAMDFVGSetup(candles, spot);
+      window.latestAMDFVG = amdResult;
+      if (amdResult) {
+        modularEngineState.indicators.AMD_FVG = {
+          status: amdResult.status,
+          stateBadge: amdResult.status,
+          direction: amdResult.direction,
+          entry: (amdResult.entry && amdResult.entry.startsWith('$')) ? amdResult.entry : (amdResult.entry && amdResult.entry !== '--' ? '$' + amdResult.entry : '--'),
+          sl: (amdResult.sl && amdResult.sl.startsWith('$')) ? amdResult.sl : (amdResult.sl && amdResult.sl !== '--' ? '$' + amdResult.sl : '--'),
+          tp: (amdResult.tp && amdResult.tp.startsWith('$')) ? amdResult.tp : (amdResult.tp && amdResult.tp !== '--' ? '$' + amdResult.tp : '--'),
+          rr: amdResult.rr || '1 : 2.0',
+          session: amdResult.session,
+          reason: amdResult.reason
+        };
+      } else {
+        modularEngineState.indicators.AMD_FVG = {
+          status: 'SCANNING',
+          stateBadge: 'SCANNING',
+          direction: 'NEUTRAL',
+          entry: '--',
+          sl: '--',
+          tp: '--',
+          rr: '1 : 2.0',
+          session: 'New York (08:00 - 17:00 EST)',
+          reason: 'Scanning 30-bar tight consolidation (< 0.35% range) in Gold. Awaiting Accumulation -> Manipulation -> FVG sequence.'
+        };
+      }
+
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.amdFvg) {
+        modularEngineState.activeTab = 'AMD_FVG';
+      }
 
       // Dedicated: SMC LIQUIDITY SWEEP & PROJECTION ENGINE (LS-EXP)
       const lsExpResult = evaluateLS_EXP_Setup(candles);
@@ -14055,7 +14612,11 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         badgeBorder = 'rgba(234, 179, 8, 0.4)';
       }
 
-      const tabs = ['LS_EXP', 'SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
+      const isAmdFvgIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.amdFvg;
+      if (isAmdFvgIsolated) {
+        modularEngineState.activeTab = 'AMD_FVG';
+      }
+      const tabs = ['AMD_FVG', 'LS_EXP', 'SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
 
       container.innerHTML = `
         <div class="terminal-card clean-signal-card" style="padding: 12px; margin-top: 10px; border-radius: 12px; background: rgba(18, 20, 26, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);">
@@ -14063,7 +14624,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
             <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #ffd700; display: flex; align-items: center; gap: 6px;">
               <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ffd700; box-shadow: 0 0 8px #ffd700;"></span>
-              ${activeTab === 'LS_EXP' ? '⚡ LS-EXP: LIQUIDITY SWEEP & EXPANSION' : (activeTab === 'OB_FIBO' ? '⚡ SMC PULLBACK SNIPER (OB + 0.618 FIB)' : (activeTab === 'CHOCH_SUPPLY' ? '⚡ SMC INDUCEMENT & CHOCH SUPPLY SNIPER' : (activeTab === 'VWAP_FVG' ? 'VWAP + FVG' : activeTab)))} Indicator Engine
+              ${activeTab === 'AMD_FVG' ? '⚡ AMD FVG TRADE SETUP [PO3]' : (activeTab === 'LS_EXP' ? '⚡ LS-EXP: LIQUIDITY SWEEP & EXPANSION' : (activeTab === 'OB_FIBO' ? '⚡ SMC PULLBACK SNIPER (OB + 0.618 FIB)' : (activeTab === 'CHOCH_SUPPLY' ? '⚡ SMC INDUCEMENT & CHOCH SUPPLY SNIPER' : (activeTab === 'VWAP_FVG' ? 'VWAP + FVG' : activeTab))))}
             </span>
             <span style="font-size: 10px; padding: 2px 7px; border-radius: 10px; background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; font-family: monospace; font-weight: 700;">
               ${(activeTab === 'LS_EXP' || activeTab === 'OB_FIBO' || activeTab === 'CHOCH_SUPPLY') && activeData.stateBadge ? activeData.stateBadge : activeData.direction}
@@ -14080,7 +14641,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
               return `
                 <button type="button" onclick="switchModularTab('${tab}')"
                         style="flex: 1; min-width: 50px; font-size: 9.5px; padding: 4px 6px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease; ${activeStyle}">
-                  ${tab === 'VWAP_FVG' ? 'VWAP+FVG' : (tab === 'OB_FIBO' ? 'OB+FIB 🎯' : (tab === 'CHOCH_SUPPLY' ? 'CHOCH ⚡' : tab))}
+                  ${tab === 'AMD_FVG' ? 'AMD-FVG ⚡' : (tab === 'VWAP_FVG' ? 'VWAP+FVG' : (tab === 'OB_FIBO' ? 'OB+FIB 🎯' : (tab === 'CHOCH_SUPPLY' ? 'CHOCH ⚡' : tab)))}
                 </button>
               `;
             }).join('')}
@@ -14104,9 +14665,14 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
           <!-- Status & RR -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.06); font-size: 10px; color: #8b949e;">
-            <span style="color: #ffd700; font-weight: 600;">Status: <span style="color: #f0f6fc;">${activeData.status}</span></span>
+            <span style="color: ${activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700'}; font-weight: 600;">Phase: <span style="color: #f0f6fc;">${activeData.status}</span></span>
             <span style="font-family: monospace; font-weight: 700; color: #3fb950;">RR: ${activeData.rr}</span>
           </div>
+          ${activeData.session ? `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3px; font-size: 9.5px; color: #8b949e;">
+            <span style="color: #58a6ff; font-weight: 600;">Session:</span>
+            <span style="color: #f0f6fc; font-weight: 600; font-family: monospace;">${activeData.session}</span>
+          </div>` : ''}
 
           <!-- Reasoning Footnote -->
           <div style="margin-top: 5px; font-size: 10.5px; color: #8b949e; display: flex; align-items: flex-start; gap: 4px; line-height: 1.35;">
@@ -15618,6 +16184,15 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       drawingCtx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
       drawMacroNewsReleaseMarker(drawingCtx);
 
+      const isAmdFvgIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.amdFvg;
+
+      if (isAmdFvgIsolated) {
+        // EXCLUSIVE ISOLATION MODE:
+        // Chart par se baaqi purane overlays (fibonacci lines, generic OBs, extra arrows) temporary hide/suppress ho jayein.
+        if (typeof drawAMD_FVG_Overlay === 'function') {
+          drawAMD_FVG_Overlay(drawingCtx, window.latestAMDFVG, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
+        }
+      } else {
       // 1. Smart Money Concept (SMC) Key Supply & Demand Zones (FVG & Order Blocks)
       if (currentSMCZones && smcEnabled) {
         drawSMCZonesOnCanvas(currentSMCZones);
@@ -15851,6 +16426,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           }
         } catch (e) {}
       }
+      } // End of !isAmdFvgIsolated normal overlays block
 
       // 3. Draw Completed Trend Lines
       if (typeof trendlines !== "undefined" && Array.isArray(trendlines)) {
@@ -17471,6 +18047,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         } else {
           activeMarkers = activeMarkers.filter(m => m.shape !== 'arrowDown' && m.text !== 'SELL' && m.position !== 'aboveBar');
         }
+      }
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.amdFvg) {
+        // Exclusive Isolation Mode: Suppress generic signal arrows for AMD-FVG clarity
+        activeMarkers = [];
       }
       applyMarkersToChart(activeMarkers);
 
