@@ -207,15 +207,20 @@
 /* Mobile view adaptations: clean non-intrusive floating pill */
 @media (max-width: 768px) {
   .quant-agent-dock {
-    top: 50px;
-    right: 8px;
+    top: auto;
+    bottom: 20px;
+    right: 12px;
     width: auto;
     max-width: 220px;
-    border-radius: 6px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 215, 0, 0.2);
+    z-index: 9995;
   }
   .quant-agent-dock:not(.collapsed) {
-    width: calc(100vw - 16px);
-    max-width: 280px;
+    top: auto;
+    bottom: 20px;
+    right: 12px;
+    width: calc(100vw - 24px);
+    max-width: 300px;
   }
 }

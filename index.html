@@ -4718,6 +4718,8 @@
         left: 0 !important;
         right: 0 !important;
         height: 52px !important;
+        max-height: none !important;
+        overflow: visible !important;
         background: rgba(13, 17, 23, 0.98) !important;
         backdrop-filter: blur(12px) !important;
         -webkit-backdrop-filter: blur(12px) !important;
@@ -5012,10 +5014,9 @@
         margin-left: 6px !important;
       }
 
-      /* Hide Desktop Clutter in Mobile Subheader */
+      /* Hide Secondary Desktop Items in Mobile Subheader */
       #tvTimeframeContainer,
       #tvCandleContainer,
-      #tvIndicatorsContainer,
       #tvLiveHeaderPriceContainer,
       .tv-live-header-price,
       .terminal-sub-header > .terminal-nav-left > span[style*="color: #30363d;"],
@@ -5023,6 +5024,77 @@
       #btn-fit,
       #soundToggleBtn {
         display: none !important;
+      }
+
+      /* Mobile Indicators fx Button & Interactive Modal */
+      #tvIndicatorsContainer {
+        display: inline-flex !important;
+        align-items: center !important;
+        flex-shrink: 0 !important;
+        margin-left: 6px !important;
+        position: relative !important;
+        z-index: 1000 !important;
+      }
+      #btn-indicators-dropdown {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 5px !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        padding: 0 11px !important;
+        background: #161b22 !important;
+        border: 1px solid rgba(255, 215, 0, 0.45) !important;
+        border-radius: 8px !important;
+        color: #f0f6fc !important;
+        font-size: 11.5px !important;
+        font-weight: 700 !important;
+        cursor: pointer !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+        touch-action: manipulation !important;
+      }
+      #btn-indicators-dropdown svg {
+        color: #ffd700 !important;
+      }
+      #activeIndCountBadge {
+        display: inline-block !important;
+        font-size: 9.5px !important;
+        background: rgba(255, 215, 0, 0.18) !important;
+        color: #ffd700 !important;
+        border: 1px solid rgba(255, 215, 0, 0.4) !important;
+        padding: 1px 5px !important;
+        border-radius: 8px !important;
+        margin-left: 3px !important;
+      }
+
+      /* Responsive Mobile Indicators Modal Popover */
+      #tvIndicatorsMenu.show {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: 92vw !important;
+        max-width: 400px !important;
+        max-height: 82vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        background: #0d1117 !important;
+        border: 1px solid rgba(255, 215, 0, 0.5) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.98), 0 0 0 100vmax rgba(0, 0, 0, 0.75) !important;
+        z-index: 100050 !important;
+        padding: 14px 12px !important;
+        box-sizing: border-box !important;
+      }
+      .tv-indicators-dropdown .tv-ind-row {
+        padding: 10px 10px !important;
+        min-height: 44px !important;
+        touch-action: manipulation !important;
+      }
+      .tv-indicators-dropdown .toggle-switch {
+        min-width: 44px !important;
+        min-height: 24px !important;
       }
 
       /* Horizontally Scrollable Timeframe Pills */
@@ -7885,7 +7957,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           <div id="tvIndicatorsMenu" class="tv-dropdown-menu tv-indicators-dropdown" style="min-width: 325px;" onclick="event.stopPropagation()">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #21262d; padding-bottom: 6px;">
               <span class="tv-dd-group-title" style="margin: 0; font-size: 10px; letter-spacing: 0.5px;">INSTITUTIONAL SMC &amp; QUANT SUITE</span>
-              <span id="totalActiveWeightBadge" style="font-size: 10px; color: #3fb950; font-weight: 700;">85% Weight Active</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="totalActiveWeightBadge" style="font-size: 10px; color: #3fb950; font-weight: 700;">85% Weight Active</span>
+                <button type="button" class="tv-ind-modal-close" onclick="closeAllDropdowns()" aria-label="Close Indicators Menu" style="background: rgba(255,255,255,0.08); border: 1px solid #30363d; border-radius: 6px; color: #f0f6fc; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; cursor: pointer; padding: 0;">✕</button>
+              </div>
             </div>
 
             <!-- Indicator: SMC M5 Pullback Sniper (BOS + OB + Fibo 0.618) -->
