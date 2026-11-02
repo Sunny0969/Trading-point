@@ -20587,7 +20587,11 @@ window.addEventListener('resize', () => {
       window.renderDemoPositionsList = renderDemoPositionsList;
       window.saveDemoState = saveDemoState;
       window.renderDemoWalletUI = renderDemoWalletUI;
-      window.syncUserDataFromSupabase = syncUserDataFromSupabase;
+      window.syncUserDataFromSupabase = function(user) {
+        if (typeof onUserAuthenticated === 'function') {
+          return onUserAuthenticated(user || (typeof currentAuthUser !== 'undefined' ? currentAuthUser : null), 'MANUAL_SYNC');
+        }
+      };
 
       // Automated startup self-test
       runDemoTradingSelfTest();
