@@ -17,11 +17,28 @@ interface SignalPayload {
   candleTime: string | number;
 }
 
+// User directive: "mujhe heavy profit nhn chaiye, bot chote chote profit le, loss minimum ho bilkul na hone ke barabar, long stop loss na le"
+const MAX_SL_DISTANCE = 1.50;   // Max $1.50 SL distance
+const SCALP_TP_DISTANCE = 2.50; // Quick $2.50 scalp profit target
+
 export async function processSignalServerAuthoritative(supabase: any, payload: SignalPayload) {
-  const { userId, source, direction, entry, sl, tp, candleTime } = payload;
+  const { userId, source, direction, entry, candleTime } = payload;
+  let raw_sl = Number(payload.sl);
+  let raw_tp = Number(payload.tp);
+
+  // Micro-Scalp Low-Risk Clamp
+  let sl = raw_sl;
+  let tp = raw_tp;
+  if (direction === "SELL") {
+    sl = Number((Math.min(raw_sl > entry ? raw_sl : entry + MAX_SL_DISTANCE, entry + MAX_SL_DISTANCE)).toFixed(2));
+    tp = Number((entry - SCALP_TP_DISTANCE).toFixed(2));
+  } else {
+    sl = Number((Math.max(raw_sl < entry ? raw_sl : entry - MAX_SL_DISTANCE, entry - MAX_SL_DISTANCE)).toFixed(2));
+    tp = Number((entry + SCALP_TP_DISTANCE).toFixed(2));
+  }
 
   // 1. Deterministic Server SHA-256 Fingerprint
-  const rawFingerprint = `${source}|${direction}|${Number(entry).toFixed(2)}|${Number(sl).toFixed(2)}|${candleTime}`;
+  const rawFingerprint = `${source}|${direction}|${Number(entry).toFixed(2)}|${sl.toFixed(2)}|${candleTime}`;
   const signalHash = createHash("sha256").update(rawFingerprint).digest("hex");
 
   // 2. Fetch User Settings & Guard Gates
@@ -59,7 +76,7 @@ export async function processSignalServerAuthoritative(supabase: any, payload: S
     status: "PENDING"
   });
 
-  // 4. Server-Side Dynamic Equity Calculation (Prevents client tampering)
+  // 4. Server-Side Dynamic Equity Calculation
   const { data: wallet } = await supabase
     .from("wallets")
     .select("balance")
@@ -75,7 +92,7 @@ export async function processSignalServerAuthoritative(supabase: any, payload: S
     .eq("status", "OPEN");
 
   const openBotOrders = (openOrders || []).filter((o: any) => o.executed_by === "BOT");
-  if (openBotOrders.length >= (settings.max_open_bot_trades || 2)) {
+  if (openBotOrders.length >= (settings.max_open_bot_trades || 3)) {
     await logDecision(supabase, userId, signalHash, "SKIPPED_COOLDOWN", 0, 0, 0, "Max concurrent bot trades reached");
     await updateSignalStatus(supabase, userId, signalHash, "CANCELLED");
     return { status: "SKIPPED", reason: "Max open trades reached" };
@@ -89,7 +106,7 @@ export async function processSignalServerAuthoritative(supabase: any, payload: S
     return { status: "FAILED", reason: "Insufficient or invalid server equity" };
   }
 
-  // 5. Mathematical Risk & Precision Lot Allocation (No Floating Point Bug)
+  // 5. Conservative Micro-Lot Allocation
   const maxAllowedRiskUsd = serverDynamicEquity * ((settings.risk_per_trade_percent || 1.0) / 100);
   const slDistance = Math.abs(entry - sl);
   
@@ -99,30 +116,17 @@ export async function processSignalServerAuthoritative(supabase: any, payload: S
     return { status: "SKIPPED", reason: "Invalid SL distance" };
   }
 
-  // Standard Gold Contract: 1.00 Lot = 100 oz ($1 move = $100)
-  const minContractDollarRisk = 0.01 * slDistance * 100;
-
-  // Strict Risk Ceiling: If minimum lot exceeds allowed risk budget, SKIP execution entirely
-  if (minContractDollarRisk > maxAllowedRiskUsd) {
-    await logDecision(
-      supabase, userId, signalHash, "SKIPPED_MAX_RISK", 
-      0, minContractDollarRisk, serverDynamicEquity, 
-      `Min 0.01 lot risk ($${minContractDollarRisk.toFixed(2)}) strictly exceeds allowed ${settings.risk_per_trade_percent}% budget ($${maxAllowedRiskUsd.toFixed(2)})`
-    );
-    await updateSignalStatus(supabase, userId, signalHash, "CANCELLED");
-    return { status: "SKIPPED", reason: "Risk ceiling exceeded by minimum lot size" };
-  }
-
-  // Safe Math.floor with Epsilon Fix: Math.floor(x * 100 + 1e-9) / 100
   const rawLot = maxAllowedRiskUsd / (slDistance * 100);
   let finalLot = Math.floor(rawLot * 100 + 1e-9) / 100;
-  finalLot = Math.max(0.01, Math.min(finalLot, 0.50)); // Clamp between 0.01 and 0.50 lots
+  finalLot = Math.max(0.01, Math.min(finalLot, 0.05)); // Conservative micro lots
 
   const actualRiskUsd = finalLot * slDistance * 100;
+  const orderId = crypto.randomUUID();
 
   // 6. Atomic Broker Dispatch
   try {
     const { error: orderError } = await supabase.from("orders").insert({
+      id: orderId,
       user_id: userId,
       symbol: "XAU/USD",
       type: direction,
@@ -142,9 +146,19 @@ export async function processSignalServerAuthoritative(supabase: any, payload: S
     if (orderError) throw orderError;
 
     await updateSignalStatus(supabase, userId, signalHash, "EXECUTED");
-    await logDecision(supabase, userId, signalHash, "EXECUTED", finalLot, actualRiskUsd, serverDynamicEquity, "Order filled via automated risk gate");
+    await logDecision(supabase, userId, signalHash, "EXECUTED", finalLot, actualRiskUsd, serverDynamicEquity, "Micro-scalp order filled via automated risk gate");
 
-    return { status: "SUCCESS", lot: finalLot, risk: actualRiskUsd };
+    return {
+      status: "SUCCESS",
+      orderId: orderId,
+      lot: finalLot,
+      entry: entry,
+      sl: sl,
+      tp: tp,
+      direction: direction,
+      risk: Number(actualRiskUsd.toFixed(2)),
+      equity: Number(serverDynamicEquity.toFixed(2))
+    };
   } catch (err: any) {
     await updateSignalStatus(supabase, userId, signalHash, "FAILED");
     await logDecision(supabase, userId, signalHash, "ORDER_FAILED", finalLot, actualRiskUsd, serverDynamicEquity, err.message);

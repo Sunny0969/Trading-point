@@ -7,6 +7,7 @@
  * - Server-Authoritative Execution: Client never calculates lots, risk budgets, or dispatches broker orders directly.
  * - Feature Flag Enforced.
  * - Clean, non-intrusive UI (defaults to compact pill to avoid screen clutter).
+ * - Instant Open Positions & Wallet UI synchronization.
  */
 
 (function() {
@@ -52,8 +53,12 @@
         <strong id="quantStatusLabel" style="color:#848E9C;">OFFLINE</strong>
       </div>
       <div class="quant-metric-row">
-        <span>Risk Budget:</span>
-        <strong id="quantRiskCeilingLabel">1.00% / Trade</strong>
+        <span>Strategy:</span>
+        <strong id="quantRiskCeilingLabel" style="color:#ffd700;">Micro-Scalp (Quick TP)</strong>
+      </div>
+      <div class="quant-metric-row">
+        <span>Risk Guard:</span>
+        <strong style="color:#3fb950;">Tight SL ($1.50 Max)</strong>
       </div>
       <div class="quant-metric-row">
         <span>Authority:</span>
@@ -67,7 +72,7 @@
         🛑 EMERGENCY KILL SWITCH
       </button>
       <div class="quant-disclaimer">
-        Zero-Trust Institutional Quant Engine. Lot allocation calculated strictly server-side.
+        Low-Risk Micro Scalp Engine. Loss minimized with $1.50 tight SL and $2.50 quick profit target.
       </div>
     </div>
   `;
@@ -77,7 +82,6 @@
   const toggle = document.getElementById('quantMasterToggle');
   const led = document.getElementById('quantLed');
   const statusLabel = document.getElementById('quantStatusLabel');
-  const riskCeilingLabel = document.getElementById('quantRiskCeilingLabel');
   const lastTelemetry = document.getElementById('quantLastTelemetry');
   const killBtn = document.getElementById('quantEmergencyKill');
 
@@ -132,15 +136,12 @@
             led.className = 'quant-led-dot quant-led-on';
             statusLabel.innerText = 'MONITORING ENGINE';
             statusLabel.style.color = '#26a69a';
+            lastTelemetry.innerText = 'SCANNING SCALPS';
           } else {
             toggle.checked = false;
             led.className = 'quant-led-dot quant-led-off';
             statusLabel.innerText = 'OFFLINE';
             statusLabel.style.color = '#848E9C';
-          }
-
-          if (settings.risk_per_trade_percent) {
-            riskCeilingLabel.innerText = `${parseFloat(settings.risk_per_trade_percent).toFixed(2)}% / Trade`;
           }
         }
       } catch (err) {
@@ -155,7 +156,7 @@
     led.className = isActive ? 'quant-led-dot quant-led-on' : 'quant-led-dot quant-led-off';
     statusLabel.innerText = isActive ? 'MONITORING ENGINE' : 'OFFLINE';
     statusLabel.style.color = isActive ? '#26a69a' : '#848E9C';
-    lastTelemetry.innerText = isActive ? 'SCANNING TICKS' : 'STANDBY';
+    lastTelemetry.innerText = isActive ? 'SCANNING SCALPS' : 'STANDBY';
 
     const userId = await getAuthenticatedUserId();
     if (userId && window.supabase) {
@@ -191,11 +192,53 @@
     }
   });
 
+  // Helper to inject bot order into open positions UI
+  function injectBotPositionIntoUI(result, payload) {
+    try {
+      const orderId = result.orderId || ('BOT-' + Date.now().toString(36));
+      const entryPrice = parseFloat(result.entry || payload.entry);
+      const lotSize = parseFloat(result.lot);
+      const slPrice = parseFloat(result.sl);
+      const tpPrice = parseFloat(result.tp);
+      const reqMargin = parseFloat(((entryPrice * lotSize * 100) / 100).toFixed(2));
+
+      // 1. If demoState exists in window scope
+      if (typeof window.demoState !== 'undefined' && Array.isArray(window.demoState.positions)) {
+        const exists = window.demoState.positions.some(p => p.id === orderId || p.dbId === orderId || (p.entryPrice === entryPrice && p.type === payload.direction && p.lots === lotSize));
+        if (!exists) {
+          const newPos = {
+            id: orderId,
+            dbId: orderId,
+            type: payload.direction,
+            lots: lotSize,
+            entryPrice: entryPrice,
+            margin: reqMargin,
+            sl: slPrice,
+            tp: tpPrice,
+            executedBy: 'BOT',
+            isBot: true,
+            openTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+          };
+          window.demoState.positions.unshift(newPos);
+          if (typeof window.saveDemoState === 'function') window.saveDemoState();
+          if (typeof window.renderDemoPositionsList === 'function') window.renderDemoPositionsList();
+          if (typeof window.renderDemoWalletUI === 'function') window.renderDemoWalletUI(entryPrice);
+        }
+      }
+
+      // 2. Also trigger cloud sync if authenticated
+      if (typeof window.syncUserDataFromSupabase === 'function' && window.currentAuthUser) {
+        window.syncUserDataFromSupabase(window.currentAuthUser);
+      }
+    } catch (uiErr) {
+      console.warn('[QuantAgent] Error injecting position into UI:', uiErr);
+    }
+  }
+
   // Server-Authoritative Dispatch Function
   // Client only transmits signal coordinates, NEVER calculates lot size or risk
   window.dispatchQuantSignalToServer = async function(signalData) {
     if (!toggle.checked) {
-      console.log('[QuantAgent] Bot is inactive, skipping server dispatch.');
       return { status: 'ABORTED', reason: 'Bot inactive' };
     }
 
@@ -216,7 +259,7 @@
       candleTime: signalData.candleTime || Math.floor(Date.now() / 1000)
     };
 
-    lastTelemetry.innerText = 'DISPATCHING TO SERVER...';
+    lastTelemetry.innerText = 'DISPATCHING SCALP...';
 
     try {
       const response = await fetch('/api/quant-agent', {
@@ -231,10 +274,14 @@
       console.log('[QuantAgent] Server execution response:', result);
 
       if (result.status === 'SUCCESS') {
-        lastTelemetry.innerText = `FILLED: ${result.lot}L (Risk: $${result.risk})`;
+        lastTelemetry.innerText = `FILLED: ${result.lot}L (TP: $${result.tp} | SL: $${result.sl})`;
         lastTelemetry.style.color = '#3fb950';
-        if (typeof window.fetchOpenOrders === 'function') {
-          window.fetchOpenOrders();
+
+        // Immediately update OPEN POSITIONS container
+        injectBotPositionIntoUI(result, payload);
+
+        if (typeof window.showSignalToast === 'function') {
+          window.showSignalToast(`🤖 Quant Scalp Executed: ${payload.direction} ${result.lot}L @ $${result.entry.toFixed(2)} (TP: $${result.tp})`);
         }
       } else if (result.status === 'SKIPPED') {
         lastTelemetry.innerText = `SKIPPED: ${result.reason || 'Guard limit'}`;
