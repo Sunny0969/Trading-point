@@ -464,6 +464,13 @@ class handler(BaseHTTPRequestHandler):
             if path.endswith("/api/sugra/analyze") or path == "/api/sugra/analyze":
                 topic = payload.get("topic")
                 return self._send_json(get_sugra_sentiment(topic))
+            elif path.endswith("/api/quant-agent") or path == "/api/quant-agent" or "quant-agent" in path:
+                try:
+                    from api.quant_engine import process_signal_server_authoritative
+                except ImportError:
+                    from quant_engine import process_signal_server_authoritative
+                result = process_signal_server_authoritative(payload)
+                return self._send_json(result)
             else:
                 return self._send_json({"error": "Endpoint not found"}, 404)
         except Exception as e:
@@ -521,6 +528,21 @@ def app(environ, start_response):
             else:
                 topic = query.get("topic", [None])[0]
             data = get_sugra_sentiment(topic)
+        elif "quant-agent" in target:
+            try:
+                from api.quant_engine import process_signal_server_authoritative
+            except ImportError:
+                from quant_engine import process_signal_server_authoritative
+            if method == "POST":
+                try:
+                    content_length = int(environ.get("CONTENT_LENGTH", 0) or 0)
+                    body = environ["wsgi.input"].read(content_length).decode("utf-8") if content_length > 0 else "{}"
+                    payload = json.loads(body)
+                except Exception:
+                    payload = {}
+            else:
+                payload = query
+            data = process_signal_server_authoritative(payload)
         else:
             data = {
                 "status": "online",

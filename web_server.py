@@ -696,6 +696,26 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(data).encode("utf-8"))
             return
 
+        if parsed.path == "/api/quant-agent" or parsed.path.endswith("quant-agent"):
+            content_length = int(self.headers.get("Content-Length", 0))
+            post_body = self.rfile.read(content_length) if content_length > 0 else b"{}"
+            try:
+                payload = json.loads(post_body.decode("utf-8"))
+            except Exception:
+                payload = {}
+            try:
+                from api.quant_engine import process_signal_server_authoritative
+            except ImportError:
+                from quant_engine import process_signal_server_authoritative
+            data = process_signal_server_authoritative(payload)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+            self.end_headers()
+            self.wfile.write(json.dumps(data).encode("utf-8"))
+            return
+
         self.send_response(404)
         self.end_headers()
 

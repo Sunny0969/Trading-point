@@ -1,0 +1,221 @@
+/* ========================================================
+   TradingPoint Autonomous Quant Execution Engine Dock CSS
+   Decoupled, Pure CSS Plugin Architecture (Zero-Mess & Sleek)
+   ======================================================== */
+
+.quant-agent-dock {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  z-index: 9990;
+  background: rgba(17, 21, 28, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  width: 260px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 215, 0, 0.08);
+  color: #f0f6fc;
+  transition: width 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+  user-select: none;
+}
+
+.quant-agent-dock.collapsed {
+  width: auto;
+  min-width: 190px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.quant-dock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: #161b22;
+  border-bottom: 1px solid #21262d;
+  cursor: pointer;
+  gap: 8px;
+}
+
+.quant-agent-dock.collapsed .quant-dock-header {
+  border-bottom: none;
+}
+
+.quant-dock-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quant-led-dot {
+  height: 7px;
+  width: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.quant-led-off {
+  background: #6e7681;
+  box-shadow: none;
+}
+
+.quant-led-on {
+  background: #26a69a;
+  box-shadow: 0 0 6px #26a69a, 0 0 12px rgba(38, 166, 154, 0.5);
+}
+
+.quant-led-killed {
+  background: #ef5350;
+  box-shadow: 0 0 6px #ef5350, 0 0 12px rgba(239, 83, 80, 0.5);
+}
+
+.quant-dock-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: #f0f6fc;
+  white-space: nowrap;
+}
+
+.quant-toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quant-switch {
+  position: relative;
+  display: inline-block;
+  width: 28px;
+  height: 16px;
+  margin: 0;
+}
+
+.quant-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.quant-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #30363d;
+  transition: .2s;
+  border-radius: 16px;
+  border: 1px solid #484f58;
+}
+
+.quant-slider:before {
+  position: absolute;
+  content: "";
+  height: 10px;
+  width: 10px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #c9d1d9;
+  transition: .2s;
+  border-radius: 50%;
+}
+
+.quant-switch input:checked + .quant-slider {
+  background-color: #26a69a;
+  border-color: #26a69a;
+}
+
+.quant-switch input:checked + .quant-slider:before {
+  transform: translateX(12px);
+  background-color: #ffffff;
+}
+
+.quant-dock-body {
+  padding: 8px 10px;
+  font-size: 10.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: #0d1117;
+}
+
+.quant-agent-dock.collapsed .quant-dock-body {
+  display: none !important;
+}
+
+.quant-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #8b949e;
+  font-size: 10.5px;
+}
+
+.quant-metric-row strong {
+  color: #f0f6fc;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, monospace;
+}
+
+.kill-switch-btn {
+  width: 100%;
+  background: rgba(239, 83, 80, 0.12);
+  border: 1px solid rgba(239, 83, 80, 0.45);
+  color: #ef5350;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.kill-switch-btn:hover {
+  background: rgba(239, 83, 80, 0.22);
+  border-color: #ef5350;
+}
+
+.quant-disclaimer {
+  font-size: 9px;
+  color: #6e7681;
+  margin-top: 2px;
+  border-top: 1px solid #21262d;
+  padding-top: 4px;
+  line-height: 1.3;
+}
+
+.quant-dock-collapse-icon {
+  font-size: 9px;
+  color: #8b949e;
+  transition: transform 0.2s ease;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.quant-agent-dock.collapsed .quant-dock-collapse-icon {
+  transform: rotate(-90deg);
+}
+
+/* Mobile view adaptations: clean non-intrusive floating pill */
+@media (max-width: 768px) {
+  .quant-agent-dock {
+    top: 50px;
+    right: 8px;
+    width: auto;
+    max-width: 220px;
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  }
+  .quant-agent-dock:not(.collapsed) {
+    width: calc(100vw - 16px);
+    max-width: 280px;
+  }
+}
