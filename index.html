@@ -7978,6 +7978,21 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
               </label>
             </div>
 
+            <!-- Indicator: 15M High-Wick Candle Range Sweep & Retest Engine -->
+            <div class="tv-ind-row" onclick="clickModularToggle('wickRangeSweep', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #38bdf8;">⚡ 15M High-Wick Candle Range Sweep &amp; Retest Engine</b>
+                  <span style="font-size: 9px; background: rgba(56,189,248,0.18); color: #38bdf8; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 30%</span>
+                </div>
+                <small>15M High-Wick Range + 5M Liquidity Sweep &amp; Retest Rejection (1:5 RR)</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-wickRangeSweep" checked onchange="toggleModularIndicator('wickRangeSweep')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
             <!-- Indicator: SMC Inducement & CHoCH Supply Sniper -->
             <div class="tv-ind-row" onclick="clickModularToggle('smcInducementSupply', event)">
               <div class="tv-ind-info">
@@ -9788,11 +9803,14 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     }
 
     let candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
-      upColor: '#2ea043',
-      downColor: '#f85149',
-      borderVisible: false,
-      wickUpColor: '#2ea043',
-      wickDownColor: '#f85149',
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      borderVisible: true,
+      borderColor: '#26a69a',
+      borderUpColor: '#26a69a',
+      borderDownColor: '#ef5350',
+      wickUpColor: '#26a69a',
+      wickDownColor: '#ef5350',
     });
     window.candleSeries = candleSeries;
     window.mainCandleSeries = candleSeries;
@@ -9942,6 +9960,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       lineWidth: 1,
       lineStyle: LightweightCharts.LineStyle.Dashed,
       title: 'Support',
+      visible: false,
     });
 
     const resistanceLine = chart.addSeries(LightweightCharts.LineSeries, {
@@ -9949,6 +9968,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       lineWidth: 1,
       lineStyle: LightweightCharts.LineStyle.Dashed,
       title: 'Resistance',
+      visible: false,
     });
 
     // Volume Series (Bottom 18% Panel Overlay)
@@ -10006,6 +10026,12 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         } catch (e) { return true; }
       })(), // Dedicated: SMC Liquidity Sweep & Projection Engine (LS-EXP) - Weight: 30
       smcZones: true,        // Module 1: SMC Zones (FVG & Order Blocks) - Weight: 25
+      wickRangeSweep: (function() {
+        try {
+          const v = localStorage.getItem('indicator_wick_range_sweep_active');
+          return v !== null ? (v === 'true') : true;
+        } catch (e) { return true; }
+      })(), // Dedicated: 15M High-Wick Candle Range Sweep & Retest Engine - Weight: 30
       smcInducementSupply: (function() {
         try {
           const v = localStorage.getItem('indicator_smc_inducement_active');
@@ -10035,6 +10061,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       amdFvg: 30,
       lsExp: 30,
       smcZones: 25,
+      wickRangeSweep: 30,
       smcInducementSupply: 25,
       smcPullbackSniper: 25,
       liquidityHunter: 25,
@@ -10079,6 +10106,15 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     let currentSMCZones = { fvgList: [], obList: [] };
     var currentLiquidityPools = null;
     var smcEnabled = !!indicatorSettings.smcZones;
+    var wickRangeSweepEnabled = (() => {
+      try {
+        const v = localStorage.getItem('indicator_wick_range_sweep_active');
+        return v !== null ? (v === 'true') : true;
+      } catch (e) { return true; }
+    })();
+    window.wickRangeSweepEnabled = wickRangeSweepEnabled;
+    window.latestWickRangeSweep = null;
+    window.activeWickRangeSweepPosition = null;
     var smcInducementSupplyEnabled = (() => {
       try {
         const v = localStorage.getItem('indicator_smc_inducement_active');
@@ -10452,6 +10488,11 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           localStorage.setItem('indicator_smc_rev_active', newVal ? 'true' : 'false');
           window.smcRevEnabled = newVal;
         } catch (e) {}
+      } else if (moduleName === 'wickRangeSweep') {
+        try {
+          localStorage.setItem('indicator_wick_range_sweep_active', newVal ? 'true' : 'false');
+          window.wickRangeSweepEnabled = newVal;
+        } catch (e) {}
       } else if (moduleName === 'smcInducementSupply') {
         try {
           localStorage.setItem('indicator_smc_inducement_active', newVal ? 'true' : 'false');
@@ -10491,6 +10532,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         lsExp: 'LS_EXP',
         smcZones: 'SMC',
         smcPullbackSniper: 'OB_FIBO',
+        wickRangeSweep: 'WICK_RANGE_SWEEP',
         smcInducementSupply: 'CHOCH_SUPPLY',
         liquidityHunter: 'LIQUIDITY',
         liquidityPsychology: 'LIQUIDITY',
@@ -10520,6 +10562,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         amdFvg: 'AMD FVG Trade Setup [LuxAlgo]',
         smcZones: 'SMC Zones (OB & FVG)',
         smcPullbackSniper: 'SMC M5 Pullback Sniper (BOS + OB + 0.618 Fibo)',
+        wickRangeSweep: '15M High-Wick Candle Range Sweep & Retest Engine',
         smcInducementSupply: 'SMC Inducement & CHoCH Supply Sniper',
         liquidityHunter: 'Liquidity & Order Flow Hunter',
         liquidityPsychology: 'Liquidity & Candle Psychology (Sweep + Multi-Bar Confirmation)',
@@ -10594,6 +10637,13 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     }
 
     function applyModularVisuals(moduleName, isChecked) {
+      if (moduleName === 'wickRangeSweep') {
+        wickRangeSweepEnabled = isChecked;
+        window.wickRangeSweepEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_wick_range_sweep_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+      } else
       if (moduleName === 'liqMssFvg') {
         liqMssFvgEnabled = isChecked;
         window.liqMssFvgEnabled = isChecked;
@@ -13487,6 +13537,352 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     window.drawLS_EXP_Overlay = drawLS_EXP_Overlay;
 
     // ==========================================
+    // 15M HIGH-WICK CANDLE RANGE SWEEP & RETEST ENGINE
+    // ==========================================
+    function evaluateWickRangeSweep(candles15M, candles5M, liveSpot) {
+      if (!candles15M || candles15M.length < 5 || !candles5M || candles5M.length < 5) return null;
+
+      // 0. Maintain frozen active position if locked
+      if (window.activeWickRangeSweepPosition && window.activeWickRangeSweepPosition.status === 'ACTIVE') {
+        const pos = window.activeWickRangeSweepPosition;
+        const spot = Number(liveSpot || (candles5M && candles5M.length ? candles5M[candles5M.length - 1].close : pos.entry));
+        const isSell = (pos.direction === 'SELL' || pos.direction === 'SELL / SHORT' || pos.type === 'SHORT');
+        const entryNum = parseFloat(pos.entry);
+        const slNum = parseFloat(pos.sl);
+        const tpNum = parseFloat(pos.tp);
+
+        let isCompleted = false;
+        let completionReason = '';
+
+        if (isSell) {
+          if (spot <= tpNum) {
+            isCompleted = true;
+            completionReason = `Take Profit reached @ $${tpNum.toFixed(2)} (+1:5.0 RR Target Secured)!`;
+          } else if (spot >= slNum) {
+            isCompleted = true;
+            completionReason = `Stop Loss hit @ $${slNum.toFixed(2)}`;
+          }
+        } else {
+          if (spot >= tpNum) {
+            isCompleted = true;
+            completionReason = `Take Profit reached @ $${tpNum.toFixed(2)} (+1:5.0 RR Target Secured)!`;
+          } else if (spot <= slNum) {
+            isCompleted = true;
+            completionReason = `Stop Loss hit @ $${slNum.toFixed(2)}`;
+          }
+        }
+
+        if (isCompleted) {
+          window.activeWickRangeSweepPosition.status = isSell ? (spot <= tpNum ? 'COMPLETED' : 'INVALIDATED') : (spot >= tpNum ? 'COMPLETED' : 'INVALIDATED');
+          window.activeWickRangeSweepPosition.completionReason = completionReason;
+        } else {
+          return {
+            exclusive: true,
+            indicatorName: "15M Wick-Range Sweep & Retest",
+            direction: isSell ? "SELL" : "BUY",
+            isTriggered: true,
+            isFrozen: true,
+            entry: pos.entry.toFixed(2),
+            sl: pos.sl.toFixed(2),
+            tp: pos.tp.toFixed(2),
+            risk: Math.abs(pos.sl - pos.entry).toFixed(2),
+            reward: Math.abs(pos.tp - pos.entry).toFixed(2),
+            rr: "1 : 5.0",
+            anchorHigh: pos.anchorHigh.toFixed(2),
+            anchorLow: pos.anchorLow.toFixed(2),
+            anchorTime: pos.anchorTime,
+            hasSweptHigh: pos.hasSweptHigh,
+            hasSweptLow: pos.hasSweptLow,
+            reason: pos.reason || `15M High-Wick anchor identified. 5M sweep + retest rejection confirmed. Target locked at 1:5 RR ($${pos.tp.toFixed(2)}).`
+          };
+        }
+      }
+
+      // 1. Identify qualifying 15M High-Wick candle
+      let anchorHigh = null;
+      let anchorLow = null;
+      let anchorTime = null;
+
+      const searchStart = Math.max(0, candles15M.length - 12);
+      for (let i = candles15M.length - 2; i >= searchStart; i--) {
+        const c = candles15M[i];
+        const totalRange = c.high - c.low;
+        if (totalRange <= 1.5) continue; // Minimum Gold range filter
+
+        const bodySize = Math.abs(c.open - c.close);
+        const upperWick = c.high - Math.max(c.open, c.close);
+        const lowerWick = Math.min(c.open, c.close) - c.low;
+
+        // Small body, prominent upper and lower wicks
+        if (bodySize <= (0.28 * totalRange) && upperWick >= (0.28 * totalRange) && lowerWick >= (0.28 * totalRange)) {
+          anchorHigh = c.high;
+          anchorLow = c.low;
+          anchorTime = c.time;
+          break;
+        }
+      }
+
+      // Fallback: search for prominent high-wick candle (>= 0.35 wick)
+      if (!anchorHigh || !anchorLow) {
+        for (let i = candles15M.length - 2; i >= searchStart; i--) {
+          const c = candles15M[i];
+          const totalRange = c.high - c.low;
+          if (totalRange <= 1.5) continue;
+          const bodySize = Math.abs(c.open - c.close);
+          const upperWick = c.high - Math.max(c.open, c.close);
+          const lowerWick = Math.min(c.open, c.close) - c.low;
+          if (bodySize <= (0.30 * totalRange) && (upperWick >= 0.30 * totalRange || lowerWick >= 0.30 * totalRange)) {
+            anchorHigh = c.high;
+            anchorLow = c.low;
+            anchorTime = c.time;
+            break;
+          }
+        }
+      }
+
+      if (!anchorHigh || !anchorLow) return null;
+
+      // 2. Scan recent 5M candles for Liquidity Sweep
+      const current5M = candles5M[candles5M.length - 1];
+      let hasSweptHigh = false;
+      let hasSweptLow = false;
+
+      const scan5MStart = Math.max(0, candles5M.length - 10);
+      for (let j = scan5MStart; j < candles5M.length - 1; j++) {
+        const bar = candles5M[j];
+        if (bar.high > anchorHigh && bar.close <= anchorHigh + 0.80) {
+          hasSweptHigh = true;
+        }
+        if (bar.low < anchorLow && bar.close >= anchorLow - 0.80) {
+          hasSweptLow = true;
+        }
+      }
+
+      // 3. Bearish Short Retest Rejection at High Level
+      if (hasSweptHigh) {
+        const isRetesting = Math.abs(current5M.high - anchorHigh) <= 1.20 || (current5M.high >= anchorHigh - 1.20 && current5M.close <= anchorHigh);
+        const barRange = current5M.high - current5M.low;
+        const upperWick = current5M.high - Math.max(current5M.open, current5M.close);
+        const isRejection = (upperWick / (barRange + 0.001)) >= 0.35;
+        const isBearish = current5M.close < current5M.open || (current5M.close <= anchorHigh && upperWick >= (0.35 * barRange));
+
+        if (isRetesting && isRejection && isBearish) {
+          const entry = Number(current5M.close.toFixed(2));
+          const sl = Number((current5M.high + 0.80).toFixed(2));
+          const risk = Math.max(0.80, sl - entry);
+          const tp = Number((entry - (risk * 5.0)).toFixed(2)); // Strict 1:5.0 RR Target
+
+          const setup = {
+            exclusive: true,
+            indicatorName: "15M Wick-Range Sweep & Retest",
+            direction: "SELL",
+            isTriggered: true,
+            entry: entry.toFixed(2),
+            sl: sl.toFixed(2),
+            tp: tp.toFixed(2),
+            risk: risk.toFixed(2),
+            reward: (risk * 5.0).toFixed(2),
+            rr: "1 : 5.0",
+            anchorHigh: anchorHigh.toFixed(2),
+            anchorLow: anchorLow.toFixed(2),
+            anchorTime: anchorTime,
+            hasSweptHigh: true,
+            reason: `15M High-Wick candle identified ($${anchorLow.toFixed(2)} - $${anchorHigh.toFixed(2)}). 5M sweep above Range High followed by confirmed retest rejection. Targeting opposite range liquidity at 1:5 RR ($${tp.toFixed(2)}).`
+          };
+
+          window.activeWickRangeSweepPosition = {
+            status: 'ACTIVE',
+            type: 'SHORT',
+            direction: 'SELL',
+            entry: entry,
+            sl: sl,
+            tp: tp,
+            risk: risk,
+            reward: risk * 5.0,
+            rrRatio: '5.0',
+            anchorHigh: anchorHigh,
+            anchorLow: anchorLow,
+            anchorTime: anchorTime,
+            hasSweptHigh: true,
+            reason: setup.reason,
+            triggeredAt: Date.now()
+          };
+
+          return setup;
+        }
+      }
+
+      // 4. Bullish Long Retest Rejection at Low Level (Mirror)
+      if (hasSweptLow) {
+        const isRetesting = Math.abs(current5M.low - anchorLow) <= 1.20 || (current5M.low <= anchorLow + 1.20 && current5M.close >= anchorLow);
+        const barRange = current5M.high - current5M.low;
+        const lowerWick = Math.min(current5M.open, current5M.close) - current5M.low;
+        const isRejection = (lowerWick / (barRange + 0.001)) >= 0.35;
+        const isBullish = current5M.close > current5M.open || (current5M.close >= anchorLow && lowerWick >= (0.35 * barRange));
+
+        if (isRetesting && isRejection && isBullish) {
+          const entry = Number(current5M.close.toFixed(2));
+          const sl = Number((current5M.low - 0.80).toFixed(2));
+          const risk = Math.max(0.80, entry - sl);
+          const tp = Number((entry + (risk * 5.0)).toFixed(2)); // Strict 1:5.0 RR Target
+
+          const setup = {
+            exclusive: true,
+            indicatorName: "15M Wick-Range Sweep & Retest",
+            direction: "BUY",
+            isTriggered: true,
+            entry: entry.toFixed(2),
+            sl: sl.toFixed(2),
+            tp: tp.toFixed(2),
+            risk: risk.toFixed(2),
+            reward: (risk * 5.0).toFixed(2),
+            rr: "1 : 5.0",
+            anchorHigh: anchorHigh.toFixed(2),
+            anchorLow: anchorLow.toFixed(2),
+            anchorTime: anchorTime,
+            hasSweptLow: true,
+            reason: `15M High-Wick candle identified ($${anchorLow.toFixed(2)} - $${anchorHigh.toFixed(2)}). 5M sweep below Range Low followed by confirmed retest rejection. Targeting opposite range liquidity at 1:5 RR ($${tp.toFixed(2)}).`
+          };
+
+          window.activeWickRangeSweepPosition = {
+            status: 'ACTIVE',
+            type: 'LONG',
+            direction: 'BUY',
+            entry: entry,
+            sl: sl,
+            tp: tp,
+            risk: risk,
+            reward: risk * 5.0,
+            rrRatio: '5.0',
+            anchorHigh: anchorHigh,
+            anchorLow: anchorLow,
+            anchorTime: anchorTime,
+            hasSweptLow: true,
+            reason: setup.reason,
+            triggeredAt: Date.now()
+          };
+
+          return setup;
+        }
+      }
+
+      // 5. Standby: Anchor identified, monitoring sweep & retest
+      return {
+        exclusive: true,
+        indicatorName: "15M Wick-Range Sweep & Retest",
+        direction: "STANDBY",
+        isTriggered: false,
+        entry: anchorHigh.toFixed(2),
+        sl: (anchorHigh + 0.80).toFixed(2),
+        tp: anchorLow.toFixed(2),
+        risk: "0.80",
+        reward: Math.abs(anchorHigh - anchorLow).toFixed(2),
+        rr: "1 : 5.0",
+        anchorHigh: anchorHigh.toFixed(2),
+        anchorLow: anchorLow.toFixed(2),
+        anchorTime: anchorTime,
+        hasSweptHigh: hasSweptHigh,
+        hasSweptLow: hasSweptLow,
+        reason: `15M Long-Wick anchor identified ($${anchorLow.toFixed(2)} - $${anchorHigh.toFixed(2)}). ${hasSweptHigh ? '5M Sweep High detected! Monitoring for Retest rejection.' : (hasSweptLow ? '5M Sweep Low detected! Monitoring for Retest rejection.' : 'Monitoring 5M candles for Range Sweep & Retest.')}`
+      };
+    }
+    window.evaluateWickRangeSweep = evaluateWickRangeSweep;
+
+    // Dedicated Canvas Overlay for 15M High-Wick Candle Range Sweep & Retest Engine
+    function drawWickRangeSweepOverlay(ctx, setup, candles) {
+      if (!ctx || !candleSeries || !chart) return;
+      if (typeof indicatorSettings !== 'undefined' && !indicatorSettings.wickRangeSweep) return;
+      if (!setup || !setup.anchorHigh || !setup.anchorLow) return;
+
+      ctx.save();
+
+      const highPrice = Number(setup.anchorHigh);
+      const lowPrice = Number(setup.anchorLow);
+      const yHigh = candleSeries.priceToCoordinate(highPrice);
+      const yLow = candleSeries.priceToCoordinate(lowPrice);
+
+      if (yHigh !== null && yLow !== null) {
+        const topY = Math.min(yHigh, yLow);
+        const botY = Math.max(yHigh, yLow);
+        const boxH = Math.max(4, botY - topY);
+
+        // 1. Subtle shaded range fill
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.05)';
+        ctx.fillRect(15, topY, canvasCssWidth - 75, boxH);
+
+        // 2. Dashed Upper Boundary Line (Range_High)
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.9)';
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(15, yHigh);
+        ctx.lineTo(canvasCssWidth - 60, yHigh);
+        ctx.stroke();
+
+        // 3. Dashed Lower Boundary Line (Range_Low)
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.9)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(15, yLow);
+        ctx.lineTo(canvasCssWidth - 60, yLow);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 4. Boundary Pill Labels
+        const highLabel = `High · $${highPrice.toFixed(2)} [15M RANGE]`;
+        ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        const hw = ctx.measureText(highLabel).width + 10;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.fillRect(25, yHigh - 9, hw, 16);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(25, yHigh - 9, hw, 16);
+        ctx.fillStyle = '#38bdf8';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(highLabel, 30, yHigh);
+
+        const lowLabel = `Low · $${lowPrice.toFixed(2)} [15M RANGE]`;
+        const lw = ctx.measureText(lowLabel).width + 10;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.fillRect(25, yLow - 9, lw, 16);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(25, yLow - 9, lw, 16);
+        ctx.fillStyle = '#38bdf8';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(lowLabel, 30, yLow);
+
+        // 5. Sweep Annotation Marker
+        if (setup.hasSweptHigh) {
+          ctx.fillStyle = '#f59e0b';
+          ctx.font = '800 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          ctx.fillText('⚡ LIQUIDITY SWEEP (HIGH)', Math.max(160, canvasCssWidth - 280), Math.max(15, yHigh - 12));
+        }
+        if (setup.hasSweptLow) {
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = '800 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          ctx.fillText('⚡ LIQUIDITY SWEEP (LOW)', Math.max(160, canvasCssWidth - 280), Math.min(canvasCssHeight - 15, yLow + 14));
+        }
+
+        // 6. Watermark Badge
+        const badgeText = setup.isTriggered
+          ? `WICK-RANGE-SWEEP · RETEST REJECTION CONFIRMED (${setup.direction} 1:5 RR)`
+          : `WICK-RANGE-SWEEP · 15M ANCHOR ACTIVE (WAITING 5M SWEEP/RETEST)`;
+        ctx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        const bw = ctx.measureText(badgeText).width + 14;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        ctx.fillRect(canvasCssWidth - bw - 70, 16, bw, 20);
+        ctx.strokeStyle = setup.isTriggered ? '#3fb950' : '#38bdf8';
+        ctx.strokeRect(canvasCssWidth - bw - 70, 16, bw, 20);
+        ctx.fillStyle = setup.isTriggered ? '#3fb950' : '#38bdf8';
+        ctx.fillText(badgeText, canvasCssWidth - bw - 63, 29);
+      }
+
+      ctx.restore();
+    }
+    window.drawWickRangeSweepOverlay = drawWickRangeSweepOverlay;
+
+    // ==========================================
     // SMC INDUCEMENT & CHOCH SUPPLY SNIPER ENGINE
     // ==========================================
     function evaluateSMC_InducementSupply(candles) {
@@ -15933,6 +16329,65 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         };
       }
 
+      // Dedicated: 15M HIGH-WICK CANDLE RANGE SWEEP & RETEST TELEMETRY
+      let c15 = candles;
+      let c5 = candles;
+      if (window.mtfCandleStore && window.mtfCandleStore['15m'] && window.mtfCandleStore['15m'].length >= 5) {
+        c15 = window.mtfCandleStore['15m'];
+      } else if (typeof resampleCandles === 'function' && candles && candles.length >= 20) {
+        const curSec = (typeof currentTf !== 'undefined' && currentTf === '5m') ? 300 : ((typeof currentTf !== 'undefined' && currentTf === '1m') ? 60 : 900);
+        const r15 = resampleCandles(candles, curSec, 900);
+        if (r15 && r15.length >= 5) c15 = r15;
+      }
+
+      if (window.mtfCandleStore && window.mtfCandleStore['5m'] && window.mtfCandleStore['5m'].length >= 8) {
+        c5 = window.mtfCandleStore['5m'];
+      } else if (typeof resampleCandles === 'function' && candles && candles.length >= 20) {
+        const curSec = (typeof currentTf !== 'undefined' && currentTf === '15m') ? 900 : ((typeof currentTf !== 'undefined' && currentTf === '1m') ? 60 : 300);
+        const r5 = resampleCandles(candles, curSec, 300);
+        if (r5 && r5.length >= 8) c5 = r5;
+      }
+
+      const wickRangeResult = evaluateWickRangeSweep(c15, c5, currentLiveSpot);
+      window.latestWickRangeSweep = wickRangeResult;
+
+      if (wickRangeResult) {
+        if (wickRangeResult.isTriggered) {
+          modularEngineState.indicators.WICK_RANGE_SWEEP = {
+            status: 'RETEST REJECTION CONFIRMED (1:5 RR)',
+            stateBadge: 'RETEST REJECTION CONFIRMED (1:5 RR)',
+            direction: wickRangeResult.direction === 'BUY' ? 'BUY / LONG' : 'SELL / SHORT',
+            entry: '$' + Number(wickRangeResult.entry).toFixed(2),
+            sl: '$' + Number(wickRangeResult.sl).toFixed(2),
+            tp: '$' + Number(wickRangeResult.tp).toFixed(2),
+            rr: wickRangeResult.rr || '1 : 5.0',
+            reason: wickRangeResult.reason || '15M Long-Wick anchor identified. 5M sweep above Range High followed by confirmed retest rejection. Targeting opposite range liquidity.'
+          };
+        } else {
+          modularEngineState.indicators.WICK_RANGE_SWEEP = {
+            status: 'WAITING FOR 5M SWEEP / RETEST',
+            stateBadge: 'WAITING FOR 5M SWEEP',
+            direction: 'STANDBY',
+            entry: '$' + Number(wickRangeResult.entry).toFixed(2),
+            sl: '$' + Number(wickRangeResult.sl).toFixed(2),
+            tp: '$' + Number(wickRangeResult.tp).toFixed(2),
+            rr: '1 : 5.0',
+            reason: wickRangeResult.reason || '15M Long-Wick anchor identified. Monitoring 5M candles for Range Sweep & Retest.'
+          };
+        }
+      } else {
+        modularEngineState.indicators.WICK_RANGE_SWEEP = {
+          status: 'STANDBY',
+          stateBadge: 'STANDBY',
+          direction: 'NEUTRAL',
+          entry: '--',
+          sl: '--',
+          tp: '--',
+          rr: '--',
+          reason: 'Awaiting qualifying 15M High-Wick candle formation.'
+        };
+      }
+
       // Dedicated: SMC INDUCEMENT & CHOCH SUPPLY SNIPER TELEMETRY
       const inducementResult = evaluateSMC_InducementSupply(m5Candles);
       window.latestSMC_InducementSupply = inducementResult;
@@ -16240,11 +16695,14 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         badgeBorder = 'rgba(234, 179, 8, 0.4)';
       }
 
+      const isWickRangeSweepIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.wickRangeSweep;
       const isLiqMssFvgIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.liqMssFvg;
       const isBrkBounceIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.brkBounce;
       const isSmcRevIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.smcRev;
       const isAmdFvgIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.amdFvg;
-      if (isLiqMssFvgIsolated) {
+      if (isWickRangeSweepIsolated) {
+        modularEngineState.activeTab = 'WICK_RANGE_SWEEP';
+      } else if (isLiqMssFvgIsolated) {
         modularEngineState.activeTab = 'LIQ_MSS_FVG';
       } else if (isBrkBounceIsolated) {
         modularEngineState.activeTab = 'BRK_BOUNCE';
@@ -16253,18 +16711,18 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       } else if (isAmdFvgIsolated && (!isSmcRevIsolated || modularEngineState.activeTab === 'AMD_FVG')) {
         modularEngineState.activeTab = 'AMD_FVG';
       }
-      const tabs = ['LIQ_MSS_FVG', 'BRK_BOUNCE', 'SMC_REV', 'AMD_FVG', 'LS_EXP', 'SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
+      const tabs = ['WICK_RANGE_SWEEP', 'LIQ_MSS_FVG', 'BRK_BOUNCE', 'SMC_REV', 'AMD_FVG', 'LS_EXP', 'SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
 
       container.innerHTML = `
         <div class="terminal-card clean-signal-card" style="padding: 12px; margin-top: 10px; border-radius: 12px; background: rgba(18, 20, 26, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);">
           <!-- Header -->
           <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
-            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${activeTab === 'LIQ_MSS_FVG' ? '#ec4899' : (activeTab === 'BRK_BOUNCE' ? '#f59e0b' : (activeTab === 'SMC_REV' ? '#60a5fa' : (activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700')))}; display: flex; align-items: center; gap: 6px;">
-              <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: ${activeTab === 'LIQ_MSS_FVG' ? '#ec4899' : (activeTab === 'BRK_BOUNCE' ? '#f59e0b' : (activeTab === 'SMC_REV' ? '#60a5fa' : (activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700')))}; box-shadow: 0 0 8px ${activeTab === 'LIQ_MSS_FVG' ? '#ec4899' : (activeTab === 'BRK_BOUNCE' ? '#f59e0b' : (activeTab === 'SMC_REV' ? '#60a5fa' : (activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700')))};"></span>
-              ${activeTab === 'LIQ_MSS_FVG' ? '⚡ ICT LIQUIDITY GRAB + MSS + FVG' : (activeTab === 'BRK_BOUNCE' ? '⚡ BREAK & BOUNCE ENGINE (PDH/PDL RETEST)' : (activeTab === 'SMC_REV' ? '⚡ SMC BEARISH REVERSAL & CONTINUATION' : (activeTab === 'AMD_FVG' ? '⚡ AMD FVG TRADE SETUP [PO3]' : (activeTab === 'LS_EXP' ? '⚡ LS-EXP: LIQUIDITY SWEEP & EXPANSION' : (activeTab === 'OB_FIBO' ? '⚡ SMC PULLBACK SNIPER (OB + 0.618 FIB)' : (activeTab === 'CHOCH_SUPPLY' ? '⚡ SMC INDUCEMENT & CHOCH SUPPLY SNIPER' : (activeTab === 'VWAP_FVG' ? 'VWAP + FVG' : activeTab)))))))}
+            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: ${activeTab === 'WICK_RANGE_SWEEP' ? '#38bdf8' : activeTab === 'LIQ_MSS_FVG' ? '#ec4899' : (activeTab === 'BRK_BOUNCE' ? '#f59e0b' : (activeTab === 'SMC_REV' ? '#60a5fa' : (activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700')))}; display: flex; align-items: center; gap: 6px;">
+              <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: ${activeTab === 'WICK_RANGE_SWEEP' ? '#38bdf8' : activeTab === 'LIQ_MSS_FVG' ? '#ec4899' : (activeTab === 'BRK_BOUNCE' ? '#f59e0b' : (activeTab === 'SMC_REV' ? '#60a5fa' : (activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700')))}; box-shadow: 0 0 8px ${activeTab === 'WICK_RANGE_SWEEP' ? '#38bdf8' : activeTab === 'LIQ_MSS_FVG' ? '#ec4899' : (activeTab === 'BRK_BOUNCE' ? '#f59e0b' : (activeTab === 'SMC_REV' ? '#60a5fa' : (activeTab === 'AMD_FVG' ? '#a78bfa' : '#ffd700')))};"></span>
+              ${activeTab === 'WICK_RANGE_SWEEP' ? '⚡ 15M WICK-RANGE SWEEP & RETEST' : activeTab === 'LIQ_MSS_FVG' ? '⚡ ICT LIQUIDITY GRAB + MSS + FVG' : (activeTab === 'BRK_BOUNCE' ? '⚡ BREAK & BOUNCE ENGINE (PDH/PDL RETEST)' : (activeTab === 'SMC_REV' ? '⚡ SMC BEARISH REVERSAL & CONTINUATION' : (activeTab === 'AMD_FVG' ? '⚡ AMD FVG TRADE SETUP [PO3]' : (activeTab === 'LS_EXP' ? '⚡ LS-EXP: LIQUIDITY SWEEP & EXPANSION' : (activeTab === 'OB_FIBO' ? '⚡ SMC PULLBACK SNIPER (OB + 0.618 FIB)' : (activeTab === 'CHOCH_SUPPLY' ? '⚡ SMC INDUCEMENT & CHOCH SUPPLY SNIPER' : (activeTab === 'VWAP_FVG' ? 'VWAP + FVG' : activeTab)))))))}
             </span>
             <span style="font-size: 10px; padding: 2px 7px; border-radius: 10px; background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; font-family: monospace; font-weight: 700;">
-              ${(activeTab === 'LIQ_MSS_FVG' || activeTab === 'BRK_BOUNCE' || activeTab === 'SMC_REV' || activeTab === 'LS_EXP' || activeTab === 'OB_FIBO' || activeTab === 'CHOCH_SUPPLY') && activeData.stateBadge ? activeData.stateBadge : activeData.direction}
+              ${(activeTab === 'WICK_RANGE_SWEEP' || activeTab === 'LIQ_MSS_FVG' || activeTab === 'BRK_BOUNCE' || activeTab === 'SMC_REV' || activeTab === 'LS_EXP' || activeTab === 'OB_FIBO' || activeTab === 'CHOCH_SUPPLY') && activeData.stateBadge ? activeData.stateBadge : activeData.direction}
             </span>
           </div>
 
@@ -16278,7 +16736,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
               return `
                 <button type="button" onclick="switchModularTab('${tab}')"
                         style="flex: 1; min-width: 50px; font-size: 9.5px; padding: 4px 6px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease; ${activeStyle}">
-                  ${tab === 'LIQ_MSS_FVG' ? 'LIQ-MSS-FVG ⚡' : (tab === 'BRK_BOUNCE' ? 'BRK-BOUNCE ⚡' : (tab === 'SMC_REV' ? 'SMC-REV ⚡' : (tab === 'AMD_FVG' ? 'AMD-FVG ⚡' : (tab === 'VWAP_FVG' ? 'VWAP+FVG' : (tab === 'OB_FIBO' ? 'OB+FIB 🎯' : (tab === 'CHOCH_SUPPLY' ? 'CHOCH ⚡' : tab))))))}
+                  ${tab === 'WICK_RANGE_SWEEP' ? 'WICK-SWEEP ⚡' : tab === 'LIQ_MSS_FVG' ? 'LIQ-MSS-FVG ⚡' : (tab === 'BRK_BOUNCE' ? 'BRK-BOUNCE ⚡' : (tab === 'SMC_REV' ? 'SMC-REV ⚡' : (tab === 'AMD_FVG' ? 'AMD-FVG ⚡' : (tab === 'VWAP_FVG' ? 'VWAP+FVG' : (tab === 'OB_FIBO' ? 'OB+FIB 🎯' : (tab === 'CHOCH_SUPPLY' ? 'CHOCH ⚡' : tab))))))}
                 </button>
               `;
             }).join('')}
@@ -17125,24 +17583,24 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
           const isSupply = (zone.type === 'BEARISH_FVG' || zone.type === 'SUPPLY_OB');
 
-          // 1. Ultra-clean subtle institutional opacity (0.06)
-          drawingCtx.fillStyle = isSupply ? 'rgba(239, 83, 80, 0.06)' : 'rgba(38, 166, 154, 0.06)';
+          // 1. Ultra-clean subtle institutional opacity (0.04)
+          drawingCtx.fillStyle = isSupply ? 'rgba(239, 83, 80, 0.04)' : 'rgba(38, 166, 154, 0.04)';
           drawingCtx.fillRect(startX, topY, width, height);
 
           // 2. Crisp, fine border
-          drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.40)' : 'rgba(38, 166, 154, 0.40)';
+          drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.28)' : 'rgba(38, 166, 154, 0.28)';
           drawingCtx.lineWidth = 1;
           drawingCtx.setLineDash([4, 3]);
           drawingCtx.strokeRect(startX, topY, width, height);
           drawingCtx.setLineDash([]);
 
-          // 3. Crisp single badge inside the box
+          // 3. Crisp single badge inside the box, positioned on the forward RIGHT side clear of candles
           const labelText = zone.label || (isSupply ? 'Supply OB' : 'Demand OB');
           drawingCtx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
           const metrics = drawingCtx.measureText(labelText);
           const badgeW = Math.round(metrics.width + 10);
           const badgeH = 15;
-          let badgeX = startX + 6;
+          let badgeX = Math.max(startX + 10, endX - badgeW - 8);
           // Place badge neatly at top of zone (or middle if height is very small)
           let badgeY = (height >= 20) 
             ? Math.max(3, topY + 2) 
@@ -17265,10 +17723,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
         const isSupply = (ob.type === 'SUPPLY_OB');
 
-        drawingCtx.fillStyle = isSupply ? 'rgba(239, 83, 80, 0.06)' : 'rgba(38, 166, 154, 0.06)';
+        drawingCtx.fillStyle = isSupply ? 'rgba(239, 83, 80, 0.04)' : 'rgba(38, 166, 154, 0.04)';
         drawingCtx.fillRect(startX, topY, width, height);
 
-        drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.40)' : 'rgba(38, 166, 154, 0.40)';
+        drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.28)' : 'rgba(38, 166, 154, 0.28)';
         drawingCtx.lineWidth = 1;
         drawingCtx.setLineDash([4, 3]);
         drawingCtx.strokeRect(startX, topY, width, height);
@@ -17279,7 +17737,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         const txtW = drawingCtx.measureText(obLabel).width;
         const pillW = Math.round(txtW + 10);
         const pillH = 15;
-        const pillX = startX + 6;
+        const pillX = Math.max(startX + 10, endX - pillW - 8);
         const pillY = Math.max(2, topY + Math.max(1, (height - pillH) / 2));
 
         drawingCtx.fillStyle = 'rgba(10, 14, 23, 0.92)';
@@ -17688,17 +18146,17 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       ctx.save();
 
-      // 1. RISK BOX (Clean, modern subtle red fill 0.12)
-      ctx.fillStyle = 'rgba(248, 81, 73, 0.12)';
+      // 1. RISK BOX (Clean, modern subtle sheer red fill 0.05)
+      ctx.fillStyle = 'rgba(248, 81, 73, 0.05)';
       ctx.fillRect(startX, riskTopY, boxW, riskHeight);
-      ctx.strokeStyle = 'rgba(248, 81, 73, 0.70)';
+      ctx.strokeStyle = 'rgba(248, 81, 73, 0.40)';
       ctx.lineWidth = 1;
       ctx.strokeRect(startX, riskTopY, boxW, riskHeight);
 
-      // 2. REWARD BOX (Clean, modern subtle blue/teal fill 0.12)
-      ctx.fillStyle = 'rgba(56, 139, 253, 0.12)';
+      // 2. REWARD BOX (Clean, modern subtle sheer blue fill 0.05)
+      ctx.fillStyle = 'rgba(56, 139, 253, 0.05)';
       ctx.fillRect(startX, rewTopY, boxW, rewHeight);
-      ctx.strokeStyle = 'rgba(56, 139, 253, 0.70)';
+      ctx.strokeStyle = 'rgba(56, 139, 253, 0.40)';
       ctx.lineWidth = 1;
       ctx.strokeRect(startX, rewTopY, boxW, rewHeight);
 
@@ -17715,38 +18173,50 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
 
-      // Stop Loss text pill
+      // Stop Loss text pill (aligned to right forward edge so candles are 100% visible)
       const riskVal = setup.risk ? Number(setup.risk).toFixed(1) : (Math.abs(Number(setup.entry) - Number(setup.sl))).toFixed(1);
       const slTxt = `SL $${Number(setup.sl).toFixed(1)} (-$${riskVal})`;
       const slW = ctx.measureText(slTxt).width + 8;
       const slY = isShort ? Math.max(riskTopY + 8, 14) : Math.min(riskTopY + riskHeight - 8, canvasCssHeight - 14);
+      const slX = Math.max(startX + 10, endX - slW - 8);
       ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
-      ctx.fillRect(startX + 4, slY - 7, slW, 14);
+      ctx.fillRect(slX, slY - 7, slW, 14);
+      ctx.strokeStyle = 'rgba(248, 81, 73, 0.70)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(slX, slY - 7, slW, 14);
       ctx.fillStyle = '#ff5252';
-      ctx.fillText(slTxt, startX + 8, slY);
+      ctx.fillText(slTxt, slX + 4, slY);
 
-      // Take Profit text pill
+      // Take Profit text pill (aligned to right forward edge so candles are 100% visible)
       const rewVal = setup.reward ? Number(setup.reward).toFixed(1) : (Math.abs(Number(setup.tp) - Number(setup.entry))).toFixed(1);
       const tpTxt = `TP $${Number(setup.tp).toFixed(1)} (+$${rewVal})`;
       const tpW = ctx.measureText(tpTxt).width + 8;
       const tpY = isShort ? Math.min(rewTopY + rewHeight - 8, canvasCssHeight - 14) : Math.max(rewTopY + 8, 14);
+      const tpX = Math.max(startX + 10, endX - tpW - 8);
       ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
-      ctx.fillRect(startX + 4, tpY - 7, tpW, 14);
+      ctx.fillRect(tpX, tpY - 7, tpW, 14);
+      ctx.strokeStyle = 'rgba(56, 139, 253, 0.70)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(tpX, tpY - 7, tpW, 14);
       ctx.fillStyle = '#388bfd';
-      ctx.fillText(tpTxt, startX + 8, tpY);
+      ctx.fillText(tpTxt, tpX + 4, tpY);
 
-      // Entry text pill
+      // Entry text pill (aligned to right forward edge)
       const entryTxt = `Entry $${Number(setup.entry).toFixed(1)}`;
       const entW = ctx.measureText(entryTxt).width + 8;
+      const entX = Math.max(startX + 10, endX - entW - 8);
       ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
-      ctx.fillRect(startX + 4, yEntry - 7, entW, 14);
+      ctx.fillRect(entX, yEntry - 7, entW, 14);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.60)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(entX, yEntry - 7, entW, 14);
       ctx.fillStyle = isSMCInstitutionalClean ? '#121212' : '#ffffff';
-      ctx.fillText(entryTxt, startX + 8, yEntry);
+      ctx.fillText(entryTxt, entX + 4, yEntry);
 
-      // R:R Ratio Badge
+      // R:R Ratio Badge (positioned left of Entry pill in clean forward space)
       const rrTxt = setup.rrRatio ? `1:${setup.rrRatio} RR` : (setup.rr ? setup.rr : '1:4.3 RR');
       const rrW = ctx.measureText(rrTxt).width + 8;
-      const rrX = endX - rrW - 4;
+      const rrX = Math.max(startX + 8, entX - rrW - 6);
       ctx.fillStyle = 'rgba(56, 139, 253, 0.90)';
       ctx.fillRect(rrX, yEntry - 7, rrW, 14);
       ctx.fillStyle = '#ffffff';
@@ -17800,7 +18270,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       if (lineX !== null && !isNaN(lineX) && lineX >= 0 && lineX <= canvasCssWidth) {
         ctx.save();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([5, 4]);
         ctx.beginPath();
@@ -17837,12 +18307,31 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       drawingCtx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
       drawMacroNewsReleaseMarker(drawingCtx);
 
+      const isWickRangeSweepIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.wickRangeSweep;
       const isLiqMssFvgIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.liqMssFvg;
       const isBrkBounceIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.brkBounce;
       const isSmcRevIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.smcRev;
       const isAmdFvgIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.amdFvg;
 
-      if (isLiqMssFvgIsolated) {
+      if (isWickRangeSweepIsolated) {
+        // EXCLUSIVE ISOLATION MODE: 15M HIGH-WICK CANDLE RANGE SWEEP & RETEST ENGINE
+        // Automatically hide generic lines & indicators to keep presentation clean!
+        if (typeof drawWickRangeSweepOverlay === 'function') {
+          drawWickRangeSweepOverlay(drawingCtx, window.latestWickRangeSweep, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
+        }
+        if (showRROverlay && window.latestWickRangeSweep && window.latestWickRangeSweep.isTriggered) {
+          const ws = window.latestWickRangeSweep;
+          drawRiskRewardOverlay(drawingCtx, {
+            type: ws.direction === 'BUY' ? 'LONG' : 'SHORT',
+            entry: Number(ws.entry),
+            sl: Number(ws.sl),
+            tp: Number(ws.tp),
+            risk: Math.abs(Number(ws.sl) - Number(ws.entry)),
+            reward: Math.abs(Number(ws.tp) - Number(ws.entry)),
+            rrRatio: '5.0'
+          });
+        }
+      } else if (isLiqMssFvgIsolated) {
         // EXCLUSIVE ISOLATION MODE: ICT LIQUIDITY GRAB + MSS + FVG REVERSAL ENGINE
         if (typeof drawLiqMSSFVGOverlay === 'function') {
           drawLiqMSSFVGOverlay(drawingCtx, window.latestLiqMSSFVG, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
@@ -17892,6 +18381,11 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       }
 
       // 2.3 Dedicated: Daily Liquidity Sniper Reference Lines (Golden PDH, Cyan PDL)
+      // Dedicated: 15M High-Wick Candle Range Sweep & Retest Overlay
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.wickRangeSweep) {
+        drawWickRangeSweepOverlay(drawingCtx, window.latestWickRangeSweep, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
+      }
+
       // Dedicated: SMC Inducement & CHoCH Supply Sniper Overlay
       if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcInducementSupply) {
         drawSMC_InducementSupplyOverlay(drawingCtx, window.latestSMC_InducementSupply, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
@@ -17950,6 +18444,17 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           });
         } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcZones && currentSMCZones && currentSMCZones.activeRRSetup) {
           drawRiskRewardOverlay(drawingCtx, currentSMCZones.activeRRSetup);
+        } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.wickRangeSweep && window.latestWickRangeSweep && window.latestWickRangeSweep.isTriggered) {
+          const ws = window.latestWickRangeSweep;
+          drawRiskRewardOverlay(drawingCtx, {
+            type: ws.direction === 'BUY' ? 'LONG' : 'SHORT',
+            entry: Number(ws.entry),
+            sl: Number(ws.sl),
+            tp: Number(ws.tp),
+            risk: Math.abs(Number(ws.sl) - Number(ws.entry)),
+            reward: Math.abs(Number(ws.tp) - Number(ws.entry)),
+            rrRatio: '5.0'
+          });
         } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcInducementSupply && window.latestSMC_InducementSupply && window.latestSMC_InducementSupply.isTriggered) {
           const sniper = window.latestSMC_InducementSupply;
           drawRiskRewardOverlay(drawingCtx, {
@@ -19721,8 +20226,12 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           activeMarkers = activeMarkers.filter(m => m.shape !== 'arrowDown' && m.text !== 'SELL' && m.position !== 'aboveBar');
         }
       }
-      if (typeof indicatorSettings !== 'undefined' && (indicatorSettings.liqMssFvg || indicatorSettings.brkBounce || indicatorSettings.smcRev || indicatorSettings.amdFvg)) {
-        // Exclusive Isolation Mode: Suppress generic signal arrows for clean chart
+      const hasInstitutionalTool = (window.activeTradingPointPosition && window.activeTradingPointPosition.status === 'ACTIVE') ||
+                                   (typeof currentSMCZones !== 'undefined' && currentSMCZones && currentSMCZones.activeRRSetup) ||
+                                   (typeof indicatorSettings !== 'undefined' && (indicatorSettings.smcZones || indicatorSettings.liqMssFvg || indicatorSettings.brkBounce || indicatorSettings.smcRev || indicatorSettings.amdFvg));
+
+      if (hasInstitutionalTool) {
+        // Suppress generic signal arrows to maintain crystal-clear candle visibility
         activeMarkers = [];
       }
       applyMarkersToChart(activeMarkers);
@@ -24495,6 +25004,20 @@ window.addEventListener('resize', () => {
           </div>
           <label class="toggle-switch" onclick="event.stopPropagation()">
             <input type="checkbox" id="modal-toggle-smcPullbackSniper" checked onchange="toggleModularIndicator('smcPullbackSniper')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="indicator-row" onclick="clickModularToggle('wickRangeSweep', event)">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #38bdf8;">⚡ 15M High-Wick Candle Range Sweep &amp; Retest Engine</b>
+              <span style="font-size: 9px; background: rgba(56,189,248,0.18); color: #38bdf8; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 30%</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">15M High-Wick Range + 5M Liquidity Sweep &amp; Retest Rejection (1:5 RR)</p>
+          </div>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="modal-toggle-wickRangeSweep" checked onchange="toggleModularIndicator('wickRangeSweep')">
             <span class="toggle-slider"></span>
           </label>
         </div>
