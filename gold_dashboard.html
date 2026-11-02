@@ -298,9 +298,28 @@
     };
     var demoState = window.demoState;
 
+    function toggleMobilePortalView() {
+      const cur = (sessionStorage.getItem('tradingpoint_active_portal_view') || window.location.hash || '').toLowerCase();
+      if (cur.includes('dashboard')) {
+        switchPortalView('trade');
+      } else {
+        switchPortalView('dashboard');
+      }
+    }
+    window.toggleMobilePortalView = toggleMobilePortalView;
+
     function switchPortalView(portalView) {
       if (document.body) {
         document.body.classList.add('portal-mode-active');
+      }
+      const qLabel = document.getElementById('mHeaderQuickLabel');
+      const qIcon = document.getElementById('mHeaderQuickIcon');
+      if (portalView === 'dashboard') {
+        if (qLabel) qLabel.innerText = 'Terminal';
+        if (qIcon) qIcon.innerText = '📈';
+      } else {
+        if (qLabel) qLabel.innerText = 'Dashboard';
+        if (qIcon) qIcon.innerText = '📊';
       }
       if (typeof closePortalMobileSidebar === 'function') closePortalMobileSidebar();
       try {
@@ -4707,28 +4726,32 @@
         background: #08090a !important;
       }
 
-      /* 1. Mobile Top Sticky Header (Logo on left, 3 lines menu on right) */
+      /* 1. Mobile Top Fixed Header (Logo on left, Quick Switch & Hamburger on right) */
       .mobile-top-header,
       #mobileTopHeader {
         display: flex !important;
         visibility: visible !important;
         pointer-events: auto !important;
-        position: sticky !important;
+        position: fixed !important;
         top: 0 !important;
         left: 0 !important;
         right: 0 !important;
         height: 52px !important;
-        max-height: none !important;
+        max-height: 52px !important;
         overflow: visible !important;
         background: rgba(13, 17, 23, 0.98) !important;
         backdrop-filter: blur(12px) !important;
         -webkit-backdrop-filter: blur(12px) !important;
         border-bottom: 1px solid #21262d !important;
-        z-index: 9999 !important;
-        padding: 0 14px !important;
+        z-index: 100000 !important;
+        padding: 0 12px !important;
         align-items: center !important;
         justify-content: space-between !important;
         box-sizing: border-box !important;
+      }
+
+      body {
+        padding-top: 52px !important;
       }
       .m-header-left {
         display: flex !important;
@@ -5360,14 +5383,24 @@
   <!-- Semi-Transparent Mobile Sidebar Backdrop -->
   <div id="mobileSidebarBackdrop" class="mobile-sidebar-backdrop" onclick="closePortalMobileSidebar()"></div>
 
-  <!-- Mobile Top Sticky Header (Screens <= 768px Only) -->
+  <!-- Mobile Top Fixed Header (Screens <= 768px Only) -->
   <header id="mobileTopHeader" class="mobile-top-header" aria-label="Mobile Navigation Header">
-    <div class="m-header-left" onclick="switchPortalView('trade')">
+    <div class="m-header-left" onclick="switchPortalView('trade')" title="Go to Live Trade & Terminal">
       <div class="m-header-logo-badge">TP</div>
       <span class="m-header-brand-title">Trading<span style="color: #ffd700;">Point</span></span>
       <span class="m-header-pro-tag">PRO</span>
     </div>
-    <div class="m-header-right">
+    <div class="m-header-right" style="display: flex; align-items: center; gap: 7px;">
+      <!-- Mobile Quick View Switcher (Dashboard <-> Terminal) -->
+      <button type="button" id="mHeaderQuickSwitch" onclick="toggleMobilePortalView()" aria-label="Toggle Portal View" style="background: rgba(255, 215, 0, 0.12); border: 1px solid rgba(255, 215, 0, 0.35); color: #ffd700; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+        <span id="mHeaderQuickIcon">📈</span>
+        <span id="mHeaderQuickLabel">Terminal</span>
+      </button>
+
+      <!-- Mobile User Balance Pill -->
+      <span id="mHeaderUserBalance" style="font-size: 11px; font-weight: 800; color: #3fb950; font-family: 'Space Grotesk', monospace; background: rgba(63, 185, 80, 0.12); border: 1px solid rgba(63, 185, 80, 0.35); padding: 4px 7px; border-radius: 6px; white-space: nowrap;">$1,000.00</span>
+
+      <!-- Mobile Hamburger Drawer Button -->
       <button type="button" id="mobileHamburgerBtn" class="m-header-hamburger-btn" onclick="togglePortalMobileSidebar()" aria-label="Open Navigation Menu">
         <span></span>
         <span></span>
@@ -23890,6 +23923,12 @@ window.addEventListener('resize', () => {
         }));
       } catch (e) {}
 
+      // Sync Mobile Fixed Top Header Balance
+      const mHeaderBalAuth = document.getElementById('mHeaderUserBalance');
+      if (mHeaderBalAuth && typeof demoState !== 'undefined') {
+        mHeaderBalAuth.innerText = '$' + (demoState.balance || 1000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
       // Update Left Sidebar Profile Info
       const sidebarUserName = document.getElementById('sidebarUserName');
       const sidebarUserEmail = document.getElementById('sidebarUserEmail');
@@ -24451,6 +24490,8 @@ window.addEventListener('resize', () => {
       if (closeAllBtn) closeAllBtn.style.display = demoState.positions.length > 0 ? 'inline-block' : 'none';
 
       // Real-time Sync to Mobile Terminal Top 2-Row KPI Strip
+      const mHeaderBal = document.getElementById('mHeaderUserBalance');
+      if (mHeaderBal) mHeaderBal.innerText = '$' + demoState.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const mTermBal = document.getElementById('mTermBalance');
       const mTermEq = document.getElementById('mTermEquity');
       const mTermPnl = document.getElementById('mTermPnl');
