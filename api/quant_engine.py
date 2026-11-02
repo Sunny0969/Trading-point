@@ -165,11 +165,11 @@ def _process_via_pg(conn, user_id, source, direction, entry, sl, tp, signal_hash
 
     if not settings_rows:
         conn.run(
-            "INSERT INTO public.bot_settings (user_id, is_active, risk_per_trade_percent, max_open_bot_trades, kill_switch) "
-            "VALUES (:uid, true, 1.00, 2, false) ON CONFLICT (user_id) DO NOTHING",
+            "INSERT INTO public.bot_settings (user_id, is_active, risk_per_trade_percent, max_open_bot_trades, kill_switch, updated_at) "
+            "VALUES (:uid, false, 1.00, 2, false, NOW()) ON CONFLICT (user_id) DO NOTHING",
             uid=user_id
         )
-        is_active, risk_percent, daily_dd, max_trades, cooldown, kill_switch = True, 1.00, 3.00, 2, 15, False
+        is_active, risk_percent, daily_dd, max_trades, cooldown, kill_switch = False, 1.00, 3.00, 2, 15, False
     else:
         is_active, risk_percent, daily_dd, max_trades, cooldown, kill_switch = settings_rows[0]
         risk_percent = float(risk_percent or 1.0)
@@ -472,3 +472,51 @@ def start_autonomous_daemon():
 def get_daemon_telemetry():
     """Returns real-time telemetry dictionary for client polling."""
     return dict(_last_telemetry)
+
+
+def set_bot_active_state(user_id: str, is_active: bool, kill_switch: bool = False):
+    """Explicitly sets the active/inactive state of the quant bot for a user."""
+    if not user_id:
+        user_id = '85fb30ea-0bde-4e02-bbe6-043c21036c98'
+    conn = get_pg_connection()
+    try:
+        conn.run(
+            "INSERT INTO public.bot_settings (user_id, is_active, risk_per_trade_percent, max_open_bot_trades, kill_switch, updated_at) "
+            "VALUES (:uid, :act, 1.00, 2, :kill, NOW()) "
+            "ON CONFLICT (user_id) DO UPDATE SET is_active = :act, kill_switch = :kill, updated_at = NOW()",
+            uid=user_id, act=bool(is_active), kill=bool(kill_switch)
+        )
+        if not is_active or kill_switch:
+            conn.run(
+                "UPDATE public.orders SET status = 'CLOSED', close_reason = 'AGENT_DISABLED_BY_USER', closed_at = NOW() "
+                "WHERE status = 'OPEN' AND executed_by = 'BOT' AND user_id = :uid",
+                uid=user_id
+            )
+        return {"status": "SUCCESS", "is_active": bool(is_active), "user_id": user_id}
+    finally:
+        conn.close()
+
+
+def get_bot_status(user_id: str = None):
+    """Retrieves real-time bot settings and telemetry for a user."""
+    if not user_id:
+        user_id = '85fb30ea-0bde-4e02-bbe6-043c21036c98'
+    conn = get_pg_connection()
+    try:
+        is_active = False
+        kill_switch = False
+        rows = conn.run(
+            "SELECT is_active, kill_switch, max_open_bot_trades FROM public.bot_settings WHERE user_id = :uid",
+            uid=user_id
+        )
+        if rows:
+            is_active = bool(rows[0][0])
+            kill_switch = bool(rows[0][1])
+
+        telemetry = get_daemon_telemetry()
+        telemetry["is_active"] = is_active
+        telemetry["kill_switch"] = kill_switch
+        telemetry["user_id"] = user_id
+        return telemetry
+    finally:
+        conn.close()

@@ -452,7 +452,12 @@ class handler(BaseHTTPRequestHandler):
                     import quant_engine
                 except ImportError:
                     from api import quant_engine
-                return self._send_json(quant_engine.run_autonomous_engine_cycle())
+                user_id = query.get("userId", [None])[0] or query.get("user_id", [None])[0]
+                action = query.get("action", ["status"])[0]
+                if action == "toggle":
+                    is_act = query.get("active", ["false"])[0].lower() in ["true", "1", "yes"]
+                    return self._send_json(quant_engine.set_bot_active_state(user_id, is_act))
+                return self._send_json(quant_engine.get_bot_status(user_id))
             else:
                 return self._send_json({
                     "status": "online",
@@ -479,13 +484,20 @@ class handler(BaseHTTPRequestHandler):
             elif path.endswith("/api/quant-agent") or path == "/api/quant-agent" or "quant-agent" in path:
                 try:
                     import quant_engine
+                except ImportError:
+                    from api import quant_engine
+
+                action = payload.get("action")
+                if action in ["toggle", "set_active"]:
+                    user_id = payload.get("userId") or payload.get("user_id")
+                    is_act = bool(payload.get("is_active", False))
+                    kill = bool(payload.get("kill_switch", False))
+                    return self._send_json(quant_engine.set_bot_active_state(user_id, is_act, kill))
+
+                try:
                     result = quant_engine.process_signal_server_authoritative(payload)
-                except Exception as ex1:
-                    try:
-                        from api import quant_engine
-                        result = quant_engine.process_signal_server_authoritative(payload)
-                    except Exception as ex2:
-                        result = {"status": "FAILED", "reason": f"Quant Engine Error: {str(ex2)}"}
+                except Exception as ex2:
+                    result = {"status": "FAILED", "reason": f"Quant Engine Error: {str(ex2)}"}
                 return self._send_json(result)
             else:
                 return self._send_json({"error": "Endpoint not found"}, 404)
@@ -557,12 +569,26 @@ def app(environ, start_response):
                     payload = json.loads(body)
                 except Exception:
                     payload = {}
-                try:
-                    data = quant_engine.process_signal_server_authoritative(payload)
-                except Exception as ex:
-                    data = {"status": "FAILED", "reason": f"Quant Engine Error: {str(ex)}"}
+
+                action = payload.get("action")
+                if action in ["toggle", "set_active"]:
+                    user_id = payload.get("userId") or payload.get("user_id")
+                    is_act = bool(payload.get("is_active", False))
+                    kill = bool(payload.get("kill_switch", False))
+                    data = quant_engine.set_bot_active_state(user_id, is_act, kill)
+                else:
+                    try:
+                        data = quant_engine.process_signal_server_authoritative(payload)
+                    except Exception as ex:
+                        data = {"status": "FAILED", "reason": f"Quant Engine Error: {str(ex)}"}
             else:
-                data = quant_engine.run_autonomous_engine_cycle()
+                user_id = query.get("userId", [None])[0] or query.get("user_id", [None])[0]
+                action = query.get("action", ["status"])[0]
+                if action == "toggle":
+                    is_act = query.get("active", ["false"])[0].lower() in ["true", "1", "yes"]
+                    data = quant_engine.set_bot_active_state(user_id, is_act)
+                else:
+                    data = quant_engine.get_bot_status(user_id)
 
         else:
             data = {

@@ -679,10 +679,21 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             try:
-                from api.quant_engine import run_autonomous_engine_cycle
-                telemetry = run_autonomous_engine_cycle()
+                query = parse_qs(parsed.query)
+                user_id = query.get("userId", [None])[0] or query.get("user_id", [None])[0]
+                action = query.get("action", ["status"])[0]
+
+                if action == "toggle":
+                    is_act = query.get("active", ["false"])[0].lower() in ["true", "1", "yes"]
+                    from api.quant_engine import set_bot_active_state
+                    res = set_bot_active_state(user_id, is_act)
+                    self.wfile.write(json.dumps(res).encode("utf-8"))
+                    return
+
+                from api.quant_engine import get_bot_status
+                telemetry = get_bot_status(user_id)
             except Exception as e:
-                telemetry = {"status": "ERROR", "reason": str(e)}
+                telemetry = {"status": "ERROR", "reason": str(e), "is_active": False}
             self.wfile.write(json.dumps(telemetry).encode("utf-8"))
             return
 
@@ -716,6 +727,24 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 payload = json.loads(post_body.decode("utf-8"))
             except Exception:
                 payload = {}
+
+            action = payload.get("action")
+            if action in ["toggle", "set_active"]:
+                user_id = payload.get("userId") or payload.get("user_id")
+                is_active = bool(payload.get("is_active", False))
+                kill_switch = bool(payload.get("kill_switch", False))
+                try:
+                    from api.quant_engine import set_bot_active_state
+                    res = set_bot_active_state(user_id, is_active, kill_switch)
+                except Exception as e:
+                    res = {"status": "ERROR", "reason": str(e)}
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps(res).encode("utf-8"))
+                return
+
             try:
                 from api.quant_engine import process_signal_server_authoritative
             except ImportError:

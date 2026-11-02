@@ -22,7 +22,7 @@
   if (!document.querySelector('link[href*="bot-panel.css"]')) {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = '/static/css/bot-panel.css';
+    link.href = (window.location.protocol === 'file:' ? 'static/css/bot-panel.css' : '/static/css/bot-panel.css');
     document.head.appendChild(link);
   }
 
@@ -115,60 +115,92 @@
     return '85fb30ea-0bde-4e02-bbe6-043c21036c98'; // Default Sunil Pirkash profile ID
   }
 
-  // Load initial settings from server
+  // Load initial settings from server (Server-Authoritative)
   async function syncSettingsFromServer() {
     const userId = await getAuthenticatedUserId();
-    if (!userId) return;
+    const localActive = localStorage.getItem('quant_agent_active') === 'true';
 
-    if (window.supabase) {
-      try {
-        const { data: settings } = await window.supabase
-          .from('bot_settings')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
+    try {
+      const res = await fetch(`/api/quant-agent?action=status&userId=${encodeURIComponent(userId || '')}`);
+      if (res.ok) {
+        const telem = await res.json();
+        if (telem) {
+          const serverActive = telem.is_active === true;
+          // Both server and explicit user preference must agree for active
+          const effectiveActive = serverActive && localActive;
 
-        if (settings) {
-          if (settings.kill_switch) {
+          toggle.checked = effectiveActive;
+          if (telem.kill_switch) {
             toggle.checked = false;
             led.className = 'quant-led-dot quant-led-killed';
             statusLabel.innerText = 'KILLED (LOCKED)';
             statusLabel.style.color = '#ef5350';
-          } else if (settings.is_active) {
-            toggle.checked = true;
+            lastTelemetry.innerText = 'EXECUTION HALTED';
+          } else if (effectiveActive) {
             led.className = 'quant-led-dot quant-led-on';
             statusLabel.innerText = 'MONITORING ENGINE';
             statusLabel.style.color = '#26a69a';
             lastTelemetry.innerText = 'SCANNING SCALPS';
           } else {
-            toggle.checked = false;
             led.className = 'quant-led-dot quant-led-off';
             statusLabel.innerText = 'OFFLINE';
             statusLabel.style.color = '#848E9C';
+            lastTelemetry.innerText = 'STANDBY';
           }
+          return;
         }
-      } catch (err) {
-        console.warn('[QuantAgent] Error reading bot_settings:', err);
       }
+    } catch (err) {
+      console.warn('[QuantAgent] Status fetch error:', err);
     }
+
+    // Default failsafe: OFFLINE unless explicitly confirmed
+    toggle.checked = false;
+    led.className = 'quant-led-dot quant-led-off';
+    statusLabel.innerText = 'OFFLINE';
+    statusLabel.style.color = '#848E9C';
+    lastTelemetry.innerText = 'STANDBY';
   }
 
-  // Toggle master execution
+  // Toggle master execution (Instant Server Sync + Local Safety Latch)
   toggle.addEventListener('change', async (e) => {
     const isActive = e.target.checked;
+    localStorage.setItem('quant_agent_active', isActive ? 'true' : 'false');
     led.className = isActive ? 'quant-led-dot quant-led-on' : 'quant-led-dot quant-led-off';
     statusLabel.innerText = isActive ? 'MONITORING ENGINE' : 'OFFLINE';
     statusLabel.style.color = isActive ? '#26a69a' : '#848E9C';
     lastTelemetry.innerText = isActive ? 'SCANNING SCALPS' : 'STANDBY';
 
     const userId = await getAuthenticatedUserId();
-    if (userId && window.supabase) {
+    if (userId) {
       try {
-        await window.supabase
-          .from('bot_settings')
-          .upsert({ user_id: userId, is_active: isActive, kill_switch: false });
+        await fetch('/api/quant-agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'set_active', userId: userId, is_active: isActive, kill_switch: false })
+        });
       } catch (err) {
-        console.error('[QuantAgent] Failed to update toggle state:', err);
+        console.error('[QuantAgent] Failed to update toggle state on server:', err);
+      }
+    }
+
+    if (!isActive) {
+      // Purge any bot positions from local view when deactivated
+      if (typeof window.demoState !== 'undefined' && Array.isArray(window.demoState.positions)) {
+        const hadBotPositions = window.demoState.positions.some(p => p.isBot || p.executedBy === 'BOT');
+        if (hadBotPositions) {
+          window.demoState.positions = window.demoState.positions.filter(p => !p.isBot && p.executedBy !== 'BOT');
+          if (typeof window.saveDemoState === 'function') window.saveDemoState();
+          if (typeof window.renderDemoPositionsList === 'function') window.renderDemoPositionsList();
+          if (typeof window.renderDemoWalletUI === 'function') window.renderDemoWalletUI();
+        }
+      }
+      if (typeof window.showSignalToast === 'function') {
+        window.showSignalToast('🛑 Quant Agent turned OFF. Automated trading halted.');
+      }
+    } else {
+      if (typeof window.showSignalToast === 'function') {
+        window.showSignalToast('⚡ Quant Agent turned ON. Monitoring setups.');
       }
     }
   });
@@ -182,15 +214,24 @@
       statusLabel.style.color = '#ef5350';
       lastTelemetry.innerText = 'EXECUTION HALTED';
 
+      localStorage.setItem('quant_agent_active', 'false');
       const userId = await getAuthenticatedUserId();
-      if (userId && window.supabase) {
+      if (userId) {
         try {
-          await window.supabase
-            .from('bot_settings')
-            .upsert({ user_id: userId, is_active: false, kill_switch: true });
+          await fetch('/api/quant-agent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'set_active', userId: userId, is_active: false, kill_switch: true })
+          });
         } catch (err) {
           console.error('[QuantAgent] Failed to engage kill switch on server:', err);
         }
+      }
+      if (typeof window.demoState !== 'undefined' && Array.isArray(window.demoState.positions)) {
+        window.demoState.positions = window.demoState.positions.filter(p => !p.isBot && p.executedBy !== 'BOT');
+        if (typeof window.saveDemoState === 'function') window.saveDemoState();
+        if (typeof window.renderDemoPositionsList === 'function') window.renderDemoPositionsList();
+        if (typeof window.renderDemoWalletUI === 'function') window.renderDemoWalletUI();
       }
     }
   });
@@ -241,8 +282,8 @@
   // Server-Authoritative Dispatch Function
   // Client only transmits signal coordinates, NEVER calculates lot size or risk
   window.dispatchQuantSignalToServer = async function(signalData) {
-    if (!toggle.checked) {
-      return { status: 'ABORTED', reason: 'Bot inactive' };
+    if (!toggle.checked || localStorage.getItem('quant_agent_active') !== 'true') {
+      return { status: 'ABORTED', reason: 'Quant agent is turned OFF' };
     }
 
     const userId = await getAuthenticatedUserId();
@@ -306,7 +347,7 @@
   // Autonomous Signal Monitor (Decoupled Observer)
   let lastDispatchedHash = null;
   function monitorSignalsForExecution() {
-    if (!toggle.checked) return;
+    if (!toggle.checked || localStorage.getItem('quant_agent_active') !== 'true') return;
     const pos = window.activeTradingPointPosition;
     if (pos && pos.status === 'ACTIVE' && pos.entry && pos.sl && pos.tp) {
       const sigKey = `${pos.direction || pos.type}_${pos.entry}_${pos.sl}_${pos.tp}_${pos.startCandleTime || pos.startTime || ''}`;
