@@ -4526,9 +4526,94 @@
 
   
     /* ========================================================
+       DESKTOP DEFAULT GUARDS: STRICT HIDE FOR MOBILE COMPONENTS
+       ======================================================== */
+    .mobile-bottom-nav,
+    #mobileBottomNav,
+    .mobile-sheet-backdrop,
+    #mobileSheetBackdrop,
+    .mobile-sheet-container,
+    #mobileSheetContainer,
+    .mobile-tf-pill-row,
+    #mobileTfPillRow,
+    .mobile-top-spot-price,
+    #mobileTopSpotPrice {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      height: 0 !important;
+      max-height: 0 !important;
+      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+    }
+
+    @media (min-width: 769px) {
+      .mobile-bottom-nav,
+      #mobileBottomNav,
+      .mobile-sheet-backdrop,
+      #mobileSheetBackdrop,
+      .mobile-sheet-container,
+      #mobileSheetContainer,
+      .mobile-tf-pill-row,
+      #mobileTfPillRow,
+      .mobile-top-spot-price,
+      #mobileTopSpotPrice {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+      }
+    }
+
+    /* ========================================================
        TRADINGVIEW & EXNESS INSPIRED 100% MOBILE RESPONSIVE ENGINE
        ======================================================== */
     @media (max-width: 768px) {
+      .mobile-bottom-nav,
+      #mobileBottomNav {
+        display: flex !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        height: calc(56px + env(safe-area-inset-bottom)) !important;
+        max-height: none !important;
+      }
+      .mobile-sheet-backdrop,
+      #mobileSheetBackdrop {
+        display: block !important;
+        visibility: visible !important;
+        height: auto !important;
+        max-height: none !important;
+      }
+      .mobile-sheet-container,
+      #mobileSheetContainer {
+        display: flex !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        height: auto !important;
+        max-height: 82vh !important;
+      }
+      .mobile-tf-pill-row,
+      #mobileTfPillRow {
+        display: flex !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        height: auto !important;
+        max-height: none !important;
+      }
+      .mobile-top-spot-price,
+      #mobileTopSpotPrice {
+        display: inline-block !important;
+        visibility: visible !important;
+        height: auto !important;
+        max-height: none !important;
+      }
       html, body {
         width: 100% !important;
         height: 100% !important;
@@ -7837,6 +7922,21 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
             </div>
 
             <!-- Indicator: SMC M5 Pullback Sniper (BOS + OB + Fibo 0.618) -->
+            <!-- Indicator: LS-EXP (Liquidity Sweep & Path Expansion) -->
+            <div class="tv-ind-row" onclick="clickModularToggle('lsExp', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #00e5ff;">⚡ LS-EXP (Liquidity Sweep &amp; Path Expansion)</b>
+                  <span style="font-size: 9px; background: rgba(0,229,255,0.18); color: #00e5ff; padding: 1px 4px; border-radius: 4px; font-weight: 700;">1:6.0 RR</span>
+                </div>
+                <small>15M Liquidity Sweep below Base &amp; High-RR Path Expansion</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-lsExp" checked onchange="toggleModularIndicator('lsExp')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
             <div class="tv-ind-row" onclick="clickModularToggle('smcPullbackSniper', event)">
               <div class="tv-ind-info">
                 <div style="display: flex; align-items: center; gap: 6px;">
@@ -9680,30 +9780,37 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     // 5 CORE COMPRESSED MODULAR INDICATORS CONFIG
     // ==========================================
     const DEFAULT_INDICATOR_CONFIG = {
+      lsExp: (function() {
+        try {
+          const v = localStorage.getItem('indicator_ls_exp_active');
+          return v !== null ? (v === 'true') : true;
+        } catch (e) { return true; }
+      })(), // Dedicated: SMC Liquidity Sweep & Projection Engine (LS-EXP) - Weight: 30
       smcZones: true,        // Module 1: SMC Zones (FVG & Order Blocks) - Weight: 25
       smcInducementSupply: (function() {
         try {
           const v = localStorage.getItem('indicator_smc_inducement_active');
-          return v !== null ? (v === 'true') : true;
-        } catch (e) { return true; }
+          return v !== null ? (v === 'true') : false;
+        } catch (e) { return false; }
       })(), // Dedicated: SMC Inducement & CHoCH Supply Sniper - Weight: 25
       smcPullbackSniper: (function() {
         try {
           const v = localStorage.getItem('indicator_ob_fibo_active');
-          return v !== null ? (v === 'true') : true;
-        } catch (e) { return true; }
+          return v !== null ? (v === 'true') : false;
+        } catch (e) { return false; }
       })(), // Dedicated: SMC M5 Pullback Sniper (BOS + OB 0.618 + IFVG TP) - Weight: 25
-      liquidityHunter: true, // Module 2: Liquidity & Order Flow Hunter (Session Sweeps, EQH/EQL) - Weight: 25
-      liquidityPsychology: true, // Dedicated: Liquidity & Candle Psychology Engine (Sweep + 5-Candle Confirmation) - Weight: 25
+      liquidityHunter: false, // Module 2: Liquidity & Order Flow Hunter (Session Sweeps, EQH/EQL) - Weight: 25
+      liquidityPsychology: false, // Dedicated: Liquidity & Candle Psychology Engine (Sweep + 5-Candle Confirmation) - Weight: 25
       dailyLiquiditySniper: true, // Dedicated: Daily Liquidity Sniper (1D Sweep + 1M Trigger) - Weight: 25
-      vwapEmaFvg: true,           // Dedicated: VWAP + EMA + FVG Confluence Engine - Weight: 20
-      autoFib: true,         // Module 3: Auto Fibonacci Golden Pocket (0.50 - 0.618) - Weight: 20
-      breakout: true,        // Module: Breakout & Retest (20-Period Dynamic Channel) - Weight: 15
+      vwapEmaFvg: false,           // Dedicated: VWAP + EMA + FVG Confluence Engine - Weight: 20
+      autoFib: false,         // Module 3: Auto Fibonacci Golden Pocket (0.50 - 0.618) - Weight: 20
+      breakout: false,        // Module: Breakout & Retest (20-Period Dynamic Channel) - Weight: 15
       priceAction: true,     // Module 4: Price Action & Candlestick Scanner - Weight: 15
       momentumSuite: false   // Module 5: Momentum & Trend Suite (EMA 20/50, RSI, MACD) - Weight: 15
     };
 
     const MODULE_WEIGHTS = {
+      lsExp: 30,
       smcZones: 25,
       smcInducementSupply: 25,
       smcPullbackSniper: 25,
@@ -10120,6 +10227,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       applyModularVisuals(moduleName, newVal);
 
       const tabMap = {
+        lsExp: 'LS_EXP',
         smcZones: 'SMC',
         smcPullbackSniper: 'OB_FIBO',
         smcInducementSupply: 'CHOCH_SUPPLY',
@@ -10221,6 +10329,13 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     }
 
     function applyModularVisuals(moduleName, isChecked) {
+      if (moduleName === 'lsExp') {
+        lsExpEnabled = isChecked;
+        window.lsExpEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_ls_exp_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+      } else
       if (moduleName === 'smcPullbackSniper') {
         smcPullbackSniperEnabled = isChecked;
         window.smcPullbackSniperEnabled = isChecked;
@@ -12352,14 +12467,14 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
         if (yTop !== null && yBottom !== null) {
           const boxY = Math.min(yTop, yBottom);
-          const boxH = Math.max(3, Math.abs(yBottom - yTop));
-          const boxX = Math.max(10, canvasCssWidth - 280);
-          const boxW = 210;
+          const boxH = Math.min(Math.round(canvasCssHeight * 0.22), Math.max(4, Math.abs(yBottom - yTop)));
+          const boxW = 160;
+          const boxX = Math.max(10, canvasCssWidth - boxW - 75);
 
           const isBull = fvg.type === 'BULLISH_FVG';
-          ctx.fillStyle = isBull ? 'rgba(38, 166, 154, 0.20)' : 'rgba(239, 83, 80, 0.20)';
+          ctx.fillStyle = isBull ? 'rgba(38, 166, 154, 0.08)' : 'rgba(239, 83, 80, 0.08)';
           ctx.fillRect(boxX, boxY, boxW, boxH);
-          ctx.strokeStyle = isBull ? '#26a69a' : '#ef5350';
+          ctx.strokeStyle = isBull ? 'rgba(38, 166, 154, 0.60)' : 'rgba(239, 83, 80, 0.60)';
           ctx.lineWidth = 1;
           ctx.strokeRect(boxX, boxY, boxW, boxH);
 
@@ -12407,8 +12522,9 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     // Single Source of Truth Telemetry for: SMC, LIQUIDITY, DLS, FIBONACCI, BREAKOUT
     // ==========================================
     const modularEngineState = {
-      activeTab: 'SMC',
+      activeTab: 'LS_EXP',
       indicators: {
+        LS_EXP: { status: 'STANDBY', stateBadge: 'SCANNING BASE', direction: 'NEUTRAL', entry: '--', sl: '--', tp: '--', rr: '--', reason: 'Scanning 15M candles for accumulation base & sell-side liquidity sweep' },
         CHOCH_SUPPLY: { status: 'STANDBY', stateBadge: 'WAITING FOR INDUCEMENT SWEEP', direction: 'NEUTRAL', entry: '--', sl: '--', tp: '--', rr: '--', reason: 'Scanning 5M/15M Structure for CHoCH & Supply Zone' },
         OB_FIBO: { status: 'STANDBY', direction: 'NEUTRAL', entry: '--', sl: '--', tp: '--', rr: '--', reason: 'Scanning M5 Structure for BOS & Fibo Retracement' },
         SMC: { status: 'STANDBY', direction: 'NEUTRAL', entry: '--', sl: '--', tp: '--', rr: '--', reason: 'Awaiting Zone Mitigation' },
@@ -12752,6 +12868,324 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     }
     window.drawSMC_OB_FiboOverlay = drawSMC_OB_FiboOverlay;
 
+    
+    // ==========================================
+    // SMC LIQUIDITY SWEEP & PROJECTION ENGINE (LS-EXP)
+    // ==========================================
+    function evaluateLS_EXP_Setup(candles) {
+      if (!candles || candles.length < 10) return null;
+
+      // 1. Calculate ATR for volatility context
+      let atrSum = 0;
+      const atrPeriod = Math.min(10, candles.length);
+      for (let i = candles.length - atrPeriod; i < candles.length; i++) {
+        const tr = Math.max(
+          candles[i].high - candles[i].low,
+          Math.abs(candles[i].high - (candles[i-1] ? candles[i-1].close : candles[i].open)),
+          Math.abs(candles[i].low - (candles[i-1] ? candles[i-1].close : candles[i].open))
+        );
+        atrSum += tr;
+      }
+      const avgAtr = atrPeriod > 0 ? (atrSum / atrPeriod) : 3.5;
+
+      let bestSetup = null;
+
+      // Scan recent candles backwards (lookback window)
+      const maxScan = Math.min(candles.length - 5, 20);
+      for (let s = candles.length - 1; s >= candles.length - maxScan; s--) {
+        const sweepCandle = candles[s];
+        const range = sweepCandle.high - sweepCandle.low;
+        if (range <= 0.20) continue;
+
+        const lowerWick = Math.min(sweepCandle.open, sweepCandle.close) - sweepCandle.low;
+        const lowerWickRatio = lowerWick / range;
+
+        // Check Step 2: Lower wick >= 40% of candle range
+        if (lowerWickRatio < 0.40) continue;
+
+        // Check Step 1: Lookback 4 to 8 candles for horizontal consolidation base
+        for (let baseLen = 4; baseLen <= 8; baseLen++) {
+          const baseStart = s - baseLen;
+          if (baseStart < 0) continue;
+
+          const baseCandles = candles.slice(baseStart, s);
+          const baseHigh = Math.max(...baseCandles.map(c => Math.max(c.open, c.close)));
+          const baseLow = Math.min(...baseCandles.map(c => Math.min(c.open, c.close)));
+          const baseExtremeLow = Math.min(...baseCandles.map(c => c.low));
+          const baseSpan = baseHigh - baseLow;
+
+          // Narrow ATR band
+          if (baseSpan > Math.max(6.50, avgAtr * 1.8)) continue;
+
+          // Pierces below base low and body closes back inside the base
+          if (sweepCandle.low < baseExtremeLow && sweepCandle.close >= (baseLow - 0.25)) {
+            // Find major breakdown origin prior to consolidation base
+            const preStart = Math.max(0, baseStart - 20);
+            const preCandles = candles.slice(preStart, baseStart);
+            const breakdownOrigin = preCandles.length > 0 
+              ? Math.max(...preCandles.map(c => c.high))
+              : (baseHigh + (baseSpan * 4.0));
+
+            const entry = Number(sweepCandle.close.toFixed(2));
+            const sweepLow = Number(sweepCandle.low.toFixed(2));
+            const sl = Number((sweepLow - 1.50).toFixed(2)); // 1.50 USD below lowest sweep wick
+            const rawRisk = Math.max(1.80, entry - sl);
+            const risk = Number(Math.max(1.80, Math.min(5.50, rawRisk)).toFixed(2));
+
+            // Target 1:5 to 1:8 RR ratio
+            const targetDistance = breakdownOrigin - entry;
+            let rrRatioNum = 6.0;
+            let tp = Number((entry + (risk * rrRatioNum)).toFixed(2));
+
+            if (targetDistance >= (risk * 4.5) && targetDistance <= (risk * 8.5)) {
+              tp = Number(breakdownOrigin.toFixed(2));
+              rrRatioNum = Number(((tp - entry) / risk).toFixed(1));
+            } else {
+              rrRatioNum = 6.0;
+              tp = Number((entry + (risk * rrRatioNum)).toFixed(2));
+            }
+
+            const reward = Number((tp - entry).toFixed(2));
+            const rrRatio = (reward / risk).toFixed(1);
+
+            bestSetup = {
+              isTriggered: true,
+              type: 'BUY',
+              direction: 'BUY / LONG',
+              status: 'SWEEP CONFIRMED - EXPANSION TARGET ACTIVE',
+              stateBadge: 'SWEEP CONFIRMED',
+              sweepCandleTime: sweepCandle.time,
+              sweepCandleIndex: s,
+              sweepLow: sweepLow,
+              lowerWickRatio: Math.round(lowerWickRatio * 100),
+              baseHigh: Number(baseHigh.toFixed(2)),
+              baseLow: Number(baseLow.toFixed(2)),
+              baseStartTime: baseCandles[0].time,
+              baseEndTime: baseCandles[baseCandles.length - 1].time,
+              breakdownOrigin: Number(breakdownOrigin.toFixed(2)),
+              entry: entry,
+              sl: sl,
+              tp: tp,
+              risk: risk,
+              reward: reward,
+              rrRatio: rrRatio,
+              rr: `1 : ${rrRatio}`,
+              reason: 'Sell-side liquidity purged below consolidation range. Aggressive buyers absorbing volume for macro expansion.'
+            };
+            break;
+          }
+        }
+        if (bestSetup) break;
+      }
+
+      // Monitoring / Accumulation base fallback
+      if (!bestSetup && candles.length >= 8) {
+        const recentBase = candles.slice(-6);
+        const bH = Math.max(...recentBase.map(c => Math.max(c.open, c.close)));
+        const bL = Math.min(...recentBase.map(c => Math.min(c.open, c.close)));
+        const bSpan = bH - bL;
+        const curClose = candles[candles.length - 1].close;
+
+        if (bSpan <= Math.max(6.0, avgAtr * 1.6)) {
+          bestSetup = {
+            isTriggered: false,
+            type: 'BUY',
+            direction: 'STANDBY',
+            status: 'MONITORING ACCUMULATION BASE',
+            stateBadge: 'ACCUMULATION BASE',
+            baseHigh: Number(bH.toFixed(2)),
+            baseLow: Number(bL.toFixed(2)),
+            baseStartTime: recentBase[0].time,
+            baseEndTime: recentBase[recentBase.length - 1].time,
+            entry: Number((bH + 0.60).toFixed(2)),
+            sl: Number((bL - 1.50).toFixed(2)),
+            tp: Number((curClose + 18.0).toFixed(2)),
+            risk: Number(Math.max(2.0, (bH + 0.60) - (bL - 1.50)).toFixed(2)),
+            reward: 18.0,
+            rrRatio: '6.0',
+            rr: '1 : 6.0',
+            reason: 'Consolidation base detected. Monitoring for sell-side liquidity sweep & absorption reversal.'
+          };
+        }
+      }
+
+      return bestSetup;
+    }
+    window.evaluateLS_EXP_Setup = evaluateLS_EXP_Setup;
+
+    // Canvas Renderer: SMC Liquidity Sweep & Projection Engine (LS-EXP)
+    function drawLS_EXP_Overlay(ctx, setup, candles) {
+      if (!ctx || !candleSeries || !chart || !setup) return;
+      if (typeof indicatorSettings !== 'undefined' && !indicatorSettings.lsExp) return;
+
+      ctx.save();
+
+      // 1. Horizontal Consolidation Base Bounding Box (Clean, subtle dashed bracket)
+      if (setup.baseHigh && setup.baseLow && chart.timeScale) {
+        const yBaseHigh = candleSeries.priceToCoordinate(setup.baseHigh);
+        const yBaseLow = candleSeries.priceToCoordinate(setup.baseLow);
+
+        if (yBaseHigh !== null && yBaseLow !== null) {
+          const topY = Math.min(yBaseHigh, yBaseLow);
+          const botY = Math.max(yBaseHigh, yBaseLow);
+          const height = Math.min(Math.round(canvasCssHeight * 0.22), Math.max(8, botY - topY));
+
+          let startX = 25;
+          if (setup.baseStartTime) {
+            const tX = chart.timeScale().timeToCoordinate(setup.baseStartTime);
+            if (tX !== null && tX > 10 && tX < canvasCssWidth) startX = Math.round(tX);
+          }
+
+          let endX = startX + 160;
+          if (setup.sweepCandleTime) {
+            const swX = chart.timeScale().timeToCoordinate(setup.sweepCandleTime);
+            if (swX !== null && swX > startX) endX = Math.round(swX + 25);
+          }
+          endX = Math.min(canvasCssWidth - 75, endX);
+          const width = Math.max(60, endX - startX);
+
+          // Subtle base fill & dashed border
+          ctx.fillStyle = 'rgba(56, 139, 253, 0.06)';
+          ctx.fillRect(startX, topY, width, height);
+
+          ctx.strokeStyle = 'rgba(56, 139, 253, 0.55)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 3]);
+          ctx.strokeRect(startX, topY, width, height);
+          ctx.setLineDash([]);
+
+          // Compact Range Pill
+          const baseLabel = `BASE · $${setup.baseLow.toFixed(1)}-$${setup.baseHigh.toFixed(1)}`;
+          ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const bw = ctx.measureText(baseLabel).width + 8;
+          const bh = 14;
+          const bx = startX + 5;
+          const by = Math.max(4, topY - bh - 2);
+
+          ctx.fillStyle = 'rgba(10, 14, 23, 0.90)';
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.strokeStyle = 'rgba(56, 139, 253, 0.60)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(bx, by, bw, bh);
+
+          ctx.fillStyle = '#58a6ff';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(baseLabel, bx + 4, by + bh / 2);
+        }
+      }
+
+      // 2. The Sweep Alert Marker at Wick Tip
+      if (setup.sweepLow && setup.sweepCandleTime && chart.timeScale) {
+        const sweepX = chart.timeScale().timeToCoordinate(setup.sweepCandleTime);
+        const sweepY = candleSeries.priceToCoordinate(setup.sweepLow);
+
+        if (sweepX !== null && sweepY !== null && sweepX >= 10 && sweepX <= canvasCssWidth - 40) {
+          // Glowing purge node
+          ctx.shadowColor = 'rgba(0, 229, 255, 0.85)';
+          ctx.shadowBlur = 8;
+          ctx.fillStyle = '#00e5ff';
+          ctx.beginPath();
+          ctx.arc(sweepX, sweepY, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          // Clean Alert Tag beneath wick
+          const sweepTag = `⚡ LIQUIDITY SWEPT (${setup.lowerWickRatio || 45}% WICK)`;
+          ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const tw = ctx.measureText(sweepTag).width + 10;
+          const th = 16;
+          const tx = Math.max(10, Math.min(canvasCssWidth - tw - 70, sweepX - tw / 2));
+          const ty = Math.min(canvasCssHeight - th - 6, sweepY + 8);
+
+          ctx.fillStyle = 'rgba(10, 20, 30, 0.95)';
+          ctx.fillRect(tx, ty, tw, th);
+          ctx.strokeStyle = '#00e5ff';
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(tx, ty, tw, th);
+
+          ctx.fillStyle = '#00e5ff';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(sweepTag, tx + 5, ty + th / 2);
+        }
+      }
+
+      // 3. Projected Path Curve (Blue line with circular nodes expanding upward to target)
+      if (setup.isTriggered && setup.entry && setup.tp && setup.sweepCandleTime && chart.timeScale) {
+        const startX = chart.timeScale().timeToCoordinate(setup.sweepCandleTime);
+        const startY = candleSeries.priceToCoordinate(setup.entry);
+        const targetYRaw = candleSeries.priceToCoordinate(setup.tp);
+
+        if (startX !== null && startY !== null) {
+          const targetX = Math.min(canvasCssWidth - 70, startX + 90);
+          const targetY = targetYRaw !== null ? Math.max(15, targetYRaw) : Math.max(15, startY - 95);
+
+          // Cubic Bézier control points for smooth institutional upward expansion curve
+          const cp1X = startX + 25;
+          const cp1Y = startY - 10;
+          const cp2X = startX + 55;
+          const cp2Y = targetY + 25;
+
+          // Draw Path Curve
+          ctx.strokeStyle = '#2979ff';
+          ctx.lineWidth = 2.2;
+          ctx.shadowColor = 'rgba(41, 121, 255, 0.65)';
+          ctx.shadowBlur = 6;
+          ctx.setLineDash([5, 3]);
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, targetX, targetY);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.shadowBlur = 0;
+
+          // 4 Circular Nodes along the curve
+          const nodes = [
+            { t: 0.0, label: 'ENTRY' },
+            { t: 0.33, label: 'ACCEL' },
+            { t: 0.68, label: 'EXPANSION' },
+            { t: 1.0, label: 'TARGET' }
+          ];
+
+          nodes.forEach((nd, idx) => {
+            const u = 1 - nd.t;
+            const tt = nd.t;
+            const nx = (u * u * u * startX) + (3 * u * u * tt * cp1X) + (3 * u * tt * tt * cp2X) + (tt * tt * tt * targetX);
+            const ny = (u * u * u * startY) + (3 * u * u * tt * cp1Y) + (3 * u * tt * tt * cp2Y) + (tt * tt * tt * targetY);
+
+            ctx.fillStyle = idx === 3 ? '#00e676' : (idx === 0 ? '#00e5ff' : '#2979ff');
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.arc(nx, ny, idx === 3 ? 4.5 : 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Node label for Target
+            if (idx === 3) {
+              ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+              const lbl = `🎯 EXPANSION TP · $${setup.tp.toFixed(1)} (${setup.rr})`;
+              const lw = ctx.measureText(lbl).width + 8;
+              const lx = Math.min(canvasCssWidth - lw - 65, nx + 8);
+              const ly = Math.max(10, ny - 8);
+
+              ctx.fillStyle = 'rgba(6, 78, 59, 0.95)';
+              ctx.fillRect(lx, ly, lw, 16);
+              ctx.strokeStyle = '#00e676';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(lx, ly, lw, 16);
+
+              ctx.fillStyle = '#00e676';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(lbl, lx + 4, ly + 8);
+            }
+          });
+        }
+      }
+
+      ctx.restore();
+    }
+    window.drawLS_EXP_Overlay = drawLS_EXP_Overlay;
+
     // ==========================================
     // SMC INDUCEMENT & CHOCH SUPPLY SNIPER ENGINE
     // ==========================================
@@ -13008,18 +13442,22 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         }
       }
 
-      // 5. Text Watermark during Waiting Phase
+      // 5. Clean, Professional Status Badge during Waiting Phase (Discrete & Non-Intrusive)
       if (!setup.isTriggered) {
-        ctx.font = '800 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-        ctx.fillStyle = 'rgba(217, 70, 239, 0.28)'; // Semi-transparent pink/purple
-        ctx.textAlign = 'center';
+        const pillText = '⚡ SMC INDUCEMENT: MONITORING SWEEP';
+        ctx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        const pw = Math.round(ctx.measureText(pillText).width + 16);
+        const px = 20;
+        const py = 12;
+        ctx.fillStyle = 'rgba(22, 27, 34, 0.88)';
+        ctx.fillRect(px, py, pw, 20);
+        ctx.strokeStyle = 'rgba(217, 70, 239, 0.7)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px, py, pw, 20);
+        ctx.fillStyle = '#f0abfc';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        const wmX = Math.round(canvasCssWidth * 0.55);
-        const wmY = Math.round(canvasCssHeight * 0.40);
-        ctx.fillText('WAITING FOR INDUCEMENT SWEEP', wmX, wmY);
-        ctx.font = '700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-        ctx.fillStyle = 'rgba(217, 70, 239, 0.22)';
-        ctx.fillText('SMC CHoCH + Extreme Supply Monitor Active', wmX, wmY + 18);
+        ctx.fillText(pillText, px + 8, py + 10);
       }
 
       // 6. TradingView Style Short Position Tool on Trigger
@@ -13107,6 +13545,46 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     function updateModularEngineTelemetry(candles, currentSpot) {
       if (!candles || candles.length < 5) return;
       const spot = (typeof currentSpot === 'number' && currentSpot > 0) ? currentSpot : candles[candles.length - 1].close;
+
+      // Dedicated: SMC LIQUIDITY SWEEP & PROJECTION ENGINE (LS-EXP)
+      const lsExpResult = evaluateLS_EXP_Setup(candles);
+      window.latestLS_EXP = lsExpResult;
+      if (lsExpResult) {
+        if (lsExpResult.isTriggered) {
+          modularEngineState.indicators.LS_EXP = {
+            status: lsExpResult.status,
+            stateBadge: lsExpResult.stateBadge,
+            direction: lsExpResult.direction,
+            entry: '$' + Number(lsExpResult.entry).toFixed(2),
+            sl: '$' + Number(lsExpResult.sl).toFixed(2),
+            tp: '$' + Number(lsExpResult.tp).toFixed(2),
+            rr: lsExpResult.rr || '1 : 6.0',
+            reason: lsExpResult.reason
+          };
+        } else {
+          modularEngineState.indicators.LS_EXP = {
+            status: lsExpResult.status,
+            stateBadge: lsExpResult.stateBadge,
+            direction: lsExpResult.direction,
+            entry: '$' + Number(lsExpResult.entry).toFixed(2),
+            sl: '$' + Number(lsExpResult.sl).toFixed(2),
+            tp: '$' + Number(lsExpResult.tp).toFixed(2),
+            rr: lsExpResult.rr || '1 : 6.0',
+            reason: lsExpResult.reason
+          };
+        }
+      } else {
+        modularEngineState.indicators.LS_EXP = {
+          status: 'STANDBY',
+          stateBadge: 'SCANNING BASE',
+          direction: 'NEUTRAL',
+          entry: '--',
+          sl: '--',
+          tp: '--',
+          rr: '--',
+          reason: 'Scanning 15M candles for accumulation base & sell-side liquidity sweep.'
+        };
+      }
 
       // Dedicated: SMC M5 PULLBACK SNIPER (BOS + OB + 0.618 FIBO + IFVG TP) TELEMETRY
       let m5Candles = candles;
@@ -13469,7 +13947,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         badgeBorder = 'rgba(234, 179, 8, 0.4)';
       }
 
-      const tabs = ['SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
+      const tabs = ['LS_EXP', 'SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
 
       container.innerHTML = `
         <div class="terminal-card clean-signal-card" style="padding: 12px; margin-top: 10px; border-radius: 12px; background: rgba(18, 20, 26, 0.95); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);">
@@ -13477,10 +13955,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
             <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #ffd700; display: flex; align-items: center; gap: 6px;">
               <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ffd700; box-shadow: 0 0 8px #ffd700;"></span>
-              ${activeTab === 'OB_FIBO' ? '⚡ SMC PULLBACK SNIPER (OB + 0.618 FIB)' : (activeTab === 'CHOCH_SUPPLY' ? '⚡ SMC INDUCEMENT & CHOCH SUPPLY SNIPER' : (activeTab === 'VWAP_FVG' ? 'VWAP + FVG' : activeTab))} Indicator Engine
+              ${activeTab === 'LS_EXP' ? '⚡ LS-EXP: LIQUIDITY SWEEP & EXPANSION' : (activeTab === 'OB_FIBO' ? '⚡ SMC PULLBACK SNIPER (OB + 0.618 FIB)' : (activeTab === 'CHOCH_SUPPLY' ? '⚡ SMC INDUCEMENT & CHOCH SUPPLY SNIPER' : (activeTab === 'VWAP_FVG' ? 'VWAP + FVG' : activeTab)))} Indicator Engine
             </span>
             <span style="font-size: 10px; padding: 2px 7px; border-radius: 10px; background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; font-family: monospace; font-weight: 700;">
-              ${(activeTab === 'OB_FIBO' || activeTab === 'CHOCH_SUPPLY') && activeData.stateBadge ? activeData.stateBadge : activeData.direction}
+              ${(activeTab === 'LS_EXP' || activeTab === 'OB_FIBO' || activeTab === 'CHOCH_SUPPLY') && activeData.stateBadge ? activeData.stateBadge : activeData.direction}
             </span>
           </div>
 
@@ -14119,10 +14597,11 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       }
 
       if (keySupply && (hasSupplyRejection || Math.abs(currentPrice - keySupply.bottom) <= 7.0)) {
-        // Short setup: Risk Box above FVG High, Reward Box down to recent liquidity low
+        // Short setup: Risk Box above FVG High, bounded to realistic institutional 15M gold risk
         const entry = supplyRejCandle ? Number(supplyRejCandle.close.toFixed(2)) : Number(currentPrice.toFixed(2));
-        const sl = Number((keySupply.top + 1.20).toFixed(2)); // Stop Loss above FVG High
-        const risk = Number(Math.max(1.80, sl - entry).toFixed(2));
+        const rawRisk = Math.abs(keySupply.top - entry) + 0.80;
+        const risk = Number(Math.max(1.80, Math.min(5.50, rawRisk)).toFixed(2));
+        const sl = Number((entry + risk).toFixed(2));
         
         let targetLow = null;
         if (typeof currentLiquidityPools !== 'undefined' && currentLiquidityPools) {
@@ -14137,7 +14616,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         let tp = Number((entry - reward).toFixed(2));
         let rrRatio = '3.5';
 
-        if (targetLow && (entry - targetLow) >= (risk * 3.0)) {
+        if (targetLow && (entry - targetLow) >= (risk * 2.5) && (entry - targetLow) <= (risk * 5.0)) {
           tp = Number(targetLow.toFixed(2));
           reward = Number((entry - tp).toFixed(2));
           rrRatio = (reward / risk).toFixed(1);
@@ -14156,10 +14635,11 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           triggerReason: hasSupplyRejection ? '15M FVG Tap + Bearish Rejection Wick' : '15M FVG Mitigation Zone'
         };
       } else if (keyDemand && (hasDemandRejection || Math.abs(currentPrice - keyDemand.top) <= 7.0)) {
-        // Long setup: Risk Box below FVG Low, Reward Box up to opposing liquidity
+        // Long setup: Risk Box below FVG Low, bounded to realistic institutional 15M gold risk
         const entry = demandRejCandle ? Number(demandRejCandle.close.toFixed(2)) : Number(currentPrice.toFixed(2));
-        const sl = Number((keyDemand.bottom - 1.20).toFixed(2)); // Stop Loss below FVG Low
-        const risk = Number(Math.max(1.80, entry - sl).toFixed(2));
+        const rawRisk = Math.abs(entry - keyDemand.bottom) + 0.80;
+        const risk = Number(Math.max(1.80, Math.min(5.50, rawRisk)).toFixed(2));
+        const sl = Number((entry - risk).toFixed(2));
 
         let targetHigh = null;
         if (typeof currentLiquidityPools !== 'undefined' && currentLiquidityPools) {
@@ -14174,7 +14654,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         let tp = Number((entry + reward).toFixed(2));
         let rrRatio = '3.5';
 
-        if (targetHigh && (targetHigh - entry) >= (risk * 3.0)) {
+        if (targetHigh && (targetHigh - entry) >= (risk * 2.5) && (targetHigh - entry) <= (risk * 5.0)) {
           tp = Number(targetHigh.toFixed(2));
           reward = Number((tp - entry).toFixed(2));
           rrRatio = (reward / risk).toFixed(1);
@@ -14193,10 +14673,11 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           triggerReason: hasDemandRejection ? '15M FVG Tap + Bullish Rejection Wick' : '15M FVG Mitigation Zone'
         };
       } else if (keySupply) {
-        // Default Short projection from Key Supply
+        // Default Short projection from Key Supply (Strictly scaled)
         const entry = Number(keySupply.bottom.toFixed(2));
-        const sl = Number((keySupply.top + 1.20).toFixed(2));
-        const risk = Number(Math.max(1.80, sl - entry).toFixed(2));
+        const rawRisk = Math.abs(keySupply.top - entry) + 0.80;
+        const risk = Number(Math.max(1.80, Math.min(5.50, rawRisk)).toFixed(2));
+        const sl = Number((entry + risk).toFixed(2));
         const reward = Number((risk * 3.5).toFixed(2));
         const tp = Number((entry - reward).toFixed(2));
         activeRR = {
@@ -14226,7 +14707,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
     // Professional Lightweight Canvas SMC Zone Renderer (Clean & Left-Aligned)
     function drawSMCZonesOnCanvas(smcData) {
-      if (!smcEnabled || !drawingCtx || !drawingCanvas || !candleSeries || !smcData) return;
+      if (!smcEnabled || !drawingCtx || !drawingCanvas || !candleSeries || !chart || !smcData) return;
 
       const zones = smcData.fvgList || [];
       if (!Array.isArray(zones) || zones.length === 0) return;
@@ -14235,56 +14716,78 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         ? currentLiveSpot 
         : (rawCandleData.length ? rawCandleData[rawCandleData.length - 1].close : 4050);
 
+      let lastCandleX = null;
+      if (rawCandleData && rawCandleData.length && chart.timeScale) {
+        lastCandleX = chart.timeScale().timeToCoordinate(rawCandleData[rawCandleData.length - 1].time);
+      }
+
       zones.forEach(zone => {
         const yTop = candleSeries.priceToCoordinate(zone.top);
         const yBottom = candleSeries.priceToCoordinate(zone.bottom);
 
         if (yTop !== null && yBottom !== null) {
-          const topY = Math.min(yTop, yBottom);
-          const botY = Math.max(yTop, yBottom);
-          const height = Math.max(6, botY - topY);
+          const topY = Math.max(0, Math.min(yTop, yBottom));
+          const botY = Math.min(canvasCssHeight, Math.max(yTop, yBottom));
+          
+          // SCREEN SCALE ACCURACY: Constrain height to max 26% of chart height so it never overwhelms candles
+          const maxHeight = Math.round(canvasCssHeight * 0.26);
+          const rawH = Math.max(6, botY - topY);
+          const height = Math.min(maxHeight, rawH);
 
-          // Span cleanly across chart
-          const startX = 20;
-          const width = Math.max(60, canvasCssWidth - startX - 70);
+          // Candle-anchored width:
+          // In TradingView SMC, an FVG starts at its formation candle and projects forward to the current market
+          let startX = 20;
+          if (zone.time && chart.timeScale) {
+            const tX = chart.timeScale().timeToCoordinate(zone.time);
+            if (tX !== null && tX > 10 && tX < canvasCssWidth) {
+              startX = Math.round(tX);
+            } else if (rawCandleData && rawCandleData.length > 25) {
+              const fallbackX = chart.timeScale().timeToCoordinate(rawCandleData[Math.max(0, rawCandleData.length - 25)].time);
+              if (fallbackX !== null) startX = Math.max(20, Math.round(fallbackX));
+            }
+          }
 
-          // 1. Soft semi-transparent FVG box (#FF5252 with opacity 0.25 for Bearish)
-          drawingCtx.fillStyle = zone.color;
+          const endX = (lastCandleX !== null && lastCandleX > startX) 
+            ? Math.min(canvasCssWidth - 65, Math.round(lastCandleX + 28))
+            : Math.round(canvasCssWidth - 75);
+          const width = Math.max(50, endX - startX);
+
+          const isSupply = zone.type === 'BEARISH_FVG';
+
+          // 1. Ultra-clean subtle institutional opacity (0.08)
+          drawingCtx.fillStyle = isSupply ? 'rgba(239, 83, 80, 0.08)' : 'rgba(38, 166, 154, 0.08)';
           drawingCtx.fillRect(startX, topY, width, height);
 
           // 2. Crisp, fine border
-          drawingCtx.strokeStyle = zone.borderColor;
+          drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.55)' : 'rgba(38, 166, 154, 0.55)';
           drawingCtx.lineWidth = 1;
-          drawingCtx.setLineDash([5, 4]);
+          drawingCtx.setLineDash([4, 3]);
           drawingCtx.strokeRect(startX, topY, width, height);
           drawingCtx.setLineDash([]);
 
-          // 3. Crisp single badge inside the box: "15m FVG" in crisp, small typography
-          const isSupply = zone.type === 'BEARISH_FVG';
+          // 3. Crisp single badge inside the box
           const labelText = '15m FVG';
-          
-          drawingCtx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          drawingCtx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
           const metrics = drawingCtx.measureText(labelText);
-          const badgeW = Math.round(metrics.width + 12);
-          const badgeH = 16;
-          const badgeX = startX + 10; // LEFT ALIGNED INSIDE ZONE
-          const badgeY = Math.max(4, Math.min(canvasCssHeight - badgeH - 4, topY + Math.max(2, (height - badgeH) / 2)));
+          const badgeW = Math.round(metrics.width + 10);
+          const badgeH = 15;
+          const badgeX = startX + 6;
+          const badgeY = Math.max(4, Math.min(canvasCssHeight - badgeH - 4, topY + Math.max(1, (height - badgeH) / 2)));
 
-          // Dark pill background so text NEVER collides with grid or candles
           drawingCtx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
           drawingCtx.beginPath();
           if (drawingCtx.roundRect) drawingCtx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
           else drawingCtx.rect(badgeX, badgeY, badgeW, badgeH);
           drawingCtx.fill();
 
-          drawingCtx.strokeStyle = zone.borderColor;
+          drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.70)' : 'rgba(38, 166, 154, 0.70)';
           drawingCtx.lineWidth = 1;
           drawingCtx.stroke();
 
-          drawingCtx.fillStyle = isSupply ? '#ff5252' : '#2962ff';
+          drawingCtx.fillStyle = isSupply ? '#ff5252' : '#26a69a';
           drawingCtx.textAlign = 'left';
           drawingCtx.textBaseline = 'middle';
-          drawingCtx.fillText(labelText, badgeX + 6, badgeY + (badgeH / 2));
+          drawingCtx.fillText(labelText, badgeX + 5, badgeY + (badgeH / 2));
 
           // Range text next to pill
           const rangeTxt = `$${zone.bottom.toFixed(1)} - $${zone.top.toFixed(1)}`;
@@ -14292,30 +14795,30 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           drawingCtx.fillStyle = isSMCInstitutionalClean ? 'rgba(18, 18, 18, 0.65)' : 'rgba(200, 210, 225, 0.65)';
           drawingCtx.fillText(rangeTxt, badgeX + badgeW + 6, badgeY + (badgeH / 2));
 
-          // 4. Draw fine horizontal midline (50% Equilibrium level) when price pulls back into the FVG (Mitigation)
+          // 4. 50% Equilibrium level
           const isMitigated = zone.hasTapped || 
             (currentPrice >= Math.min(zone.bottom, zone.top) && currentPrice <= Math.max(zone.bottom, zone.top)) ||
-            (Math.abs(currentPrice - zone.bottom) <= 6.0) ||
-            (Math.abs(currentPrice - zone.top) <= 6.0);
+            (Math.abs(currentPrice - zone.bottom) <= 4.0) ||
+            (Math.abs(currentPrice - zone.top) <= 4.0);
 
           if (isMitigated) {
             const eq = zone.eqLevel;
             const eqY = candleSeries.priceToCoordinate(eq);
-            if (eqY !== null && eqY >= topY - 2 && eqY <= botY + 2) {
+            if (eqY !== null && eqY >= topY - 2 && eqY <= topY + height + 2) {
               drawingCtx.save();
-              drawingCtx.strokeStyle = isSupply ? 'rgba(255, 82, 82, 0.85)' : 'rgba(41, 98, 255, 0.85)';
+              drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.75)' : 'rgba(38, 166, 154, 0.75)';
               drawingCtx.lineWidth = 1;
               drawingCtx.setLineDash([3, 3]);
               drawingCtx.beginPath();
               drawingCtx.moveTo(startX, eqY);
-              drawingCtx.lineTo(canvasCssWidth - 75, eqY);
+              drawingCtx.lineTo(endX, eqY);
               drawingCtx.stroke();
 
               const eqTxt = `50% EQ $${eq.toFixed(1)}`;
-              drawingCtx.font = '600 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-              drawingCtx.fillStyle = isSupply ? '#ff5252' : '#2962ff';
+              drawingCtx.font = '600 8px monospace';
+              drawingCtx.fillStyle = isSupply ? '#ff5252' : '#26a69a';
               drawingCtx.textAlign = 'right';
-              drawingCtx.fillText(eqTxt, canvasCssWidth - 80, eqY - 4);
+              drawingCtx.fillText(eqTxt, endX - 4, eqY - 3);
               drawingCtx.restore();
             }
           }
@@ -14325,29 +14828,53 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
     // Order Block Renderer with distinct boundaries & 50% equilibrium dashed lines
     function drawOrderBlocksOnCanvas(smcData) {
-      if (!smcEnabled || !drawingCtx || !drawingCanvas || !candleSeries || !smcData) return;
+      if (!smcEnabled || !drawingCtx || !drawingCanvas || !candleSeries || !chart || !smcData) return;
       const obs = smcData.obList || [];
       if (!Array.isArray(obs) || obs.length === 0) return;
+
+      let lastCandleX = null;
+      if (rawCandleData && rawCandleData.length && chart.timeScale) {
+        lastCandleX = chart.timeScale().timeToCoordinate(rawCandleData[rawCandleData.length - 1].time);
+      }
 
       obs.forEach(ob => {
         const yTop = candleSeries.priceToCoordinate(ob.top);
         const yBottom = candleSeries.priceToCoordinate(ob.bottom);
         if (yTop === null || yBottom === null) return;
 
-        const topY = Math.min(yTop, yBottom);
-        const botY = Math.max(yTop, yBottom);
-        const height = Math.max(5, botY - topY);
-        const startX = 25;
-        const width = Math.max(60, canvasCssWidth - startX - 80);
+        const topY = Math.max(0, Math.min(yTop, yBottom));
+        const botY = Math.min(canvasCssHeight, Math.max(yTop, yBottom));
+        
+        // Strict height limit: max 24% of canvas height so it never swamps the screen
+        const maxH = Math.round(canvasCssHeight * 0.24);
+        const rawH = Math.max(5, botY - topY);
+        const height = Math.min(maxH, rawH);
+
+        // Localized candle coordinate:
+        let startX = 25;
+        if (ob.time && chart.timeScale) {
+          const tX = chart.timeScale().timeToCoordinate(ob.time);
+          if (tX !== null && tX > 10 && tX < canvasCssWidth) {
+            startX = Math.round(tX);
+          } else if (rawCandleData && rawCandleData.length > 20) {
+            const fallbackX = chart.timeScale().timeToCoordinate(rawCandleData[Math.max(0, rawCandleData.length - 20)].time);
+            if (fallbackX !== null) startX = Math.max(25, Math.round(fallbackX));
+          }
+        }
+
+        const endX = (lastCandleX !== null && lastCandleX > startX) 
+          ? Math.min(canvasCssWidth - 65, Math.round(lastCandleX + 25))
+          : Math.round(canvasCssWidth - 75);
+        const width = Math.max(45, endX - startX);
 
         const isSupply = (ob.type === 'SUPPLY_OB');
 
-        // Box
-        drawingCtx.fillStyle = ob.color || (isSupply ? 'rgba(255, 82, 82, 0.15)' : 'rgba(0, 230, 118, 0.15)');
+        // Subtle institutional box fill (0.08)
+        drawingCtx.fillStyle = isSupply ? 'rgba(239, 83, 80, 0.08)' : 'rgba(38, 166, 154, 0.08)';
         drawingCtx.fillRect(startX, topY, width, height);
 
-        drawingCtx.strokeStyle = ob.borderColor || (isSupply ? '#ff5252' : '#00e676');
-        drawingCtx.lineWidth = 1.2;
+        drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.55)' : 'rgba(38, 166, 154, 0.55)';
+        drawingCtx.lineWidth = 1;
         drawingCtx.setLineDash([4, 3]);
         drawingCtx.strokeRect(startX, topY, width, height);
         drawingCtx.setLineDash([]);
@@ -14358,16 +14885,16 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         const txtW = drawingCtx.measureText(obLabel).width;
         const pillW = Math.round(txtW + 10);
         const pillH = 15;
-        const pillX = startX + 8;
+        const pillX = startX + 6;
         const pillY = Math.max(2, topY + Math.max(1, (height - pillH) / 2));
 
         drawingCtx.fillStyle = 'rgba(10, 14, 23, 0.92)';
         drawingCtx.fillRect(pillX, pillY, pillW, pillH);
-        drawingCtx.strokeStyle = isSupply ? '#ff5252' : '#00e676';
+        drawingCtx.strokeStyle = isSupply ? '#ef5350' : '#26a69a';
         drawingCtx.lineWidth = 1;
         drawingCtx.strokeRect(pillX, pillY, pillW, pillH);
 
-        drawingCtx.fillStyle = isSupply ? '#ff5252' : '#00e676';
+        drawingCtx.fillStyle = isSupply ? '#ef5350' : '#26a69a';
         drawingCtx.textAlign = 'left';
         drawingCtx.textBaseline = 'middle';
         drawingCtx.fillText(obLabel, pillX + 5, pillY + (pillH / 2));
@@ -14375,20 +14902,20 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         // 50% Equilibrium dashed line
         const eq = ob.eqLevel || ((ob.top + ob.bottom) / 2);
         const eqY = candleSeries.priceToCoordinate(eq);
-        if (eqY !== null && eqY >= topY - 1 && eqY <= botY + 1) {
+        if (eqY !== null && eqY >= topY - 1 && eqY <= topY + height + 1) {
           drawingCtx.save();
-          drawingCtx.strokeStyle = isSupply ? 'rgba(255, 82, 82, 0.8)' : 'rgba(0, 230, 118, 0.8)';
+          drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.75)' : 'rgba(38, 166, 154, 0.75)';
           drawingCtx.lineWidth = 1;
           drawingCtx.setLineDash([2, 2]);
           drawingCtx.beginPath();
           drawingCtx.moveTo(startX, eqY);
-          drawingCtx.lineTo(canvasCssWidth - 85, eqY);
+          drawingCtx.lineTo(endX, eqY);
           drawingCtx.stroke();
 
           drawingCtx.font = '600 8px monospace';
-          drawingCtx.fillStyle = isSupply ? '#ff5252' : '#00e676';
+          drawingCtx.fillStyle = isSupply ? '#ef5350' : '#26a69a';
           drawingCtx.textAlign = 'right';
-          drawingCtx.fillText(`50% EQ $${eq.toFixed(1)}`, canvasCssWidth - 90, eqY - 3);
+          drawingCtx.fillText(`50% EQ $${eq.toFixed(1)}`, endX - 4, eqY - 3);
           drawingCtx.restore();
         }
       });
@@ -14493,11 +15020,14 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     function drawRiskRewardOverlay(ctx, setup) {
       if (!showRROverlay || !setup || !ctx || !candleSeries || !chart || !chart.timeScale) return;
 
-      const yEntry = candleSeries.priceToCoordinate(setup.entry);
-      const ySL = candleSeries.priceToCoordinate(setup.sl);
-      const yTP = candleSeries.priceToCoordinate(setup.tp);
+      const yEntryRaw = candleSeries.priceToCoordinate(Number(setup.entry));
+      const ySLRaw = candleSeries.priceToCoordinate(Number(setup.sl));
+      const yTPRaw = candleSeries.priceToCoordinate(Number(setup.tp));
 
-      if (yEntry === null || ySL === null || yTP === null) return;
+      if (yEntryRaw === null) return;
+
+      const yEntry = Math.max(20, Math.min(canvasCssHeight - 20, yEntryRaw));
+      const isShort = (setup.type === 'SHORT' || setup.type === 'SELL');
 
       // FORWARD PROJECTION:
       // Position the Risk/Reward box cleanly in the forward space so candlesticks are 100% visible
@@ -14506,71 +15036,85 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         lastCandleX = chart.timeScale().timeToCoordinate(rawCandleData[rawCandleData.length - 1].time);
       }
       
-      const startX = (lastCandleX !== null && lastCandleX > 40 && lastCandleX < canvasCssWidth - 145)
+      const boxW = 118;
+      const startX = (lastCandleX !== null && lastCandleX > 40 && lastCandleX < canvasCssWidth - boxW - 75)
         ? Math.round(lastCandleX + 16)
-        : Math.round(canvasCssWidth - 170);
-
-      const boxW = Math.max(95, Math.min(135, canvasCssWidth - startX - 68));
+        : Math.max(20, Math.round(canvasCssWidth - boxW - 80));
       const endX = startX + boxW;
-      const isShort = setup.type === 'SHORT';
+
+      // ACCURATE SCREEN-SCALE CONSTRAINTS:
+      // Maximum visual box height clamped to 22% and 38% of chart height respectively,
+      // so the indicator NEVER covers or eclipses the entire screen!
+      const maxVisualRiskH = Math.min(130, Math.max(18, Math.round(canvasCssHeight * 0.22)));
+      const maxVisualRewardH = Math.min(200, Math.max(28, Math.round(canvasCssHeight * 0.38)));
+
+      let riskH = maxVisualRiskH;
+      if (ySLRaw !== null) {
+        riskH = Math.min(maxVisualRiskH, Math.max(16, Math.abs(yEntry - ySLRaw)));
+      }
+
+      let rewH = maxVisualRewardH;
+      if (yTPRaw !== null) {
+        rewH = Math.min(maxVisualRewardH, Math.max(24, Math.abs(yEntry - yTPRaw)));
+      }
+
+      const riskTopY = isShort ? Math.max(8, yEntry - riskH) : yEntry;
+      const riskHeight = isShort ? (yEntry - riskTopY) : Math.min(canvasCssHeight - yEntry - 8, riskH);
+
+      const rewTopY = isShort ? yEntry : Math.max(8, yEntry - rewH);
+      const rewHeight = isShort ? Math.min(canvasCssHeight - yEntry - 8, rewH) : (yEntry - rewTopY);
 
       ctx.save();
 
-      // 1. RISK BOX (Stop Loss Box above FVG High for Short)
-      const riskTopY = isShort ? Math.min(ySL, yEntry) : Math.min(yEntry, ySL);
-      const riskBotY = isShort ? Math.max(ySL, yEntry) : Math.max(yEntry, ySL);
-      const riskHeight = Math.max(3, riskBotY - riskTopY);
-
-      ctx.fillStyle = 'rgba(255, 82, 82, 0.22)';
+      // 1. RISK BOX (Clean, modern subtle red fill 0.12)
+      ctx.fillStyle = 'rgba(248, 81, 73, 0.12)';
       ctx.fillRect(startX, riskTopY, boxW, riskHeight);
-      ctx.strokeStyle = 'rgba(255, 82, 82, 0.85)';
+      ctx.strokeStyle = 'rgba(248, 81, 73, 0.70)';
       ctx.lineWidth = 1;
       ctx.strokeRect(startX, riskTopY, boxW, riskHeight);
 
-      // 2. REWARD BOX (Take Profit Box extending down to recent liquidity low)
-      const rewardTopY = isShort ? Math.min(yEntry, yTP) : Math.min(yTP, yEntry);
-      const rewardBotY = isShort ? Math.max(yEntry, yTP) : Math.max(yTP, yEntry);
-      const rewardHeight = Math.max(3, rewardBotY - rewardTopY);
-
-      ctx.fillStyle = 'rgba(41, 98, 255, 0.20)';
-      ctx.fillRect(startX, rewardTopY, boxW, rewardHeight);
-      ctx.strokeStyle = 'rgba(41, 98, 255, 0.85)';
+      // 2. REWARD BOX (Clean, modern subtle blue/teal fill 0.12)
+      ctx.fillStyle = 'rgba(56, 139, 253, 0.12)';
+      ctx.fillRect(startX, rewTopY, boxW, rewHeight);
+      ctx.strokeStyle = 'rgba(56, 139, 253, 0.70)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(startX, rewardTopY, boxW, rewardHeight);
+      ctx.strokeRect(startX, rewTopY, boxW, rewHeight);
 
       // 3. ENTRY MIDLINE
       ctx.strokeStyle = isSMCInstitutionalClean ? '#121212' : '#ffffff';
-      ctx.lineWidth = 1.6;
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(startX, yEntry);
       ctx.lineTo(endX, yEntry);
       ctx.stroke();
 
       // 4. CLEAN TEXT PILLS (TradingView Short/Long Position Style)
-      ctx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+      ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
 
       // Stop Loss text pill
-      const slTxt = `SL $${setup.sl.toFixed(1)} (-$${setup.risk.toFixed(1)})`;
+      const riskVal = setup.risk ? Number(setup.risk).toFixed(1) : (Math.abs(Number(setup.entry) - Number(setup.sl))).toFixed(1);
+      const slTxt = `SL $${Number(setup.sl).toFixed(1)} (-$${riskVal})`;
       const slW = ctx.measureText(slTxt).width + 8;
-      const slY = isShort ? (riskTopY + 8) : (riskBotY - 8);
+      const slY = isShort ? Math.max(riskTopY + 8, 14) : Math.min(riskTopY + riskHeight - 8, canvasCssHeight - 14);
       ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
       ctx.fillRect(startX + 4, slY - 7, slW, 14);
       ctx.fillStyle = '#ff5252';
       ctx.fillText(slTxt, startX + 8, slY);
 
       // Take Profit text pill
-      const tpTxt = `TP $${setup.tp.toFixed(1)} (+$${setup.reward.toFixed(1)})`;
+      const rewVal = setup.reward ? Number(setup.reward).toFixed(1) : (Math.abs(Number(setup.tp) - Number(setup.entry))).toFixed(1);
+      const tpTxt = `TP $${Number(setup.tp).toFixed(1)} (+$${rewVal})`;
       const tpW = ctx.measureText(tpTxt).width + 8;
-      const tpY = isShort ? (rewardBotY - 8) : (rewardTopY + 8);
+      const tpY = isShort ? Math.min(rewTopY + rewHeight - 8, canvasCssHeight - 14) : Math.max(rewTopY + 8, 14);
       ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
       ctx.fillRect(startX + 4, tpY - 7, tpW, 14);
-      ctx.fillStyle = '#2962ff';
+      ctx.fillStyle = '#388bfd';
       ctx.fillText(tpTxt, startX + 8, tpY);
 
       // Entry text pill
-      const entryTxt = `Entry $${setup.entry.toFixed(1)}`;
+      const entryTxt = `Entry $${Number(setup.entry).toFixed(1)}`;
       const entW = ctx.measureText(entryTxt).width + 8;
       ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
       ctx.fillRect(startX + 4, yEntry - 7, entW, 14);
@@ -14578,31 +15122,33 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       ctx.fillText(entryTxt, startX + 8, yEntry);
 
       // R:R Ratio Badge
-      const rrTxt = `1:${setup.rrRatio} RR`;
+      const rrTxt = `1:${setup.rrRatio || '3.5'} RR`;
       const rrW = ctx.measureText(rrTxt).width + 8;
       const rrX = endX - rrW - 4;
-      ctx.fillStyle = 'rgba(41, 98, 255, 0.92)';
+      ctx.fillStyle = 'rgba(56, 139, 253, 0.90)';
       ctx.fillRect(rrX, yEntry - 7, rrW, 14);
       ctx.fillStyle = '#ffffff';
       ctx.fillText(rrTxt, rrX + 4, yEntry);
 
-      // 5. TARGET LINE EXTENDING HORIZONTALLY ACROSS CHART
-      ctx.strokeStyle = 'rgba(41, 98, 255, 0.75)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 3]);
-      ctx.beginPath();
-      ctx.moveTo(endX, yTP);
-      ctx.lineTo(canvasCssWidth - 65, yTP);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      // 5. TARGET LINE (Only drawn if within visible chart canvas)
+      if (yTPRaw !== null && yTPRaw >= 10 && yTPRaw <= canvasCssHeight - 10) {
+        ctx.strokeStyle = 'rgba(56, 139, 253, 0.70)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(endX, yTPRaw);
+        ctx.lineTo(canvasCssWidth - 65, yTPRaw);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-      // Target Tag on right price scale
-      ctx.fillStyle = 'rgba(41, 98, 255, 0.90)';
-      ctx.fillRect(canvasCssWidth - 63, yTP - 7, 58, 14);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '700 9px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(`TARGET`, canvasCssWidth - 34, yTP);
+        // Target Tag on right price scale
+        ctx.fillStyle = 'rgba(56, 139, 253, 0.90)';
+        ctx.fillRect(canvasCssWidth - 63, yTPRaw - 7, 58, 14);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '700 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`TARGET`, canvasCssWidth - 34, yTPRaw);
+      }
 
       ctx.restore();
     }
@@ -14701,6 +15247,11 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         drawSMC_InducementSupplyOverlay(drawingCtx, window.latestSMC_InducementSupply, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
       }
 
+      // Dedicated: SMC Liquidity Sweep & Projection Engine (LS-EXP)
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.lsExp) {
+        drawLS_EXP_Overlay(drawingCtx, window.latestLS_EXP, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
+      }
+
       // Dedicated: SMC M5 Pullback Sniper Overlay (BOS + OB + 0.618 Fibo + IFVG TP)
       if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcPullbackSniper) {
         drawSMC_OB_FiboOverlay(drawingCtx, window.latestSMC_OB_Fibo, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
@@ -14713,13 +15264,34 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       // 3. Automatic Risk/Reward Position Tool (Short/Long Tool)
       if (showRROverlay) {
-        if (typeof indicatorSettings !== 'undefined' && indicatorSettings.vwapEmaFvg && window.latestVWAP_EMA_FVG && window.latestVWAP_EMA_FVG.active) {
-        const v = window.latestVWAP_EMA_FVG;
-        isUp = (v.direction === 'BUY');
-        tpTarget = Number(v.tp);
-        targetColor = isUp ? '#3fb950' : '#f85149';
-        targetLabel = `🎯 VWAP+FVG TP $${tpTarget.toFixed(1)} (1:2.5 RR)`;
-      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcInducementSupply && window.latestSMC_InducementSupply && window.latestSMC_InducementSupply.isTriggered) {
+        if (typeof indicatorSettings !== 'undefined' && indicatorSettings.lsExp && window.latestLS_EXP && window.latestLS_EXP.isTriggered) {
+          const ls = window.latestLS_EXP;
+          drawRiskRewardOverlay(drawingCtx, {
+            type: 'LONG',
+            entry: Number(ls.entry),
+            sl: Number(ls.sl),
+            tp: Number(ls.tp),
+            risk: Number(ls.risk),
+            reward: Number(ls.reward),
+            rrRatio: ls.rrRatio || '6.0'
+          });
+        } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.vwapEmaFvg && window.latestVWAP_EMA_FVG && window.latestVWAP_EMA_FVG.active) {
+          const v = window.latestVWAP_EMA_FVG;
+          const riskPts = Math.abs(Number(v.entry) - Number(v.sl));
+          const rewardPts = Math.abs(Number(v.tp) - Number(v.entry));
+          const rrRatio = (rewardPts / Math.max(0.1, riskPts)).toFixed(1);
+          drawRiskRewardOverlay(drawingCtx, {
+            type: v.direction === 'BUY' ? 'LONG' : 'SHORT',
+            entry: Number(v.entry),
+            sl: Number(v.sl),
+            tp: Number(v.tp),
+            risk: riskPts,
+            reward: rewardPts,
+            rrRatio: rrRatio
+          });
+        } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcZones && currentSMCZones && currentSMCZones.activeRRSetup) {
+          drawRiskRewardOverlay(drawingCtx, currentSMCZones.activeRRSetup);
+        } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcInducementSupply && window.latestSMC_InducementSupply && window.latestSMC_InducementSupply.isTriggered) {
           const sniper = window.latestSMC_InducementSupply;
           drawRiskRewardOverlay(drawingCtx, {
             type: 'SHORT',
@@ -14755,20 +15327,6 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
             reward: rewardPts,
             rrRatio: rrRatio
           });
-        } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.vwapEmaFvg && window.latestVWAP_EMA_FVG && window.latestVWAP_EMA_FVG.active) {
-          const v = window.latestVWAP_EMA_FVG;
-          const riskPts = Math.abs(Number(v.entry) - Number(v.sl));
-          const rewardPts = Math.abs(Number(v.tp) - Number(v.entry));
-          const rrRatio = (rewardPts / Math.max(0.1, riskPts)).toFixed(1);
-          drawRiskRewardOverlay(drawingCtx, {
-            type: v.direction === 'BUY' ? 'LONG' : 'SHORT',
-            entry: Number(v.entry),
-            sl: Number(v.sl),
-            tp: Number(v.tp),
-            risk: riskPts,
-            reward: rewardPts,
-            rrRatio: rrRatio
-          });
         } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.liquidityPsychology && window.latestLiquidityPsychology) {
           const psy = window.latestLiquidityPsychology;
           const riskPts = Math.abs(Number(psy.entry) - Number(psy.sl));
@@ -14783,8 +15341,6 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
             reward: rewardPts,
             rrRatio: rrRatio
           });
-        } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcZones && currentSMCZones && currentSMCZones.activeRRSetup) {
-          drawRiskRewardOverlay(drawingCtx, currentSMCZones.activeRRSetup);
         }
       }
 
@@ -14816,13 +15372,13 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           const y50 = candleSeries.priceToCoordinate(p50);
           const y618 = candleSeries.priceToCoordinate(p618);
 
-          // Shaded Golden Pocket Zone Fill
+          // Shaded Golden Pocket Zone Fill (Screen-Scaled)
           if (y50 !== null && y618 !== null) {
-            const topY = Math.min(y50, y618);
-            const boxH = Math.abs(y50 - y618);
-            drawingCtx.fillStyle = 'rgba(255, 215, 0, 0.08)';
+            const boxH = Math.min(Math.round(canvasCssHeight * 0.20), Math.abs(y50 - y618));
+            const topY = Math.max(10, Math.min(canvasCssHeight - boxH - 10, Math.min(y50, y618)));
+            drawingCtx.fillStyle = 'rgba(255, 215, 0, 0.05)';
             drawingCtx.fillRect(15, topY, canvasCssWidth - 80, boxH);
-            drawingCtx.strokeStyle = 'rgba(255, 215, 0, 0.35)';
+            drawingCtx.strokeStyle = 'rgba(255, 215, 0, 0.25)';
             drawingCtx.lineWidth = 1;
             drawingCtx.strokeRect(15, topY, canvasCssWidth - 80, boxH);
 
@@ -15395,8 +15951,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
         // 3. Lightweight Charts Primitives (Dotted Upper & Lower Target Lines)
         if (cSeries && typeof cSeries.createPriceLine === 'function') {
-          const upTitle = `🎯 Post-News Upside Target: $${upsideTarget}`;
-          const downTitle = `🎯 Post-News Downside Target: $${downsideTarget}`;
+          const upTitle = `News Target: $${upsideTarget}`;
+          const downTitle = `News Target: $${downsideTarget}`;
 
           if (!this.newsUpperTargetLine) {
             try {
@@ -20875,6 +21431,20 @@ window.addEventListener('resize', () => {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #21262d;">
           <span style="font-size: 11px; font-weight: 700; color: #8b949e; letter-spacing: 0.5px;">5 CORE MODULAR ENGINES</span>
           <span style="font-size: 11px; font-weight: 700; color: #3fb950;">Sequential Weight Confluence</span>
+        </div>
+
+        <div class="indicator-row" onclick="clickModularToggle('lsExp', event)">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #00e5ff;">⚡ LS-EXP (Liquidity Sweep &amp; Path Expansion)</b>
+              <span style="font-size: 9px; background: rgba(0,229,255,0.18); color: #00e5ff; padding: 1px 4px; border-radius: 4px; font-weight: 700;">1:6.0 RR</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">15M Liquidity Sweep below Base &amp; High-RR Path Expansion</p>
+          </div>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="modal-toggle-lsExp" checked onchange="toggleModularIndicator('lsExp')">
+            <span class="toggle-slider"></span>
+          </label>
         </div>
 
         <div class="indicator-row" onclick="clickModularToggle('smcPullbackSniper', event)">
