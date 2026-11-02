@@ -4,6 +4,12 @@ Self-contained, zero-disk-write, resilient API engine for Vercel deployment.
 """
 
 import os
+import sys
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_parent_dir = os.path.dirname(_current_dir)
+for _p in [_current_dir, _parent_dir]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 import json
 import time
 import math
@@ -466,10 +472,14 @@ class handler(BaseHTTPRequestHandler):
                 return self._send_json(get_sugra_sentiment(topic))
             elif path.endswith("/api/quant-agent") or path == "/api/quant-agent" or "quant-agent" in path:
                 try:
-                    from api.quant_engine import process_signal_server_authoritative
-                except ImportError:
-                    from quant_engine import process_signal_server_authoritative
-                result = process_signal_server_authoritative(payload)
+                    import quant_engine
+                    result = quant_engine.process_signal_server_authoritative(payload)
+                except Exception as ex1:
+                    try:
+                        from api import quant_engine
+                        result = quant_engine.process_signal_server_authoritative(payload)
+                    except Exception as ex2:
+                        result = {"status": "FAILED", "reason": f"Quant Engine Error: {str(ex2)}"}
                 return self._send_json(result)
             else:
                 return self._send_json({"error": "Endpoint not found"}, 404)
@@ -529,10 +539,6 @@ def app(environ, start_response):
                 topic = query.get("topic", [None])[0]
             data = get_sugra_sentiment(topic)
         elif "quant-agent" in target:
-            try:
-                from api.quant_engine import process_signal_server_authoritative
-            except ImportError:
-                from quant_engine import process_signal_server_authoritative
             if method == "POST":
                 try:
                     content_length = int(environ.get("CONTENT_LENGTH", 0) or 0)
@@ -542,7 +548,16 @@ def app(environ, start_response):
                     payload = {}
             else:
                 payload = query
-            data = process_signal_server_authoritative(payload)
+            try:
+                import quant_engine
+                data = quant_engine.process_signal_server_authoritative(payload)
+            except Exception as ex1:
+                try:
+                    from api import quant_engine
+                    data = quant_engine.process_signal_server_authoritative(payload)
+                except Exception as ex2:
+                    data = {"status": "FAILED", "reason": f"Quant Engine Error: {str(ex2)}"}
+
         else:
             data = {
                 "status": "online",
