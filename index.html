@@ -10126,15 +10126,15 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       lsExp: (function() {
         try {
           const v = localStorage.getItem('indicator_ls_exp_active');
-          return v !== null ? (v === 'true') : true;
-        } catch (e) { return true; }
+          return v !== null ? (v === 'true') : false;
+        } catch (e) { return false; }
       })(), // Dedicated: SMC Liquidity Sweep & Projection Engine (LS-EXP) - Weight: 30
       smcZones: true,        // Module 1: SMC Zones (FVG & Order Blocks) - Weight: 25
       wickRangeSweep: (function() {
         try {
           const v = localStorage.getItem('indicator_wick_range_sweep_active');
-          return v !== null ? (v === 'true') : true;
-        } catch (e) { return true; }
+          return v !== null ? (v === 'true') : false;
+        } catch (e) { return false; }
       })(), // Dedicated: 15M High-Wick Candle Range Sweep & Retest Engine - Weight: 30
       smcInducementSupply: (function() {
         try {
@@ -14707,10 +14707,68 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       if (!ctx || !candleSeries || !chart || !chart.timeScale) return;
       if (typeof indicatorSettings !== 'undefined' && !indicatorSettings.amdFvg) return;
 
-      const setup = amdData || window.latestAMDFVG;
-      if (!setup) return;
+      const setup = amdData || window.latestAMDFVG || { status: 'SCANNING', session: 'New York (08:00 - 17:00 EST)' };
+      const rawBars = (candles && candles.length) ? candles : (window.rawCandleData || []);
 
       ctx.save();
+
+      // Standby / Scanning PO3 Accumulation Zone Visualization
+      if ((!setup.accBox || !setup.accBox.high) && rawBars.length >= 10) {
+        const slice = rawBars.slice(-30);
+        const accHigh = Math.max(...slice.map(c => c.high));
+        const accLow = Math.min(...slice.map(c => c.low));
+        const yHigh = candleSeries.priceToCoordinate(accHigh);
+        const yLow = candleSeries.priceToCoordinate(accLow);
+
+        if (yHigh !== null && yLow !== null) {
+          const topY = Math.min(yHigh, yLow);
+          const boxH = Math.max(14, Math.abs(yLow - yHigh));
+          const boxW = Math.max(100, canvasCssWidth - 110);
+
+          // Subtle purple shaded accumulation tracking zone
+          ctx.fillStyle = 'rgba(167, 139, 250, 0.08)';
+          ctx.fillRect(25, topY, boxW, boxH);
+
+          ctx.strokeStyle = 'rgba(167, 139, 250, 0.65)';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(25, topY, boxW, boxH);
+          ctx.setLineDash([]);
+
+          // Boundary Pill Labels
+          const hLabel = `PO3 ACCUMULATION HIGH · $${accHigh.toFixed(2)}`;
+          ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const hw = ctx.measureText(hLabel).width + 8;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.fillRect(30, topY - 14, hw, 14);
+          ctx.strokeStyle = '#a78bfa';
+          ctx.strokeRect(30, topY - 14, hw, 14);
+          ctx.fillStyle = '#a78bfa';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(hLabel, 34, topY - 7);
+
+          const lLabel = `PO3 ACCUMULATION LOW · $${accLow.toFixed(2)}`;
+          const lw = ctx.measureText(lLabel).width + 8;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.fillRect(30, topY + boxH, lw, 14);
+          ctx.strokeStyle = '#a78bfa';
+          ctx.strokeRect(30, topY + boxH, lw, 14);
+          ctx.fillStyle = '#a78bfa';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(lLabel, 34, topY + boxH + 7);
+
+          // Watermark Badge
+          const badgeText = `⚡ AMD FVG [LuxAlgo] · SCANNING 30-BAR ACCUMULATION (${setup.session || 'PO3 ACTIVE'})`;
+          ctx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const bw = ctx.measureText(badgeText).width + 14;
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+          ctx.fillRect(canvasCssWidth - bw - 70, 16, bw, 20);
+          ctx.strokeStyle = '#a78bfa';
+          ctx.strokeRect(canvasCssWidth - bw - 70, 16, bw, 20);
+          ctx.fillStyle = '#a78bfa';
+          ctx.fillText(badgeText, canvasCssWidth - bw - 63, 29);
+        }
+      }
 
       // 1. Accumulation Box (Phase 1): Shaded grey bounding box labeled [ACCUMULATION]
       if (setup.accBox && setup.accBox.high && setup.accBox.low) {
@@ -17267,24 +17325,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         badgeBorder = 'rgba(234, 179, 8, 0.4)';
       }
 
-      const isChobosGoldenIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.chobosGolden;
-      const isWickRangeSweepIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.wickRangeSweep;
-      const isLiqMssFvgIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.liqMssFvg;
-      const isBrkBounceIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.brkBounce;
-      const isSmcRevIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.smcRev;
-      const isAmdFvgIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.amdFvg;
-      if (isChobosGoldenIsolated) {
-        modularEngineState.activeTab = 'CHOBOS_GOLDEN';
-      } else if (isWickRangeSweepIsolated) {
-        modularEngineState.activeTab = 'WICK_RANGE_SWEEP';
-      } else if (isLiqMssFvgIsolated) {
-        modularEngineState.activeTab = 'LIQ_MSS_FVG';
-      } else if (isBrkBounceIsolated) {
-        modularEngineState.activeTab = 'BRK_BOUNCE';
-      } else if (isSmcRevIsolated && (!isAmdFvgIsolated || modularEngineState.activeTab === 'SMC_REV')) {
-        modularEngineState.activeTab = 'SMC_REV';
-      } else if (isAmdFvgIsolated && (!isSmcRevIsolated || modularEngineState.activeTab === 'AMD_FVG')) {
-        modularEngineState.activeTab = 'AMD_FVG';
+      if (!modularEngineState.activeTab) {
+        modularEngineState.activeTab = 'SMC';
       }
       const tabs = ['CHOBOS_GOLDEN', 'WICK_RANGE_SWEEP', 'LIQ_MSS_FVG', 'BRK_BOUNCE', 'SMC_REV', 'AMD_FVG', 'LS_EXP', 'SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
 
@@ -18890,60 +18932,27 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       drawingCtx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
       drawMacroNewsReleaseMarker(drawingCtx);
 
-      const isChobosGoldenIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.chobosGolden;
-      const isWickRangeSweepIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.wickRangeSweep;
-      const isLiqMssFvgIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.liqMssFvg;
-      const isBrkBounceIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.brkBounce;
-      const isSmcRevIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.smcRev;
-      const isAmdFvgIsolated = typeof indicatorSettings !== 'undefined' && !!indicatorSettings.amdFvg;
+      const candles = (typeof rawCandleData !== 'undefined' && rawCandleData) ? rawCandleData : [];
 
-      if (isChobosGoldenIsolated) {
-        // EXCLUSIVE ISOLATION MODE: SMC BULLISH CHOCH + BOS GOLDEN ZONE ENGINE
-        if (typeof drawCHOBOSGoldenOverlay === 'function') {
-          drawCHOBOSGoldenOverlay(drawingCtx, window.latestCHOBOSGolden, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
-        }
-      } else if (isWickRangeSweepIsolated) {
-        // EXCLUSIVE ISOLATION MODE: 15M HIGH-WICK CANDLE RANGE SWEEP & RETEST ENGINE
-        // Automatically hide generic lines & indicators to keep presentation clean!
-        if (typeof drawWickRangeSweepOverlay === 'function') {
-          drawWickRangeSweepOverlay(drawingCtx, window.latestWickRangeSweep, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
-        }
-        if (showRROverlay && window.latestWickRangeSweep && window.latestWickRangeSweep.isTriggered) {
-          const ws = window.latestWickRangeSweep;
-          drawRiskRewardOverlay(drawingCtx, {
-            type: ws.direction === 'BUY' ? 'LONG' : 'SHORT',
-            entry: Number(ws.entry),
-            sl: Number(ws.sl),
-            tp: Number(ws.tp),
-            risk: Math.abs(Number(ws.sl) - Number(ws.entry)),
-            reward: Math.abs(Number(ws.tp) - Number(ws.entry)),
-            rrRatio: '5.0'
-          });
-        }
-      } else if (isLiqMssFvgIsolated) {
-        // EXCLUSIVE ISOLATION MODE: ICT LIQUIDITY GRAB + MSS + FVG REVERSAL ENGINE
-        if (typeof drawLiqMSSFVGOverlay === 'function') {
-          drawLiqMSSFVGOverlay(drawingCtx, window.latestLiqMSSFVG, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
-        }
-      } else if (isBrkBounceIsolated) {
-        // EXCLUSIVE ISOLATION MODE: BREAK & BOUNCE ENGINE (BRK-BOUNCE)
-        // Automatically plot PDH and PDL levels, hide generic clutter, focus on breakout & retest wicks.
-        if (typeof drawBreakAndBounceOverlay === 'function') {
-          drawBreakAndBounceOverlay(drawingCtx, window.latestBreakAndBounce, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
-        }
-      } else if (isSmcRevIsolated) {
-        // EXCLUSIVE ISOLATION MODE: SMC BEARISH REVERSAL & CONTINUATION
-        // Chart par generic extra lines aur clutter automatically hide ho jayein.
-        // Sirf relevant high-timeframe BOS, CHoCH neckline, "REVERSAL" peak box, aur "CONTINUATION" entry box clean visual design mein display hon.
-        if (typeof drawSMC_BearishReversalOverlay === 'function') {
-          drawSMC_BearishReversalOverlay(drawingCtx, window.latestSMC_BearishReversal, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
-        }
-      } else if (isAmdFvgIsolated) {
-        // EXCLUSIVE ISOLATION MODE: AMD FVG TRADE SETUP
-        if (typeof drawAMD_FVG_Overlay === 'function') {
-          drawAMD_FVG_Overlay(drawingCtx, window.latestAMDFVG, (typeof rawCandleData !== 'undefined' ? rawCandleData : []));
-        }
-      } else {
+      // 1. Dedicated Institutional Indicators (Non-Conflicting Concurrent Execution)
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.chobosGolden && typeof drawCHOBOSGoldenOverlay === 'function') {
+        drawCHOBOSGoldenOverlay(drawingCtx, window.latestCHOBOSGolden, candles);
+      }
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.wickRangeSweep && typeof drawWickRangeSweepOverlay === 'function') {
+        drawWickRangeSweepOverlay(drawingCtx, window.latestWickRangeSweep, candles);
+      }
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.liqMssFvg && typeof drawLiqMSSFVGOverlay === 'function') {
+        drawLiqMSSFVGOverlay(drawingCtx, window.latestLiqMSSFVG, candles);
+      }
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.brkBounce && typeof drawBreakAndBounceOverlay === 'function') {
+        drawBreakAndBounceOverlay(drawingCtx, window.latestBreakAndBounce, candles);
+      }
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcRev && typeof drawSMC_BearishReversalOverlay === 'function') {
+        drawSMC_BearishReversalOverlay(drawingCtx, window.latestSMC_BearishReversal, candles);
+      }
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.amdFvg && typeof drawAMD_FVG_Overlay === 'function') {
+        drawAMD_FVG_Overlay(drawingCtx, window.latestAMDFVG, candles);
+      }
       // 1. Smart Money Concept (SMC) Key Supply & Demand Zones (FVG & Order Blocks)
       if (currentSMCZones && smcEnabled) {
         drawSMCZonesOnCanvas(currentSMCZones);
@@ -19193,7 +19202,6 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           }
         } catch (e) {}
       }
-      } // End of !isAmdFvgIsolated normal overlays block
 
       // 3. Draw Completed Trend Lines
       if (typeof trendlines !== "undefined" && Array.isArray(trendlines)) {
