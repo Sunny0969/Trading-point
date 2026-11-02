@@ -673,6 +673,19 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(data).encode("utf-8"))
             return
 
+        if parsed.path == "/api/quant-agent" or parsed.path.endswith("quant-agent"):
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            try:
+                from api.quant_engine import run_autonomous_engine_cycle
+                telemetry = run_autonomous_engine_cycle()
+            except Exception as e:
+                telemetry = {"status": "ERROR", "reason": str(e)}
+            self.wfile.write(json.dumps(telemetry).encode("utf-8"))
+            return
+
         return super().do_GET()
 
     def do_OPTIONS(self):
@@ -721,6 +734,11 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
 
 def run():
+    try:
+        from api.quant_engine import start_autonomous_daemon
+        start_autonomous_daemon()
+    except Exception as e:
+        print("[WebServer] Failed to start quant daemon:", e)
     server = HTTPServer(("0.0.0.0", PORT), DashboardHandler)
     print(f"TradingPoint Terminal Server running on http://localhost:{PORT}")
     server.serve_forever()

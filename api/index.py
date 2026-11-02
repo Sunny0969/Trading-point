@@ -447,6 +447,12 @@ class handler(BaseHTTPRequestHandler):
             elif "sugra/analyze" in target:
                 topic = query.get("topic", [None])[0]
                 return self._send_json(get_sugra_sentiment(topic))
+            elif "quant-agent" in target:
+                try:
+                    import quant_engine
+                except ImportError:
+                    from api import quant_engine
+                return self._send_json(quant_engine.run_autonomous_engine_cycle())
             else:
                 return self._send_json({
                     "status": "online",
@@ -539,6 +545,11 @@ def app(environ, start_response):
                 topic = query.get("topic", [None])[0]
             data = get_sugra_sentiment(topic)
         elif "quant-agent" in target:
+            try:
+                import quant_engine
+            except ImportError:
+                from api import quant_engine
+
             if method == "POST":
                 try:
                     content_length = int(environ.get("CONTENT_LENGTH", 0) or 0)
@@ -546,17 +557,12 @@ def app(environ, start_response):
                     payload = json.loads(body)
                 except Exception:
                     payload = {}
-            else:
-                payload = query
-            try:
-                import quant_engine
-                data = quant_engine.process_signal_server_authoritative(payload)
-            except Exception as ex1:
                 try:
-                    from api import quant_engine
                     data = quant_engine.process_signal_server_authoritative(payload)
-                except Exception as ex2:
-                    data = {"status": "FAILED", "reason": f"Quant Engine Error: {str(ex2)}"}
+                except Exception as ex:
+                    data = {"status": "FAILED", "reason": f"Quant Engine Error: {str(ex)}"}
+            else:
+                data = quant_engine.run_autonomous_engine_cycle()
 
         else:
             data = {
