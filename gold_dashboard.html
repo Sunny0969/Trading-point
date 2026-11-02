@@ -414,7 +414,7 @@
 
       if (loggedIn) {
         if (document.body) document.body.classList.add('portal-mode-active');
-        var targetView = 'dashboard';
+        var targetView = 'trade';
 
         if (hash === '#wallet') targetView = 'wallet';
         else if (hash === '#signals') targetView = 'signals';
@@ -19850,7 +19850,7 @@ window.addEventListener('resize', () => {
           supabaseClient.auth.onAuthStateChange(async (event, session) => {
             if (session && session.user) {
               currentAuthUser = session.user;
-              await onUserAuthenticated(session.user);
+              await onUserAuthenticated(session.user, event);
             } else {
               currentAuthUser = null;
               onUserLoggedOut();
@@ -19862,9 +19862,9 @@ window.addEventListener('resize', () => {
       }
     }
 
-    async function onUserAuthenticated(user) {
+    async function onUserAuthenticated(user, authEvent) {
       currentAuthUser = user;
-      console.log('%c[SUPABASE] User Authenticated:', 'color: #3fb950; font-weight: bold;', user.email);
+      console.log('%c[SUPABASE] User Authenticated:', 'color: #3fb950; font-weight: bold;', user.email, 'Event:', authEvent || 'unknown');
 
       // 1. ACTIVATE AUTHENTICATED PORTAL MODE (Enables left sidebar #traderAdminSidebar)
       if (document.body) {
@@ -19892,11 +19892,46 @@ window.addEventListener('resize', () => {
       if (sidebarUserEmail) sidebarUserEmail.innerText = emailStr;
       if (sidebarAvatar) sidebarAvatar.innerText = shortName.substring(0, 2).toUpperCase();
 
-      // 2. SWITCH TO TRADER PERFORMANCE DASHBOARD WITH LEFT SIDEBAR
-      if (typeof switchPortalView === 'function') {
-        switchPortalView('dashboard');
+      // 2. PRESERVE CURRENT ACTIVE VIEW (DO NOT RESET TO DASHBOARD ON TAB SWITCH / TOKEN REFRESH)
+      const currentHash = (window.location.hash || '').toLowerCase();
+      let targetView = 'trade';
+
+      if (currentHash === '#terminal' || currentHash === '#trade') {
+        targetView = 'trade';
+      } else if (currentHash === '#wallet') {
+        targetView = 'wallet';
+      } else if (currentHash === '#signals') {
+        targetView = 'signals';
+      } else if (currentHash === '#education') {
+        targetView = 'education';
+      } else if (currentHash === '#profile') {
+        targetView = 'profile';
+      } else if (currentHash === '#conditions') {
+        targetView = 'conditions';
+      } else if (currentHash === '#dashboard') {
+        targetView = 'dashboard';
       } else {
-        switchView('dashboard');
+        let savedView = null;
+        try {
+          savedView = sessionStorage.getItem('tradingpoint_active_portal_view') || localStorage.getItem('tradingpoint_active_portal_view');
+        } catch (e) {}
+        if (savedView && ['trade', 'terminal', 'dashboard', 'signals', 'wallet', 'education', 'profile', 'conditions'].includes(savedView)) {
+          targetView = (savedView === 'terminal') ? 'trade' : savedView;
+        }
+      }
+
+      const termView = document.getElementById('view-terminal');
+      const isTerminalAlreadyActive = termView && termView.style.display !== 'none' && termView.style.visibility !== 'hidden';
+
+      if (authEvent === 'TOKEN_REFRESHED' || (isTerminalAlreadyActive && targetView === 'trade')) {
+        console.log('[SUPABASE] Preserving active view without disrupting UI:', targetView);
+        if (typeof renderWalletPortalData === 'function') renderWalletPortalData();
+      } else {
+        if (typeof switchPortalView === 'function') {
+          switchPortalView(targetView);
+        } else {
+          switchView(targetView === 'trade' ? 'terminal' : 'dashboard');
+        }
       }
       const navBtnDash = document.getElementById('nav-btn-dashboard');
       if (navBtnDash) navBtnDash.style.display = 'none';
@@ -20089,7 +20124,7 @@ window.addEventListener('resize', () => {
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
           if (session && session.user) {
             currentAuthUser = session.user;
-            onUserAuthenticated(session.user);
+            onUserAuthenticated(session.user, 'INITIAL_SESSION');
           } else {
             onUserLoggedOut();
           }
@@ -20181,10 +20216,12 @@ window.addEventListener('resize', () => {
           if (error) throw error;
           showAuthAlert('Login successful! Loading your dashboard...', 'success');
           if (data && data.user) {
-            await onUserAuthenticated(data.user);
+            await onUserAuthenticated(data.user, 'SIGNED_IN');
           } else {
             if (document.body) document.body.classList.add('portal-mode-active');
-            if (typeof switchPortalView === 'function') switchPortalView('dashboard');
+            var savedView = null;
+            try { savedView = sessionStorage.getItem('tradingpoint_active_portal_view'); } catch (e) {}
+            if (typeof switchPortalView === 'function') switchPortalView(savedView || 'trade');
           }
           setTimeout(() => { closeAuthModal(); }, 350);
         } else {
