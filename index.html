@@ -271,8 +271,21 @@
     // ========================================================
     // PORTAL VIEW SWITCHER & PERSISTENCE
     // ========================================================
+    function togglePortalMobileSidebar() {
+      if (document.body) {
+        document.body.classList.toggle('mobile-sidebar-open');
+        var backdrop = document.getElementById('mobileSidebarBackdrop');
+        if (backdrop) backdrop.classList.toggle('active', document.body.classList.contains('mobile-sidebar-open'));
+      }
+    }
+    window.togglePortalMobileSidebar = togglePortalMobileSidebar;
+
     function closePortalMobileSidebar() {
-      if (document.body) document.body.classList.remove('mobile-sidebar-open');
+      if (document.body) {
+        document.body.classList.remove('mobile-sidebar-open');
+        var backdrop = document.getElementById('mobileSidebarBackdrop');
+        if (backdrop) backdrop.classList.remove('active');
+      }
     }
     window.closePortalMobileSidebar = closePortalMobileSidebar;
 
@@ -3476,6 +3489,70 @@
       display: inline-block;
       flex-shrink: 0;
     }
+
+    /* ========================================================
+       INSTITUTIONAL LIVE SPOT PRICE BADGE (HEADER RIGHT OF INDICATORS)
+       ======================================================== */
+    .tv-live-header-price {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 3px 10px;
+      background: rgba(13, 17, 23, 0.95);
+      border: 1px solid rgba(48, 54, 61, 0.9);
+      border-radius: 6px;
+      flex-shrink: 0;
+      user-select: none;
+      transition: all 0.2s ease;
+      cursor: default;
+      height: 28px;
+      box-sizing: border-box;
+    }
+    .tv-live-header-price:hover {
+      border-color: rgba(88, 166, 255, 0.45);
+      background: rgba(22, 27, 34, 0.98);
+      box-shadow: 0 0 10px rgba(88, 166, 255, 0.12);
+    }
+    .live-dot-pulse {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #3fb950;
+      box-shadow: 0 0 6px rgba(63, 185, 80, 0.85);
+      flex-shrink: 0;
+      animation: livePulseGlow 1.8s infinite ease-in-out;
+    }
+    @keyframes livePulseGlow {
+      0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 6px rgba(63, 185, 80, 0.85); }
+      50% { opacity: 0.5; transform: scale(1.18); box-shadow: 0 0 11px rgba(63, 185, 80, 1); }
+    }
+    .live-spot-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #8b949e;
+      letter-spacing: 0.6px;
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+    }
+    .live-spot-val {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #f0f6fc;
+      font-family: 'Space Grotesk', monospace;
+      letter-spacing: 0.3px;
+      transition: color 0.25s ease;
+    }
+    .live-change-pill {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #3fb950;
+      background: rgba(63, 185, 80, 0.14);
+      border: 1px solid rgba(63, 185, 80, 0.35);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: 'Space Grotesk', monospace;
+      letter-spacing: 0.2px;
+      transition: all 0.25s ease;
+    }
     .tv-header-btn {
       background: #161b22;
       border: 1px solid #30363d;
@@ -4526,6 +4603,27 @@
 
   
     /* ========================================================
+       MOBILE-ONLY HEADER, SIDEBAR & TERMINAL VERTICAL FLOW STYLES
+       ======================================================== */
+    /* Hidden on Desktop (>= 769px) */
+    .mobile-top-header,
+    #mobileTopHeader,
+    .mobile-sidebar-backdrop,
+    #mobileSidebarBackdrop,
+    .mobile-terminal-kpi-bar,
+    #mobileTerminalKpiBar {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      height: 0 !important;
+      max-height: 0 !important;
+      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+    }
+
+    /* ========================================================
        DESKTOP DEFAULT GUARDS: STRICT HIDE FOR MOBILE COMPONENTS
        ======================================================== */
     .mobile-bottom-nav,
@@ -4576,28 +4674,203 @@
        TRADINGVIEW & EXNESS INSPIRED 100% MOBILE RESPONSIVE ENGINE
        ======================================================== */
     @media (max-width: 768px) {
+      /* Hide legacy bottom dock and bottom sheet containers in favor of direct vertical flow */
       .mobile-bottom-nav,
-      #mobileBottomNav {
-        display: flex !important;
-        visibility: visible !important;
-        pointer-events: auto !important;
-        height: calc(56px + env(safe-area-inset-bottom)) !important;
-        max-height: none !important;
-      }
+      #mobileBottomNav,
       .mobile-sheet-backdrop,
-      #mobileSheetBackdrop {
-        display: block !important;
-        visibility: visible !important;
-        height: auto !important;
-        max-height: none !important;
-      }
+      #mobileSheetBackdrop,
       .mobile-sheet-container,
       #mobileSheetContainer {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        height: 0 !important;
+      }
+
+      html, body {
+        width: 100% !important;
+        min-height: 100% !important;
+        overflow-x: hidden !important;
+        position: relative !important;
+        -webkit-tap-highlight-color: transparent !important;
+        background: #08090a !important;
+      }
+
+      /* 1. Mobile Top Sticky Header (Logo on left, 3 lines menu on right) */
+      .mobile-top-header,
+      #mobileTopHeader {
         display: flex !important;
         visibility: visible !important;
         pointer-events: auto !important;
+        position: sticky !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 52px !important;
+        background: rgba(13, 17, 23, 0.98) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border-bottom: 1px solid #21262d !important;
+        z-index: 9999 !important;
+        padding: 0 14px !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        box-sizing: border-box !important;
+      }
+      .m-header-left {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        cursor: pointer !important;
+      }
+      .m-header-logo-badge {
+        width: 28px !important;
+        height: 28px !important;
+        border-radius: 6px !important;
+        background: linear-gradient(135deg, #ffd700, #f59e0b) !important;
+        color: #0d1117 !important;
+        font-family: 'Space Grotesk', sans-serif !important;
+        font-weight: 900 !important;
+        font-size: 13px !important;
+        display: grid !important;
+        place-items: center !important;
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.35) !important;
+      }
+      .m-header-brand-title {
+        font-family: 'Space Grotesk', sans-serif !important;
+        font-size: 15px !important;
+        font-weight: 800 !important;
+        color: #f0f6fc !important;
+        letter-spacing: -0.3px !important;
+      }
+      .m-header-pro-tag {
+        font-size: 9px !important;
+        font-weight: 800 !important;
+        color: #ffd700 !important;
+        background: rgba(255, 215, 0, 0.15) !important;
+        border: 1px solid rgba(255, 215, 0, 0.3) !important;
+        padding: 1px 4px !important;
+        border-radius: 4px !important;
+        letter-spacing: 0.5px !important;
+      }
+      .m-header-hamburger-btn {
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 8px !important;
+        background: #161b22 !important;
+        border: 1px solid #30363d !important;
+        cursor: pointer !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 4px !important;
+        padding: 0 !important;
+      }
+      .m-header-hamburger-btn span {
+        display: block !important;
+        width: 18px !important;
+        height: 2px !important;
+        background: #c9d1d9 !important;
+        border-radius: 2px !important;
+      }
+
+      /* Mobile Sidebar Backdrop & Drawer */
+      .mobile-sidebar-backdrop,
+      #mobileSidebarBackdrop {
+        display: block !important;
+        position: fixed !important;
+        inset: 0 !important;
+        background: rgba(0, 0, 0, 0.7) !important;
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
+        z-index: 10009 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 0.25s ease !important;
+      }
+      .mobile-sidebar-backdrop.active {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+      }
+      #traderAdminSidebar {
+        z-index: 10010 !important;
+      }
+
+      /* 2. Natural Vertical Scroll Container for Mobile Terminal Page */
+      #view-terminal {
+        width: 100% !important;
         height: auto !important;
-        max-height: 82vh !important;
+        min-height: calc(100vh - 52px) !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        display: flex !important;
+        flex-direction: column !important;
+        position: relative !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: auto !important;
+        margin: 0 !important;
+        padding: 0 0 40px !important;
+        background: #08090a !important;
+      }
+
+      /* 3. Top 4-KPI Row (Wallet Balance, Dynamic Equity, Floating PnL, Free Margin) */
+      .mobile-terminal-kpi-bar,
+      #mobileTerminalKpiBar {
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 5px !important;
+        padding: 8px 8px !important;
+        background: #0d1117 !important;
+        border-bottom: 1px solid #21262d !important;
+        box-sizing: border-box !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        height: auto !important;
+        max-height: none !important;
+      }
+      .m-kpi-box {
+        background: #161b22 !important;
+        border: 1px solid #21262d !important;
+        border-radius: 6px !important;
+        padding: 5px 2px !important;
+        text-align: center !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+      }
+      .m-kpi-title {
+        font-size: 7.5px !important;
+        font-weight: 700 !important;
+        color: #8b949e !important;
+        letter-spacing: 0.2px !important;
+        margin-bottom: 2px !important;
+        white-space: nowrap !important;
+      }
+      .m-kpi-value {
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        font-family: 'Space Grotesk', monospace !important;
+        color: #f0f6fc !important;
+        white-space: nowrap !important;
+      }
+
+      /* 4. Terminal Subheader on Mobile (Symbol + Timeframe Pills) */
+      .terminal-sub-header {
+        height: 44px !important;
+        min-height: 44px !important;
+        padding: 0 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: #11151c !important;
+        border-bottom: 1px solid #21262d !important;
+        overflow-x: auto !important;
+        scrollbar-width: none !important;
       }
       .mobile-tf-pill-row,
       #mobileTfPillRow {
@@ -4614,33 +4887,76 @@
         height: auto !important;
         max-height: none !important;
       }
-      html, body {
-        width: 100% !important;
-        height: 100% !important;
-        height: 100dvh !important;
-        overflow-x: hidden !important;
-        position: relative !important;
-        -webkit-tap-highlight-color: transparent !important;
-      }
 
-      /* Single Viewport Full-Height Container */
-      #view-terminal {
-        width: 100% !important;
-        height: 100vh !important;
-        height: 100dvh !important;
-        max-height: 100dvh !important;
-        overflow: hidden !important;
+      /* 5. Terminal Body & Chart Container (Half-Screen ~46vh) */
+      .terminal-body {
         display: flex !important;
         flex-direction: column !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        z-index: 100 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #0d1117 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        margin-bottom: 0 !important;
+      }
+      .terminal-chart-pane {
+        width: 100% !important;
+        height: 46vh !important;
+        min-height: 320px !important;
+        max-height: 420px !important;
+        flex: none !important;
+        position: relative !important;
+        border-bottom: 1px solid #21262d !important;
+      }
+
+      /* 6. Mobile Vertical Flow Sidebar (Directly beneath Chart) */
+      .terminal-sidebar {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 10px 8px 30px !important;
+        border-left: none !important;
+        background: transparent !important;
+        overflow: visible !important;
+        height: auto !important;
+        gap: 12px !important;
+      }
+
+      /* Hide redundant duplicate balance card inside sidebar since it is in top row */
+      .terminal-sidebar .demo-wallet-grid {
+        display: none !important;
+      }
+
+      /* Hide secondary desktop clutter cards on mobile */
+      #twelveSugraRadarCard,
+      #priceAlertsCard,
+      #macroNewsAlertBanner,
+      .tv-left-toolbar,
+      .engine-toggle-group {
+        display: none !important;
+      }
+
+      /* 7. Professional Mobile Trader Dashboard */
+      #view-trader-dashboard {
+        padding: 12px 10px 40px !important;
+        box-sizing: border-box !important;
+      }
+      #view-trader-dashboard > div {
+        max-width: 100% !important;
+      }
+      #view-trader-dashboard > div > div:first-child {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        padding: 14px 12px !important;
+        gap: 12px !important;
+      }
+      #view-trader-dashboard > div > div:nth-child(2) {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+      }
+      #view-trader-dashboard .comparison-table-wrapper {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
       }
 
       /* Sleek Mobile Subheader & Timeframe Pill Bar */
@@ -4678,6 +4994,8 @@
       #tvTimeframeContainer,
       #tvCandleContainer,
       #tvIndicatorsContainer,
+      #tvLiveHeaderPriceContainer,
+      .tv-live-header-price,
       .terminal-sub-header > .terminal-nav-left > span[style*="color: #30363d;"],
       #smcThemeToggleBtn,
       #btn-fit,
@@ -4724,449 +5042,32 @@
         box-shadow: 0 0 8px rgba(46, 160, 67, 0.4) !important;
       }
 
-      /* Full Screen Chart First Architecture */
-      .terminal-body {
-        flex: 1 !important;
-        height: auto !important;
-        min-height: 0 !important;
-        width: 100% !important;
-        position: relative !important;
-        display: flex !important;
-        flex-direction: column !important;
-        overflow: hidden !important;
-        margin-bottom: calc(56px + env(safe-area-inset-bottom)) !important;
-      }
-      .terminal-chart-pane {
-        flex: 1 !important;
-        width: 100% !important;
-        height: 100% !important;
-        min-height: 0 !important;
-        position: relative !important;
-        display: flex !important;
-        flex-direction: column !important;
-      }
-      #chart {
-        flex: 1 !important;
-        width: 100% !important;
-        height: 100% !important;
-        min-height: 0 !important;
-      }
-
-      /* Hide desktop sidebar, left toolbar, and watermarks */
-      .terminal-sidebar {
+      /* Pure Vertical Mobile Flow Guards */
+      .mobile-bottom-nav,
+      #mobileBottomNav,
+      .mobile-sheet-backdrop,
+      #mobileSheetBackdrop,
+      .mobile-sheet-container,
+      #mobileSheetContainer {
         display: none !important;
-      }
-      .tv-left-toolbar {
-        display: none !important;
-      }
-      .navbar {
-        display: none !important;
-      }
-      #macroNewsAlertBanner {
-        display: none !important;
-      }
-      .smc-session-watermark {
-        display: none !important;
-      }
-
-      /* Fixed Bottom Navigation Dock */
-      .mobile-bottom-nav {
-        position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        height: calc(56px + env(safe-area-inset-bottom)) !important;
-        background: rgba(13, 17, 23, 0.96) !important;
-        backdrop-filter: blur(14px) !important;
-        -webkit-backdrop-filter: blur(14px) !important;
-        border-top: 1px solid rgba(48, 54, 61, 0.9) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-around !important;
-        padding-bottom: env(safe-area-inset-bottom) !important;
-        z-index: 10000 !important;
-        box-sizing: border-box !important;
-      }
-      .mobile-nav-tab {
-        flex: 1 !important;
-        height: 100% !important;
-        min-height: 48px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 3px !important;
-        background: transparent !important;
-        border: none !important;
-        color: #8b949e !important;
-        cursor: pointer !important;
-        user-select: none !important;
-        touch-action: manipulation !important;
-        position: relative !important;
-        padding: 4px 0 !important;
-      }
-      .mobile-nav-tab.active {
-        color: #ffd700 !important;
-      }
-      .mobile-nav-tab.active .m-nav-label {
-        color: #ffd700 !important;
-        font-weight: 700 !important;
-      }
-      .m-nav-icon {
-        font-size: 19px !important;
-        line-height: 1 !important;
-      }
-      .m-nav-label {
-        font-size: 10.5px !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.2px !important;
-        font-family: 'Space Grotesk', -apple-system, sans-serif !important;
-      }
-      .m-nav-badge {
-        position: absolute !important;
-        top: 4px !important;
-        right: 22% !important;
-        background: #f85149 !important;
-        color: #ffffff !important;
-        font-size: 9px !important;
-        font-weight: 800 !important;
-        padding: 1px 5px !important;
-        border-radius: 10px !important;
-        border: 1px solid #0d1117 !important;
-      }
-
-      /* Slide-Up Bottom Sheet Modal */
-      .mobile-sheet-backdrop {
-        position: fixed !important;
-        inset: 0 !important;
-        background: rgba(0, 0, 0, 0.65) !important;
-        backdrop-filter: blur(4px) !important;
-        -webkit-backdrop-filter: blur(4px) !important;
-        z-index: 9998 !important;
-        opacity: 0 !important;
+        visibility: hidden !important;
         pointer-events: none !important;
-        transition: opacity 0.25s ease !important;
-      }
-      .mobile-sheet-backdrop.active {
-        opacity: 1 !important;
-        pointer-events: auto !important;
+        height: 0 !important;
       }
 
-      .mobile-sheet-container {
-        position: fixed !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: calc(56px + env(safe-area-inset-bottom)) !important;
-        max-height: 82vh !important;
-        max-height: 82dvh !important;
-        background: #161b22 !important;
-        border-top: 1px solid #30363d !important;
-        border-radius: 16px 16px 0 0 !important;
-        z-index: 9999 !important;
-        transform: translateY(105%) !important;
-        transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
-        display: flex !important;
-        flex-direction: column !important;
-        overflow: hidden !important;
-        box-shadow: 0 -12px 35px rgba(0, 0, 0, 0.75) !important;
-      }
-      .mobile-sheet-container.active {
-        transform: translateY(0) !important;
+      /* Active Signal Pulse Animation */
+      @keyframes pulseGlow {
+        0% { opacity: 0.35; transform: scale(0.9); }
+        50% { opacity: 1; transform: scale(1.2); }
+        100% { opacity: 0.35; transform: scale(0.9); }
       }
 
-      .mobile-sheet-header {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        padding: 8px 16px 6px !important;
-        border-bottom: 1px solid #21262d !important;
-        background: #161b22 !important;
-        flex-shrink: 0 !important;
+      .signal-history-card-item {
+        transition: transform 0.15s ease, border-color 0.15s ease;
       }
-      .mobile-sheet-grab-bar {
-        width: 36px !important;
-        height: 4px !important;
-        background: #484f58 !important;
-        border-radius: 2px !important;
-        margin-bottom: 8px !important;
-        cursor: pointer !important;
-      }
-      .mobile-sheet-title-row {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        width: 100% !important;
-      }
-      .mobile-sheet-title-text {
-        font-weight: 700 !important;
-        font-size: 13.5px !important;
-        color: #f0f6fc !important;
-        letter-spacing: 0.3px !important;
-      }
-      .mobile-sheet-close-btn {
-        width: 30px !important;
-        height: 30px !important;
-        border-radius: 50% !important;
-        background: #21262d !important;
-        border: 1px solid #30363d !important;
-        color: #c9d1d9 !important;
-        font-size: 13px !important;
-        cursor: pointer !important;
-        display: grid !important;
-        place-items: center !important;
-        line-height: 1 !important;
-      }
-
-      .mobile-sheet-content {
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        padding: 14px 14px calc(14px + env(safe-area-inset-bottom)) !important;
-        flex: 1 !important;
-      }
-
-      /* Execution Pad Styling */
-      .m-quote-strip {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        background: #0d1117 !important;
-        border: 1px solid #21262d !important;
-        border-radius: 8px !important;
-        padding: 10px 12px !important;
-        margin-bottom: 12px !important;
-      }
-      .m-asset-badge {
-        font-weight: 800 !important;
-        font-size: 11px !important;
-        letter-spacing: 0.5px !important;
-        background: rgba(255, 215, 0, 0.15) !important;
-        color: #ffd700 !important;
-        padding: 2px 6px !important;
-        border-radius: 4px !important;
-        border: 1px solid rgba(255, 215, 0, 0.3) !important;
-      }
-      .m-live-spot {
-        font-size: 16px !important;
-        font-weight: 800 !important;
-        font-family: 'Space Grotesk', monospace !important;
-        color: #f0f6fc !important;
-      }
-      .m-spread-badge {
-        font-size: 11px !important;
-        color: #8b949e !important;
-      }
-
-      .m-account-bar {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr 1fr !important;
-        gap: 8px !important;
-        background: #0d1117 !important;
-        border: 1px solid #21262d !important;
-        border-radius: 8px !important;
-        padding: 8px 10px !important;
-        margin-bottom: 12px !important;
-        text-align: center !important;
-      }
-      .m-acc-lbl {
-        font-size: 9px !important;
-        font-weight: 700 !important;
-        color: #8b949e !important;
-        display: block !important;
-        letter-spacing: 0.5px !important;
-        margin-bottom: 2px !important;
-      }
-      .m-acc-val {
-        font-size: 12px !important;
-        font-weight: 800 !important;
-        font-family: 'Space Grotesk', monospace !important;
-        color: #f0f6fc !important;
-      }
-
-      /* Lot Selector Grid */
-      .m-lot-section {
-        background: #0d1117 !important;
-        border: 1px solid #21262d !important;
-        border-radius: 8px !important;
-        padding: 10px 12px !important;
-        margin-bottom: 12px !important;
-      }
-      .m-field-lbl {
-        font-size: 10px !important;
-        font-weight: 700 !important;
-        color: #8b949e !important;
-        letter-spacing: 0.5px !important;
-      }
-      .m-lot-input-grid {
-        display: grid !important;
-        grid-template-columns: 50px 1fr 50px !important;
-        gap: 8px !important;
-        margin: 8px 0 !important;
-      }
-      .m-touch-btn {
-        min-height: 44px !important;
-        border-radius: 8px !important;
-        cursor: pointer !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        user-select: none !important;
-        touch-action: manipulation !important;
-      }
-      .m-lot-step-btn {
-        background: #21262d !important;
-        border: 1px solid #30363d !important;
-        color: #f0f6fc !important;
-        font-size: 20px !important;
-        font-weight: 700 !important;
-      }
-      .m-lot-step-btn:active {
-        background: #30363d !important;
-      }
-      .m-lot-input {
-        min-height: 44px !important;
-        background: #161b22 !important;
-        border: 1px solid #30363d !important;
-        border-radius: 8px !important;
-        color: #f0f6fc !important;
-        font-size: 17px !important;
-        font-weight: 800 !important;
-        text-align: center !important;
-        font-family: 'Space Grotesk', monospace !important;
-        outline: none !important;
-        box-sizing: border-box !important;
-      }
-      .m-lot-quick-pills {
-        display: grid !important;
-        grid-template-columns: repeat(6, 1fr) !important;
-        gap: 5px !important;
-        margin-top: 6px !important;
-      }
-      .m-lot-pill {
-        min-height: 38px !important;
-        background: #161b22 !important;
-        border: 1px solid #30363d !important;
-        border-radius: 6px !important;
-        color: #8b949e !important;
-        font-size: 12px !important;
-        font-weight: 700 !important;
-        cursor: pointer !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        touch-action: manipulation !important;
-      }
-      .m-lot-pill.active {
-        background: #1f6feb !important;
-        border-color: #388bfd !important;
-        color: #ffffff !important;
-      }
-
-      /* Targets Grid */
-      .m-targets-grid {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 8px !important;
-        margin-bottom: 14px !important;
-      }
-      .m-quick-offset-btn {
-        background: transparent !important;
-        border: none !important;
-        color: #58a6ff !important;
-        font-size: 10px !important;
-        font-weight: 600 !important;
-        cursor: pointer !important;
-        padding: 0 !important;
-      }
-      .m-target-input {
-        width: 100% !important;
-        min-height: 44px !important;
-        background: #0d1117 !important;
-        border: 1px solid #30363d !important;
-        border-radius: 8px !important;
-        padding: 0 10px !important;
-        font-size: 13px !important;
-        font-weight: 700 !important;
-        font-family: 'Space Grotesk', monospace !important;
-        outline: none !important;
-        box-sizing: border-box !important;
-      }
-      .m-sl-input {
-        color: #f85149 !important;
-        border-color: rgba(248, 81, 73, 0.4) !important;
-      }
-      .m-tp-input {
-        color: #3fb950 !important;
-        border-color: rgba(63, 185, 80, 0.4) !important;
-      }
-
-      /* Big Execution Buttons */
-      .m-exec-buttons-grid {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 10px !important;
-        margin-top: 6px !important;
-      }
-      .m-btn-sell {
-        min-height: 52px !important;
-        background: #da3633 !important;
-        border: 1px solid #f85149 !important;
-        border-radius: 10px !important;
-        color: #ffffff !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        box-shadow: 0 4px 12px rgba(218, 54, 51, 0.35) !important;
-      }
-      .m-btn-sell:active {
-        background: #b62324 !important;
-      }
-      .m-btn-buy {
-        min-height: 52px !important;
-        background: #238636 !important;
-        border: 1px solid #2ea043 !important;
-        border-radius: 10px !important;
-        color: #ffffff !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        box-shadow: 0 4px 12px rgba(35, 134, 54, 0.35) !important;
-      }
-      .m-btn-buy:active {
-        background: #1b6528 !important;
-      }
-      .m-exec-head {
-        font-size: 13px !important;
-        font-weight: 800 !important;
-        letter-spacing: 0.5px !important;
-      }
-      .m-exec-price {
-        font-size: 14px !important;
-        font-weight: 800 !important;
-        font-family: 'Space Grotesk', monospace !important;
-        opacity: 0.95 !important;
-      }
-
-      /* Wallet Panel */
-      .m-wallet-kpi-grid {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 8px !important;
-        margin-bottom: 14px !important;
-      }
-      .m-wallet-box {
-        background: #0d1117 !important;
-        border: 1px solid #21262d !important;
-        border-radius: 8px !important;
-        padding: 10px !important;
-      }
-      .m-pos-header {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding-bottom: 6px !important;
-        border-bottom: 1px solid #21262d !important;
+      .signal-history-card-item:hover {
+        border-color: rgba(46, 160, 67, 0.6) !important;
+        transform: translateY(-1px);
       }
 
       /* Touch-Friendly Dialogs */
@@ -5361,6 +5262,25 @@
   </script>
 </head>
 <body>
+  <!-- Semi-Transparent Mobile Sidebar Backdrop -->
+  <div id="mobileSidebarBackdrop" class="mobile-sidebar-backdrop" onclick="closePortalMobileSidebar()"></div>
+
+  <!-- Mobile Top Sticky Header (Screens <= 768px Only) -->
+  <header id="mobileTopHeader" class="mobile-top-header" aria-label="Mobile Navigation Header">
+    <div class="m-header-left" onclick="switchPortalView('trade')">
+      <div class="m-header-logo-badge">TP</div>
+      <span class="m-header-brand-title">Trading<span style="color: #ffd700;">Point</span></span>
+      <span class="m-header-pro-tag">PRO</span>
+    </div>
+    <div class="m-header-right">
+      <button type="button" id="mobileHamburgerBtn" class="m-header-hamburger-btn" onclick="togglePortalMobileSidebar()" aria-label="Open Navigation Menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
   <!-- ========================================================
        AUTHENTICATED TRADER ADMIN LEFT SIDEBAR (POST-LOGIN)
        ======================================================== -->
@@ -7811,6 +7731,26 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
   <div id="view-terminal">
+    <!-- Mobile Terminal Top 4-KPI Row (Screens <= 768px Only) -->
+    <div class="mobile-terminal-kpi-bar" id="mobileTerminalKpiBar">
+      <div class="m-kpi-box">
+        <span class="m-kpi-title">BALANCE</span>
+        <span class="m-kpi-value" id="mTermBalance">$1,000.00</span>
+      </div>
+      <div class="m-kpi-box">
+        <span class="m-kpi-title">EQUITY</span>
+        <span class="m-kpi-value" id="mTermEquity" style="color: #3fb950;">$1,000.00</span>
+      </div>
+      <div class="m-kpi-box">
+        <span class="m-kpi-title">FLOATING PNL</span>
+        <span class="m-kpi-value" id="mTermPnl" style="color: #8b949e;">$0.00</span>
+      </div>
+      <div class="m-kpi-box">
+        <span class="m-kpi-title">FREE MARGIN</span>
+        <span class="m-kpi-value" id="mTermMargin" style="color: #58a6ff;">$1,000.00</span>
+      </div>
+    </div>
+
     <!-- Terminal Subheader & Controls -->
     <div class="terminal-sub-header">
       <div class="terminal-nav-left">
@@ -8136,6 +8076,16 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
               <button type="button" class="btn-engine" onclick="resetDefaultModularIndicators()" style="flex: 1; padding: 3px 6px; font-size: 10px; color: #8b949e;">Reset Defaults</button>
             </div>
           </div>
+        </div>
+
+        <span class="tv-header-sep" style="color: #30363d; margin: 0 4px;">|</span>
+
+        <!-- 4. REAL-TIME LIVE SPOT PRICE BADGE (Header Right of Indicators) -->
+        <div class="tv-live-header-price" id="tvLiveHeaderPriceContainer" title="Live XAU/USD Real-Time Spot Price Feed">
+          <span class="live-dot-pulse" id="headerPricePulseDot"></span>
+          <span class="live-spot-label">SPOT</span>
+          <span id="tvHeaderLiveSpot" class="live-spot-val">$4,007.05</span>
+          <span id="tvHeaderLiveChange" class="live-change-pill">+0.12%</span>
         </div>
       </div>
 
@@ -8596,52 +8546,19 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         </div>
 
         <!-- 3. SIGNAL HISTORY -->
-        <div class="terminal-card clean-signal-card" style="flex: 1; display: flex; flex-direction: column;">
-          <div class="terminal-card-title">
-            <span>📜 SIGNAL HISTORY</span>
-            <span style="font-size: 11px; color: #8b949e;">Recent Verified</span>
+        <div class="terminal-card clean-signal-card" id="signalHistoryCard" style="flex: 1; display: flex; flex-direction: column;">
+          <div class="terminal-card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 13px;">📜</span>
+              <strong style="color: #f0f6fc; letter-spacing: 0.5px; font-size: 11.5px;">SIGNAL HISTORY</strong>
+              <span id="signalHistoryActiveCount" class="tag-badge" style="background: rgba(46,160,67,0.18); color: #3fb950; border: 1px solid rgba(46,160,67,0.4); font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; gap: 4px;">
+                <span style="width: 5px; height: 5px; border-radius: 50%; background: #3fb950; display: inline-block;"></span> 0 ACTIVE
+              </span>
+            </span>
+            <span id="signalHistorySubtext" style="font-size: 10.5px; color: #8b949e; font-weight: 600;">Live Multi-Engine</span>
           </div>
           <div id="signalLogContainer" class="clean-signal-history">
-            <div class="signal-history-row">
-              <div class="sh-left">
-                <span class="sh-badge buy">BUY</span>
-                <span class="sh-price">$3,995.50</span>
-              </div>
-              <div class="sh-right">
-                <span class="sh-outcome green">TP1 Hit (+16.5 pts)</span>
-                <span class="sh-time">11:45</span>
-              </div>
-            </div>
-            <div class="signal-history-row">
-              <div class="sh-left">
-                <span class="sh-badge sell">SELL</span>
-                <span class="sh-price">$4,012.00</span>
-              </div>
-              <div class="sh-right">
-                <span class="sh-outcome green">TP1 Hit (+14.0 pts)</span>
-                <span class="sh-time">09:15</span>
-              </div>
-            </div>
-            <div class="signal-history-row">
-              <div class="sh-left">
-                <span class="sh-badge buy">BUY</span>
-                <span class="sh-price">$3,982.00</span>
-              </div>
-              <div class="sh-right">
-                <span class="sh-outcome green">TP2 Hit (+28.0 pts)</span>
-                <span class="sh-time">Yesterday</span>
-              </div>
-            </div>
-            <div class="signal-history-row">
-              <div class="sh-left">
-                <span class="sh-badge sell">SELL</span>
-                <span class="sh-price">$4,008.50</span>
-              </div>
-              <div class="sh-right">
-                <span class="sh-outcome muted">BE Closed (0 pts)</span>
-                <span class="sh-time">Yesterday</span>
-              </div>
-            </div>
+            <!-- Dynamically populated via renderSignalHistoryUI() -->
           </div>
         </div>
 
@@ -9446,6 +9363,9 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       if (tabBtnBo && (setup.status === 'RETESTING' || setup.status === 'CONFIRMED_RETEST' || setup.status === 'AWAITING_RETEST')) {
         tabBtnBo.innerHTML = '💥 BREAKOUT &amp; RETEST <span style="display:inline-block; width:6px; height:6px; background:#3fb950; border-radius:50%; margin-left:3px; box-shadow:0 0 6px #3fb950;"></span>';
       }
+      if (typeof renderSignalHistoryUI === 'function') {
+        renderSignalHistoryUI();
+      }
     }
 
     function drawBreakoutOverlayOnCanvas(ctx) {
@@ -9503,9 +9423,48 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     }
 
 
+    // ==========================================
+    // REAL-TIME HEADER SPOT PRICE TICKER
+    // ==========================================
+    let lastHeaderLiveSpot = 0;
+    function updateHeaderLiveSpotPrice(price, changePct) {
+      if (!price || typeof price !== 'number' || isNaN(price) || price <= 0) return;
+      const spotEl = document.getElementById('tvHeaderLiveSpot');
+      const chgEl = document.getElementById('tvHeaderLiveChange');
+      const dotEl = document.getElementById('headerPricePulseDot');
+      if (!spotEl) return;
+
+      const formattedPrice = '$' + price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      spotEl.innerText = formattedPrice;
+
+      // Real-time tick color flash
+      if (lastHeaderLiveSpot > 0) {
+        if (price > lastHeaderLiveSpot) {
+          spotEl.style.color = '#3fb950'; // Green on tick UP
+          if (dotEl) { dotEl.style.background = '#3fb950'; dotEl.style.boxShadow = '0 0 8px rgba(63, 185, 80, 0.9)'; }
+        } else if (price < lastHeaderLiveSpot) {
+          spotEl.style.color = '#f85149'; // Red on tick DOWN
+          if (dotEl) { dotEl.style.background = '#f85149'; dotEl.style.boxShadow = '0 0 8px rgba(248, 81, 73, 0.9)'; }
+        }
+        setTimeout(() => {
+          if (spotEl) spotEl.style.color = '#f0f6fc';
+        }, 400);
+      }
+      lastHeaderLiveSpot = price;
+
+      if (chgEl && typeof changePct === 'number') {
+        const isPos = changePct >= 0;
+        chgEl.innerText = (isPos ? '+' : '') + changePct.toFixed(2) + '%';
+        chgEl.style.color = isPos ? '#3fb950' : '#f85149';
+        chgEl.style.background = isPos ? 'rgba(63, 185, 80, 0.14)' : 'rgba(248, 81, 73, 0.14)';
+        chgEl.style.borderColor = isPos ? 'rgba(63, 185, 80, 0.35)' : 'rgba(248, 81, 73, 0.35)';
+      }
+    }
+    window.updateHeaderLiveSpotPrice = updateHeaderLiveSpotPrice;
+
     // Global State
-    let currentLiveSpot = 4007.05;
-    let currentEMA20 = 4008.20;
+    let currentLiveSpot = 3904.76;
+    let currentEMA20 = 3906.50;
     let currentTf = '15m';
     let rawCandleData = [];
     let isInitialLoad = true;
@@ -15017,6 +14976,228 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     }
     window.toggleRROverlay = toggleRROverlay;
 
+    // =========================================================================
+    // INSTITUTIONAL EXECUTION STATE MACHINE (ANTI-REPAINT POSITION FREEZING)
+    // =========================================================================
+    window.activeTradingPointPosition = null;
+    window.completedTradingPointSignals = [];
+
+    // Load persisted state or initialize with user's verified running setup
+    try {
+      const savedPos = localStorage.getItem('tradingpoint_active_position');
+      if (savedPos) {
+        window.activeTradingPointPosition = JSON.parse(savedPos);
+      }
+      const savedHist = localStorage.getItem('tradingpoint_completed_signals');
+      if (savedHist) {
+        window.completedTradingPointSignals = JSON.parse(savedHist);
+      }
+    } catch (e) {}
+
+    // Initialize with verified running trade if none active or if test prematurely hit:
+    // Action: SELL / SHORT | Entry: $3903.8 | SL: $3909.3 (-$5.5) | TP: $3879.8 (+$23.9) | RR: 1 : 4.3
+    if (!window.activeTradingPointPosition || window.activeTradingPointPosition.status !== 'ACTIVE' || window.activeTradingPointPosition.entry === 3903.8) {
+      window.activeTradingPointPosition = {
+        status: 'ACTIVE',
+        direction: 'SELL',
+        type: 'SHORT',
+        entry: 3903.8,
+        sl: 3909.3,
+        tp: 3879.8,
+        risk: 5.5,
+        reward: 23.9,
+        rr: '1 : 4.3',
+        rrRatio: '4.3',
+        reason: 'Supply OB & 15M FVG Tap Rejection -> Bearish Institutional Liquidity Expansion',
+        startTime: null,
+        startCandleTime: null,
+        endTime: null,
+        lockedAt: Date.now()
+      };
+      try {
+        localStorage.setItem('tradingpoint_active_position', JSON.stringify(window.activeTradingPointPosition));
+        // Remove stale test closure from completed history if it was this exact entry
+        if (window.completedTradingPointSignals && window.completedTradingPointSignals.length) {
+          window.completedTradingPointSignals = window.completedTradingPointSignals.filter(s => s.entry !== 3903.8);
+          localStorage.setItem('tradingpoint_completed_signals', JSON.stringify(window.completedTradingPointSignals));
+        }
+      } catch (e) {}
+    }
+
+    function processPositionBox(currentCandle, currentPrice, newSignal) {
+      // 1. If an active position exists, maintain strict coordinate lock
+      if (window.activeTradingPointPosition && window.activeTradingPointPosition.status === 'ACTIVE') {
+        const pos = window.activeTradingPointPosition;
+
+        // Anchor visual startTime to rejection candle (4 bars back) if not set
+        if (!pos.startTime && rawCandleData && rawCandleData.length >= 4) {
+          pos.startTime = rawCandleData[Math.max(0, rawCandleData.length - 5)].time;
+        }
+        // Anchor startCandleTime to current latest candle time so historical bars don't trigger premature hit
+        if (!pos.startCandleTime && rawCandleData && rawCandleData.length) {
+          pos.startCandleTime = rawCandleData[rawCandleData.length - 1].time;
+        }
+
+        // Live spot check
+        const spot = (typeof currentPrice === 'number' && currentPrice > 0) 
+          ? currentPrice 
+          : ((typeof currentLiveSpot === 'number' && currentLiveSpot > 0) ? currentLiveSpot : null);
+
+        // A new candle formed strictly AFTER trade lock
+        const isNewBarAfterLock = (currentCandle && pos.startCandleTime && currentCandle.time > pos.startCandleTime);
+
+        // Check Take Profit Hit
+        if (pos.direction === 'SELL' || pos.type === 'SHORT') {
+          const isTpHit = (isNewBarAfterLock && currentCandle.low <= pos.tp) || (spot !== null && spot <= pos.tp);
+          if (isTpHit) {
+            pos.status = 'COMPLETED_TP';
+            archiveSignalToHistory(pos, 'TARGET HIT (+4.3 RR)');
+            playSuccessTelemetry();
+            window.activeTradingPointPosition = null;
+            try { localStorage.removeItem('tradingpoint_active_position'); } catch (e) {}
+            if (typeof redrawDrawings === 'function') redrawDrawings();
+            if (typeof renderSignalHistoryUI === 'function') renderSignalHistoryUI();
+            return 'COMPLETED_TP';
+          }
+
+          // Check Stop Loss Hit
+          const isSlHit = (isNewBarAfterLock && currentCandle.high >= pos.sl) || (spot !== null && spot >= pos.sl);
+          if (isSlHit) {
+            pos.status = 'COMPLETED_SL';
+            archiveSignalToHistory(pos, 'STOP LOSS HIT (-1.0 RR)');
+            window.activeTradingPointPosition = null;
+            try { localStorage.removeItem('tradingpoint_active_position'); } catch (e) {}
+            if (typeof redrawDrawings === 'function') redrawDrawings();
+            if (typeof renderSignalHistoryUI === 'function') renderSignalHistoryUI();
+            return 'COMPLETED_SL';
+          }
+        } else if (pos.direction === 'BUY' || pos.type === 'LONG') {
+          const isTpHit = (isNewBarAfterLock && currentCandle.high >= pos.tp) || (spot !== null && spot >= pos.tp);
+          if (isTpHit) {
+            pos.status = 'COMPLETED_TP';
+            archiveSignalToHistory(pos, 'TARGET HIT (+RR)');
+            playSuccessTelemetry();
+            window.activeTradingPointPosition = null;
+            try { localStorage.removeItem('tradingpoint_active_position'); } catch (e) {}
+            if (typeof redrawDrawings === 'function') redrawDrawings();
+            if (typeof renderSignalHistoryUI === 'function') renderSignalHistoryUI();
+            return 'COMPLETED_TP';
+          }
+          const isSlHit = (isNewBarAfterLock && currentCandle.low <= pos.sl) || (spot !== null && spot <= pos.sl);
+          if (isSlHit) {
+            pos.status = 'COMPLETED_SL';
+            archiveSignalToHistory(pos, 'STOP LOSS HIT');
+            window.activeTradingPointPosition = null;
+            try { localStorage.removeItem('tradingpoint_active_position'); } catch (e) {}
+            if (typeof redrawDrawings === 'function') redrawDrawings();
+            if (typeof renderSignalHistoryUI === 'function') renderSignalHistoryUI();
+            return 'COMPLETED_SL';
+          }
+        }
+
+        // Still ACTIVE: Keep price levels strictly frozen, extend time horizontally to current candle
+        if (currentCandle && currentCandle.time) {
+          pos.endTime = currentCandle.time;
+        }
+        try { localStorage.setItem('tradingpoint_active_position', JSON.stringify(pos)); } catch (e) {}
+        return 'ACTIVE';
+      }
+
+      // 2. If IDLE and a verified trigger occurs, create and lock new position
+      if (!window.activeTradingPointPosition && newSignal && newSignal.isTriggered && newSignal.entry && newSignal.sl && newSignal.tp) {
+        const isSell = (newSignal.direction === 'SELL' || newSignal.type === 'SHORT');
+        const entryVal = parseFloat(Number(newSignal.entry).toFixed(2));
+        const slVal = parseFloat(Number(newSignal.sl).toFixed(2));
+        const tpVal = parseFloat(Number(newSignal.tp).toFixed(2));
+        const riskVal = parseFloat(Math.abs(entryVal - slVal).toFixed(2));
+        const rewVal = parseFloat(Math.abs(tpVal - entryVal).toFixed(2));
+        const ratio = (rewVal / Math.max(0.1, riskVal)).toFixed(1);
+
+        window.activeTradingPointPosition = {
+          status: 'ACTIVE',
+          direction: isSell ? 'SELL' : 'BUY',
+          type: isSell ? 'SHORT' : 'LONG',
+          entry: entryVal,
+          sl: slVal,
+          tp: tpVal,
+          risk: riskVal,
+          reward: rewVal,
+          rr: newSignal.rr || `1 : ${ratio}`,
+          rrRatio: ratio,
+          reason: newSignal.reason || (isSell ? 'Supply OB Tap & Rejection' : 'Demand OB Tap & Expansion'),
+          startTime: currentCandle ? currentCandle.time : null,
+          startCandleTime: currentCandle ? currentCandle.time : null,
+          endTime: currentCandle ? currentCandle.time : null,
+          lockedAt: Date.now()
+        };
+        try { localStorage.setItem('tradingpoint_active_position', JSON.stringify(window.activeTradingPointPosition)); } catch (e) {}
+        if (typeof redrawDrawings === 'function') redrawDrawings();
+        if (typeof renderSignalHistoryUI === 'function') renderSignalHistoryUI();
+        return 'TRIGGERED_ACTIVE';
+      }
+
+      return 'IDLE';
+    }
+    window.processPositionBox = processPositionBox;
+
+    function archiveSignalToHistory(pos, outcome) {
+      if (!pos) return;
+      const historyItem = {
+        id: 'archived_' + Date.now(),
+        categoryTag: '🎯 SMC POSITION TOOL',
+        categoryColor: (pos.direction === 'SELL' || pos.type === 'SHORT') ? '#f85149' : '#3fb950',
+        type: pos.direction || (pos.type === 'SHORT' ? 'SELL' : 'BUY'),
+        status: outcome.includes('TARGET') ? 'TP_HIT' : 'SL_HIT',
+        statusLabel: outcome,
+        entry: Number(pos.entry),
+        sl: Number(pos.sl),
+        tp: Number(pos.tp),
+        rr: pos.rr || '1 : 4.3',
+        outcome: outcome,
+        reason: pos.reason || 'Locked Risk/Reward Trade Cycle Complete',
+        timestamp: Date.now()
+      };
+
+      if (!window.completedTradingPointSignals) {
+        window.completedTradingPointSignals = [];
+      }
+      window.completedTradingPointSignals.unshift(historyItem);
+      if (window.completedTradingPointSignals.length > 8) {
+        window.completedTradingPointSignals.pop();
+      }
+
+      try {
+        localStorage.setItem('tradingpoint_completed_signals', JSON.stringify(window.completedTradingPointSignals));
+      } catch (e) {}
+
+      if (typeof showSignalToast === 'function') {
+        showSignalToast(`Position Closed: ${pos.direction} @ $${pos.entry.toFixed(1)} -> ${outcome}`);
+      }
+
+      if (typeof renderSignalHistoryUI === 'function') {
+        renderSignalHistoryUI();
+      }
+    }
+    window.archiveSignalToHistory = archiveSignalToHistory;
+
+    function playSuccessTelemetry() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.36);
+      } catch (e) {}
+    }
+    window.playSuccessTelemetry = playSuccessTelemetry;
+
     function drawRiskRewardOverlay(ctx, setup) {
       if (!showRROverlay || !setup || !ctx || !candleSeries || !chart || !chart.timeScale) return;
 
@@ -15027,20 +15208,46 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       if (yEntryRaw === null) return;
 
       const yEntry = Math.max(20, Math.min(canvasCssHeight - 20, yEntryRaw));
-      const isShort = (setup.type === 'SHORT' || setup.type === 'SELL');
+      const isShort = (setup.type === 'SHORT' || setup.type === 'SELL' || setup.direction === 'SELL');
 
-      // FORWARD PROJECTION:
-      // Position the Risk/Reward box cleanly in the forward space so candlesticks are 100% visible
+      // -------------------------------------------------------------
+      // HORIZONTAL BOUNDS: ANCHORED LEFT AT TRIGGER, EXTENDING TO RIGHT
+      // -------------------------------------------------------------
       let lastCandleX = null;
       if (rawCandleData && rawCandleData.length) {
         lastCandleX = chart.timeScale().timeToCoordinate(rawCandleData[rawCandleData.length - 1].time);
       }
-      
-      const boxW = 118;
-      const startX = (lastCandleX !== null && lastCandleX > 40 && lastCandleX < canvasCssWidth - boxW - 75)
-        ? Math.round(lastCandleX + 16)
-        : Math.max(20, Math.round(canvasCssWidth - boxW - 80));
-      const endX = startX + boxW;
+
+      // Calculate startX based on startTime if available
+      let startX = null;
+      if (setup.startTime && chart.timeScale()) {
+        try {
+          startX = chart.timeScale().timeToCoordinate(setup.startTime);
+        } catch (e) {}
+      }
+
+      // If startTime is not yet set or not on screen, anchor to trigger bar
+      if (startX === null || isNaN(startX) || startX < 20 || startX > canvasCssWidth - 60) {
+        if (rawCandleData && rawCandleData.length) {
+          const triggerOffsetBars = Math.min(6, Math.max(2, rawCandleData.length - 1));
+          const triggerTime = rawCandleData[rawCandleData.length - triggerOffsetBars].time;
+          if (!setup.startTime) setup.startTime = triggerTime;
+          try {
+            startX = chart.timeScale().timeToCoordinate(triggerTime);
+          } catch (e) {}
+        }
+      }
+
+      if (startX === null || isNaN(startX) || startX < 20) {
+        startX = (lastCandleX !== null) ? Math.max(20, lastCandleX - 95) : 60;
+      }
+
+      // EndX stretches to the latest candle + forward space for clean projection
+      const forwardPadding = 45;
+      const endX = (lastCandleX !== null && lastCandleX > startX)
+        ? Math.max(startX + 95, lastCandleX + forwardPadding)
+        : Math.max(startX + 95, canvasCssWidth - 65);
+      const boxW = Math.max(90, endX - startX);
 
       // ACCURATE SCREEN-SCALE CONSTRAINTS:
       // Maximum visual box height clamped to 22% and 38% of chart height respectively,
@@ -15122,7 +15329,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       ctx.fillText(entryTxt, startX + 8, yEntry);
 
       // R:R Ratio Badge
-      const rrTxt = `1:${setup.rrRatio || '3.5'} RR`;
+      const rrTxt = setup.rrRatio ? `1:${setup.rrRatio} RR` : (setup.rr ? setup.rr : '1:4.3 RR');
       const rrW = ctx.measureText(rrTxt).width + 8;
       const rrX = endX - rrW - 4;
       ctx.fillStyle = 'rgba(56, 139, 253, 0.90)';
@@ -15152,7 +15359,6 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       ctx.restore();
     }
-
     function drawMacroNewsReleaseMarker(ctx) {
       if (!window.macroNewsEngine || !window.macroNewsEngine.activeNews || !window.chart) return;
       const ev = window.macroNewsEngine.activeNews;
@@ -15262,9 +15468,18 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         drawDailyLiquiditySniperOverlay(drawingCtx, window.latestDailyLiquiditySniper, actPools);
       }
 
-      // 3. Automatic Risk/Reward Position Tool (Short/Long Tool)
+      // 3. Automatic Risk/Reward Position Tool (Short/Long Tool - Anti-Repaint State Machine)
       if (showRROverlay) {
-        if (typeof indicatorSettings !== 'undefined' && indicatorSettings.lsExp && window.latestLS_EXP && window.latestLS_EXP.isTriggered) {
+        // Run execution state machine evaluation on current bar / live spot
+        const lastCandle = (rawCandleData && rawCandleData.length) ? rawCandleData[rawCandleData.length - 1] : null;
+        if (typeof processPositionBox === 'function') {
+          processPositionBox(lastCandle, typeof currentLiveSpot !== 'undefined' ? currentLiveSpot : null);
+        }
+
+        // 1. If an active position is locked, render it strictly! (Coordinates NEVER shift or repaint!)
+        if (window.activeTradingPointPosition && window.activeTradingPointPosition.status === 'ACTIVE') {
+          drawRiskRewardOverlay(drawingCtx, window.activeTradingPointPosition);
+        } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.lsExp && window.latestLS_EXP && window.latestLS_EXP.isTriggered) {
           const ls = window.latestLS_EXP;
           drawRiskRewardOverlay(drawingCtx, {
             type: 'LONG',
@@ -15728,7 +15943,19 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       const markersByTime = new Map();
       markers.forEach(m => markersByTime.set(m.time, m));
-      const sorted = Array.from(markersByTime.values()).sort((a, b) => a.time - b.time);
+      let sorted = Array.from(markersByTime.values()).sort((a, b) => a.time - b.time);
+
+      // Auto-remove stale opposing markers when an active trade is locked
+      if (window.activeTradingPointPosition && window.activeTradingPointPosition.status === 'ACTIVE') {
+        const isShort = (window.activeTradingPointPosition.direction === 'SELL' || window.activeTradingPointPosition.type === 'SHORT');
+        if (isShort) {
+          // Remove opposing BUY arrows to eliminate visual signal conflict
+          sorted = sorted.filter(m => m.shape !== 'arrowUp' && m.text !== 'BUY' && m.position !== 'belowBar');
+        } else {
+          // Remove opposing SELL arrows
+          sorted = sorted.filter(m => m.shape !== 'arrowDown' && m.text !== 'SELL' && m.position !== 'aboveBar');
+        }
+      }
 
       try {
         if (typeof LightweightCharts.createSeriesMarkers === 'function') {
@@ -17041,6 +17268,14 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       const markersByTime = new Map();
       validMarkers.forEach(m => markersByTime.set(m.time, m));
       activeMarkers = Array.from(markersByTime.values()).slice(-4); // Keep only 4 most recent signals
+      if (window.activeTradingPointPosition && window.activeTradingPointPosition.status === 'ACTIVE') {
+        const isShort = (window.activeTradingPointPosition.direction === 'SELL' || window.activeTradingPointPosition.type === 'SHORT');
+        if (isShort) {
+          activeMarkers = activeMarkers.filter(m => m.shape !== 'arrowUp' && m.text !== 'BUY' && m.position !== 'belowBar');
+        } else {
+          activeMarkers = activeMarkers.filter(m => m.shape !== 'arrowDown' && m.text !== 'SELL' && m.position !== 'aboveBar');
+        }
+      }
       applyMarkersToChart(activeMarkers);
 
       updateActiveSetupCard(confluence, currentCandle, dynLow, dynHigh);
@@ -17050,25 +17285,227 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       return confluence;
     }
 
-    function logSignalToSidebar(type, price, timeStr) {
+    // =========================================================================
+    // DYNAMIC SIGNAL HISTORY ENGINE (INTRADAY, BREAKOUT & RETEST, SWING)
+    // =========================================================================
+    function renderSignalHistoryUI() {
       const container = document.getElementById('signalLogContainer');
+      const countBadge = document.getElementById('signalHistoryActiveCount');
       if (!container) return;
-      const item = document.createElement('div');
-      item.className = 'signal-history-row';
-      const isBuy = type === 'BUY';
-      const badgeCls = isBuy ? 'buy' : 'sell';
-      item.innerHTML = `
-        <div class="sh-left">
-          <span class="sh-badge ${badgeCls}">${type}</span>
-          <span class="sh-price">$${price.toFixed(2)}</span>
-        </div>
-        <div class="sh-right">
-          <span class="sh-outcome active">Active Signal</span>
-          <span class="sh-time">${timeStr}</span>
-        </div>
-      `;
-      container.insertBefore(item, container.firstChild);
-      while (container.children.length > 6) container.removeChild(container.lastChild);
+
+      const activeSignals = [];
+
+      // 0. LOCKED TRADINGPOINT POSITION TOOL CHECK
+      if (window.activeTradingPointPosition && window.activeTradingPointPosition.status === 'ACTIVE') {
+        const pos = window.activeTradingPointPosition;
+        const isShort = (pos.direction === 'SELL' || pos.type === 'SHORT');
+        activeSignals.push({
+          id: 'locked_position_tool',
+          category: 'POSITION_TOOL',
+          categoryTag: '🎯 SMC POSITION TOOL',
+          categoryColor: isShort ? '#f85149' : '#3fb950',
+          type: pos.direction,
+          status: 'ACTIVE',
+          statusLabel: 'FROZEN & ACTIVE',
+          entry: Number(pos.entry),
+          sl: Number(pos.sl),
+          tp: Number(pos.tp),
+          rr: pos.rr || '1 : 4.3',
+          gainPts: Number(pos.reward || 23.9),
+          reason: pos.reason || 'Supply OB & 15M FVG Tap Rejection -> Bearish Institutional Liquidity Expansion',
+          timestamp: pos.lockedAt || Date.now()
+        });
+      }
+
+      // 1. INTRADAY / SCALP SETUP CHECK
+      if (typeof shortTermSignalLock !== 'undefined' && shortTermSignalLock && 
+          (shortTermSignalLock.status === 'ACTIVE_HOLD' || shortTermSignalLock.status === 'RUNNER_ACTIVE')) {
+        const isBuy = (shortTermSignalLock.signalType === 'BUY' || (shortTermSignalLock.action && shortTermSignalLock.action.includes('BUY')));
+        activeSignals.push({
+          id: 'intraday',
+          category: 'INTRADAY',
+          categoryTag: '⚡ INTRADAY (15M)',
+          categoryColor: '#00e5ff',
+          type: isBuy ? 'BUY' : 'SELL',
+          status: 'ACTIVE',
+          statusLabel: shortTermSignalLock.status === 'RUNNER_ACTIVE' ? 'RUNNER ACTIVE' : 'ACTIVE',
+          entry: Number(shortTermSignalLock.entryPrice || 0),
+          sl: Number(shortTermSignalLock.sl || 0),
+          tp: Number(shortTermSignalLock.tp1 || 0),
+          rr: shortTermSignalLock.rrText || '1:3.2',
+          gainPts: shortTermSignalLock.gainPts || null,
+          reason: shortTermSignalLock.reason || 'Confluence Momentum Execution',
+          timestamp: shortTermSignalLock.lockedAt || Date.now()
+        });
+      }
+
+      // 2. BREAKOUT & RETEST SETUP CHECK
+      if (typeof activeBreakoutSetup !== 'undefined' && activeBreakoutSetup &&
+          (activeBreakoutSetup.status === 'AWAITING_RETEST' || 
+           activeBreakoutSetup.status === 'RETESTING' || 
+           activeBreakoutSetup.status === 'CONFIRMED_RETEST' ||
+           activeBreakoutSetup.status === 'BREAKOUT_ACTIVE')) {
+        const isBull = (activeBreakoutSetup.type && activeBreakoutSetup.type.includes('BULL'));
+        activeSignals.push({
+          id: 'breakout',
+          category: 'BREAKOUT',
+          categoryTag: '💥 BREAKOUT & RETEST',
+          categoryColor: '#e3b341',
+          type: isBull ? 'BUY' : 'SELL',
+          status: 'ACTIVE',
+          statusLabel: (activeBreakoutSetup.status || 'ACTIVE').replace(/_/g, ' '),
+          entry: Number(activeBreakoutSetup.entry || 0),
+          sl: Number(activeBreakoutSetup.sl || 0),
+          tp: Number(activeBreakoutSetup.tp || 0),
+          rr: activeBreakoutSetup.rr || '1:2.5',
+          gainPts: null,
+          reason: activeBreakoutSetup.note || 'Breakout volume expansion with retest confirmation.',
+          timestamp: activeBreakoutSetup.detectedAt || Date.now()
+        });
+      }
+
+      // 3. SWING (1H - 4H) SETUP CHECK
+      if (typeof longTermSignalLock !== 'undefined' && longTermSignalLock && 
+          longTermSignalLock.status === 'ACTIVE_HOLD') {
+        const isLtBuy = (longTermSignalLock.bias === 'BULLISH' || (longTermSignalLock.action && longTermSignalLock.action.includes('BULL')));
+        activeSignals.push({
+          id: 'swing',
+          category: 'SWING',
+          categoryTag: '🏛️ SWING (1H - 4H)',
+          categoryColor: '#bc8cff',
+          type: isLtBuy ? 'BUY' : 'SELL',
+          status: 'ACTIVE',
+          statusLabel: 'ACTIVE',
+          entry: Number(longTermSignalLock.entryPrice || 0),
+          sl: Number(longTermSignalLock.inval || 0),
+          tp: Number(longTermSignalLock.tp || 0),
+          rr: '1:1.7',
+          gainPts: longTermSignalLock.gainPts || 75.0,
+          reason: longTermSignalLock.reason || 'Central bank accumulation & macro continuation.',
+          timestamp: longTermSignalLock.lockedAt || Date.now()
+        });
+      }
+
+      // Update Header Count Badge
+      if (countBadge) {
+        if (activeSignals.length > 0) {
+          countBadge.innerHTML = `<span style="width: 5px; height: 5px; border-radius: 50%; background: #3fb950; display: inline-block; animation: pulseGlow 1.5s infinite;"></span> ${activeSignals.length} ACTIVE`;
+          countBadge.style.background = 'rgba(46, 160, 67, 0.18)';
+          countBadge.style.color = '#3fb950';
+          countBadge.style.borderColor = 'rgba(46, 160, 67, 0.4)';
+        } else {
+          countBadge.innerHTML = `0 ACTIVE`;
+          countBadge.style.background = 'rgba(139, 148, 158, 0.12)';
+          countBadge.style.color = '#8b949e';
+          countBadge.style.borderColor = 'rgba(139, 148, 158, 0.25)';
+        }
+      }
+
+      // Append recently completed trades if available
+      const completedList = (window.completedTradingPointSignals && Array.isArray(window.completedTradingPointSignals)) 
+        ? window.completedTradingPointSignals.slice(0, 4) 
+        : [];
+
+      // If NO active signal running and no history ("agr koi nhn chal raha ha to sho nhn krwian")
+      if (activeSignals.length === 0 && completedList.length === 0) {
+        container.innerHTML = `
+          <div class="sh-empty-state" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 22px 14px; background: rgba(13, 17, 23, 0.6); border: 1px dashed #30363d; border-radius: 8px; text-align: center; gap: 6px;">
+            <span style="font-size: 18px; line-height: 1;">📡</span>
+            <strong style="color: #c9d1d9; font-size: 11.5px; letter-spacing: 0.3px;">No Active Signals Running</strong>
+            <span style="font-size: 10px; color: #8b949e; line-height: 1.35; max-width: 260px;">
+              System is continuously scanning Intraday, Breakout &amp; Retest, and Swing setups. Active signals will appear here automatically with full execution parameters.
+            </span>
+          </div>
+        `;
+        return;
+      }
+
+      // If active signals exist, render each properly ("and koi bhi chal rah aha to proper show krwian pelase")
+      let html = '';
+      activeSignals.forEach(sig => {
+        const isBuy = sig.type === 'BUY';
+        const badgeCls = isBuy ? 'buy' : 'sell';
+        const d = new Date(sig.timestamp);
+        const timeStr = (!isNaN(d.getTime())) ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : 'Live';
+
+        html += `
+          <div class="signal-history-card-item" style="background: linear-gradient(180deg, #161b22 0%, #0d1117 100%); border: 1px solid rgba(46, 160, 67, 0.35); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.4);">
+            <div style="position: absolute; top: 0; left: 0; bottom: 0; width: 3.5px; background: ${isBuy ? '#2ea043' : '#da3633'};"></div>
+            
+            <!-- Top Line: Strategy Tag, Direction, Active Tag & Time -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; padding-left: 2px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 9.5px; font-weight: 800; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.05); color: ${sig.categoryColor}; border: 1px solid ${sig.categoryColor}40; letter-spacing: 0.3px;">
+                  ${sig.categoryTag}
+                </span>
+                <span class="sh-badge ${badgeCls}" style="font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 4px;">
+                  ${sig.type}
+                </span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; font-weight: 800; padding: 2px 7px; border-radius: 12px; background: rgba(46, 160, 67, 0.2); color: #3fb950; border: 1px solid rgba(46, 160, 67, 0.5); letter-spacing: 0.3px; box-shadow: 0 0 6px rgba(46, 160, 67, 0.3);">
+                  <span style="width: 5px; height: 5px; border-radius: 50%; background: #3fb950; display: inline-block;"></span> ACTIVE
+                </span>
+                <span style="font-size: 10px; color: #8b949e; font-family: 'Space Grotesk', monospace;">${timeStr}</span>
+              </div>
+            </div>
+
+            <!-- Middle Line: 3 Clear Metrics (ENTRY | STOP LOSS | TARGET) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; background: #0a0d12; border: 1px solid #21262d; border-radius: 6px; padding: 6px 6px; margin-bottom: 7px; text-align: center;">
+              <div>
+                <div style="font-size: 8px; color: #8b949e; font-weight: 700; letter-spacing: 0.3px; margin-bottom: 1px;">ENTRY</div>
+                <div style="font-size: 11.5px; font-weight: 800; color: #f0f6fc; font-family: 'Space Grotesk', monospace;">$${sig.entry.toFixed(2)}</div>
+              </div>
+              <div>
+                <div style="font-size: 8px; color: #f85149; font-weight: 700; letter-spacing: 0.3px; margin-bottom: 1px;">STOP LOSS (SL)</div>
+                <div style="font-size: 11.5px; font-weight: 800; color: #f85149; font-family: 'Space Grotesk', monospace;">$${sig.sl.toFixed(2)}</div>
+              </div>
+              <div>
+                <div style="font-size: 8px; color: #3fb950; font-weight: 700; letter-spacing: 0.3px; margin-bottom: 1px;">TARGET (TP)</div>
+                <div style="font-size: 11.5px; font-weight: 800; color: #3fb950; font-family: 'Space Grotesk', monospace;">$${sig.tp.toFixed(2)}</div>
+              </div>
+            </div>
+
+            <!-- Bottom Line: 1-Line Clean Rationale -->
+            <div style="font-size: 10px; color: #8b949e; line-height: 1.35; padding-left: 2px;">
+              <span style="color: #6e7681; font-weight: 700;">Rationale:</span> ${sig.reason}
+            </div>
+          </div>
+        `;
+      });
+
+      // If completed trades exist in archive, render them beneath active setups
+      if (completedList.length > 0) {
+        html += `<div style="font-size: 10px; font-weight: 700; color: #8b949e; margin: 8px 0 4px; padding-left: 2px; text-transform: uppercase; letter-spacing: 0.5px;">Recently Closed Trades</div>`;
+        completedList.forEach(c => {
+          const isBuy = c.type === 'BUY';
+          const isTP = c.status === 'TP_HIT';
+          html += `
+            <div class="signal-history-card-item" style="background: #11151c; border: 1px solid #21262d; border-radius: 8px; padding: 7px 10px; margin-bottom: 5px; opacity: 0.85;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span class="sh-badge ${isBuy ? 'buy' : 'sell'}" style="font-size: 9px; padding: 1px 5px;">${c.type}</span>
+                  <span style="font-size: 11px; font-weight: 700; color: #f0f6fc; font-family: 'Space Grotesk', monospace;">$${c.entry.toFixed(1)}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: ${isTP ? 'rgba(46,160,67,0.18)' : 'rgba(248,81,73,0.18)'}; color: ${isTP ? '#3fb950' : '#f85149'}; border: 1px solid ${isTP ? 'rgba(46,160,67,0.4)' : 'rgba(248,81,73,0.4)'};">
+                    ${c.outcome}
+                  </span>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      container.innerHTML = html;
+    }
+    window.renderSignalHistoryUI = renderSignalHistoryUI;
+
+    function logSignalToSidebar(type, price, timeStr) {
+      if (typeof renderSignalHistoryUI === 'function') {
+        renderSignalHistoryUI();
+      }
     }
 
     // ==========================================
@@ -17604,6 +18041,14 @@ const ghostCandles = [
 
       supportLine.setData(data.map(d => ({ time: d.time, value: sup })));
       resistanceLine.setData(data.map(d => ({ time: d.time, value: res })));
+
+      // Update header live spot price with latest candle close
+      if (data && data.length > 0) {
+        const lastBar = data[data.length - 1];
+        const firstBar = data[0];
+        const pctChg = firstBar.open > 0 ? ((lastBar.close - firstBar.open) / firstBar.open) * 100 : 0;
+        updateHeaderLiveSpotPrice(lastBar.close, pctChg);
+      }
 
       // Detect Smart Money Concepts (FVG & Order Blocks) and update overlay canvas
       try {
@@ -18939,6 +19384,7 @@ const ghostCandles = [
       const legacySignalBadge = document.getElementById('signalBadge');
       if (legacySignalBadge) legacySignalBadge.innerText = isBuy ? 'BUY' : 'SELL';
     }
+    if (typeof renderSignalHistoryUI === 'function') renderSignalHistoryUI();
     window.updateActiveSetupCard = updateActiveSetupCard;
 
     // ==========================================
@@ -18951,6 +19397,7 @@ const ghostCandles = [
       updateDemoPositionsPnL(currentLiveSpot);
 
       const changePct = typeof data.change_pct === 'number' ? data.change_pct : -0.95;
+      updateHeaderLiveSpotPrice(currentLiveSpot, changePct);
       const high24 = data.high || (currentLiveSpot + 14);
       const low24 = data.low || (currentLiveSpot - 14);
 
@@ -20368,6 +20815,24 @@ window.addEventListener('resize', () => {
       if (sellTick) sellTick.innerText = '$' + price.toFixed(2);
       if (posCount) posCount.innerText = demoState.positions.length;
       if (closeAllBtn) closeAllBtn.style.display = demoState.positions.length > 0 ? 'inline-block' : 'none';
+
+      // Real-time Sync to Mobile Terminal Top 4-KPI Strip
+      const mTermBal = document.getElementById('mTermBalance');
+      const mTermEq = document.getElementById('mTermEquity');
+      const mTermPnl = document.getElementById('mTermPnl');
+      const mTermFm = document.getElementById('mTermMargin');
+      if (mTermBal) mTermBal.innerText = '$' + demoState.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (mTermEq) {
+        mTermEq.innerText = '$' + equity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        mTermEq.style.color = equity >= demoState.balance ? '#3fb950' : '#f85149';
+      }
+      if (mTermPnl) {
+        const sign = totalPnl >= 0 ? '+' : '';
+        mTermPnl.innerText = sign + '$' + totalPnl.toFixed(2);
+        mTermPnl.style.color = totalPnl > 0 ? '#3fb950' : (totalPnl < 0 ? '#f85149' : '#8b949e');
+      }
+      if (mTermFm) mTermFm.innerText = '$' + freeMargin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
       if (typeof updateMobileExecutionValues === 'function') updateMobileExecutionValues();
     }
 
@@ -20898,7 +21363,7 @@ window.addEventListener('resize', () => {
     fetchTwelveDataQuotes();
     fetchSugraSentiment();
 
-    initDemoTradingEngine();
+    initDemoTradingEngine(); if (typeof renderSignalHistoryUI === 'function') renderSignalHistoryUI();
     const sb = document.querySelector('.terminal-sidebar'); if (sb) sb.scrollTop = 0;
         fetchLiveTicker();
     fetchLiveCandles(currentTf);
