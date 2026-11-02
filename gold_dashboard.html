@@ -411,7 +411,7 @@
               var nh = chartElem.clientHeight || (window.innerHeight - 124);
               if (nw > 50 && nh > 50) {
                 window.chart.resize(nw, nh);
-                if (window.chart.timeScale) window.chart.timeScale().fitContent();
+                if (window.chart.timeScale && !window.userHasScrolledChart) window.chart.timeScale().fitContent();
               }
             }
             if (typeof window.syncCanvasSize === 'function') window.syncCanvasSize();
@@ -5308,7 +5308,7 @@
               var nh = chartElem.clientHeight || (window.innerHeight - 124);
               if (nw > 50 && nh > 50) {
                 window.chart.resize(nw, nh);
-                if (window.chart.timeScale) window.chart.timeScale().fitContent();
+                if (window.chart.timeScale && !window.userHasScrolledChart) window.chart.timeScale().fitContent();
               }
             }
             if (typeof window.syncCanvasSize === 'function') window.syncCanvasSize();
@@ -9248,9 +9248,9 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       if (sText) sText.innerText = `${warScore} / 100`;
       if (sBar) sBar.style.width = `${Math.min(100, Math.max(5, warScore))}%`;
 
-      // Next 15M Ghost Candle & Trajectory synced via Pattern Engine
-      if (typeof rawCandleData !== 'undefined' && rawCandleData.length > 20 && typeof renderChart === 'function') {
-        renderChart(rawCandleData);
+      // Next 15M Ghost Candle & Trajectory synced via Pattern Engine (redraw canvas without resetting chart viewport)
+      if (typeof redrawDrawings === 'function') {
+        redrawDrawings();
       }
 
       // Confluence Threshold Trigger Notification
@@ -9736,6 +9736,9 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     let rawCandleData = [];
     let isInitialLoad = true;
     let timeframeJustSwitched = false;
+    let isProgrammaticRangeChange = false;
+    window.userHasScrolledChart = false;
+    window.userHasVerticalPan = false;
     let currentEngine = 'lightweight';
     let tvWidgetInitialized = false;
     let soundEnabled = true;
@@ -9798,7 +9801,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
                 const nh = chartElem.clientHeight || (window.innerHeight - 124);
                 if (nw > 50 && nh > 50) {
                   chart.resize(nw, nh);
-                  if (chart.timeScale) chart.timeScale().fitContent();
+                  if (chart.timeScale && !window.userHasScrolledChart) chart.timeScale().fitContent();
                 }
               }
               if (typeof syncCanvasSize === 'function') syncCanvasSize();
@@ -9879,6 +9882,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         timeVisible: true,
         secondsVisible: false,
         rightOffset: 8,
+        shiftVisibleRangeOnNewBar: false,
       },
       rightPriceScale: {
         visible: true,
@@ -10044,6 +10048,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       const pPerPx = getPricePerPixel();
       window.verticalPriceShift = chartStartPriceShift + (dy * pPerPx);
+      window.userHasScrolledChart = true;
+      window.userHasVerticalPan = true;
       triggerVerticalShiftUpdate();
     }
 
@@ -10101,6 +10107,33 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       title: 'Resistance',
       visible: false,
     });
+
+    // Attach vertical pan provider to all series on primary price scale
+    applyVerticalPanProvider(ghostCandleSeries);
+    applyVerticalPanProvider(ema20Series);
+    applyVerticalPanProvider(ema50Series);
+    applyVerticalPanProvider(supportLine);
+    applyVerticalPanProvider(resistanceLine);
+
+    // Track user viewport scroll & lock: keep chart pinned wherever user leaves it
+    if (chart && chart.timeScale) {
+      chart.timeScale().subscribeVisibleLogicalRangeChange(function(range) {
+        if (isProgrammaticRangeChange || isInitialLoad || timeframeJustSwitched) return;
+        window.userHasScrolledChart = true;
+      });
+    }
+
+    if (container) {
+      container.addEventListener('wheel', function() {
+        window.userHasScrolledChart = true;
+      }, { passive: true });
+      container.addEventListener('pointerdown', function() {
+        window.userHasScrolledChart = true;
+      }, { passive: true });
+      container.addEventListener('touchstart', function() {
+        window.userHasScrolledChart = true;
+      }, { passive: true });
+    }
 
     // Volume Series (Bottom 18% Panel Overlay)
     const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
@@ -21646,9 +21679,9 @@ const ghostCandles = [
         console.warn("SMC detection error:", smcErr);
       }
 
-      // Enforce vertical autoScale & safety margins (candles strictly inside frame, never clip bottom)
+      // Enforce vertical autoScale & safety margins ONLY on initial mount; NEVER overwrite user manual pan/alignment
       try {
-        if (chart && chart.priceScale) {
+        if (chart && chart.priceScale && !window.userHasScrolledChart && !window.userHasVerticalPan && isInitialLoad) {
           chart.priceScale('right').applyOptions({
             autoScale: true,
             scaleMargins: { top: 0.14, bottom: 0.20 }
@@ -21656,16 +21689,22 @@ const ghostCandles = [
         }
       } catch (scaleErr) {}
 
-      // Fit content on initial load or timeframe switch, never on background tick
+      // Fit content on initial load or explicit timeframe switch; strictly preserve user scroll position otherwise
       if (isInitialLoad || timeframeJustSwitched) {
+        isProgrammaticRangeChange = true;
         chart.timeScale().fitContent();
         chart.timeScale().applyOptions({ rightOffset: 8 });
         isInitialLoad = false;
         timeframeJustSwitched = false;
+        setTimeout(function() { isProgrammaticRangeChange = false; }, 60);
       } else if (prevLogicalRange) {
         try {
+          isProgrammaticRangeChange = true;
           chart.timeScale().setVisibleLogicalRange(prevLogicalRange);
-        } catch(e) {}
+          setTimeout(function() { isProgrammaticRangeChange = false; }, 60);
+        } catch(e) {
+          isProgrammaticRangeChange = false;
+        }
       }
 
       // Quantitative Candlestick Pattern Recognition on Last Closed Candle
@@ -23427,6 +23466,9 @@ const ghostCandles = [
     function switchTimeframe(tf) {
       currentTf = tf;
       timeframeJustSwitched = true;
+      window.userHasScrolledChart = false;
+      window.userHasVerticalPan = false;
+      window.verticalPriceShift = 0;
       activeMarkers = [];
       lastSignalTime = null;
       lastProcessedCandleTime = null;
@@ -23484,6 +23526,8 @@ const ghostCandles = [
     }
 
     function resetChartZoom() {
+      window.userHasScrolledChart = false;
+      window.userHasVerticalPan = false;
       window.verticalPriceShift = 0;
       if (chart) {
         if (chart.priceScale) {
@@ -23493,8 +23537,10 @@ const ghostCandles = [
           });
         }
         if (chart.timeScale) {
+          isProgrammaticRangeChange = true;
           chart.timeScale().fitContent();
           chart.timeScale().applyOptions({ rightOffset: 8 });
+          setTimeout(function() { isProgrammaticRangeChange = false; }, 60);
         }
       }
       if (typeof triggerVerticalShiftUpdate === 'function') {
@@ -23840,7 +23886,7 @@ window.addEventListener('resize', () => {
         const w = container.clientWidth || (window.innerWidth - 380);
         const h = container.clientHeight || (window.innerHeight - 124);
         chart.resize(w, h);
-        if (chart.priceScale) {
+        if (chart.priceScale && !window.userHasScrolledChart && !window.userHasVerticalPan) {
           chart.priceScale('right').applyOptions({ autoScale: true, scaleMargins: { top: 0.14, bottom: 0.20 } });
         }
         if (typeof syncCanvasSize === 'function') syncCanvasSize();
