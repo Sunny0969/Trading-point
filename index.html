@@ -9649,8 +9649,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         borderColor: '#30363d',
         autoScale: true,
         scaleMargins: {
-          top: 0.08,
-          bottom: 0.28,
+          top: 0.14,
+          bottom: 0.20,
         },
       },
       overlayPriceScales: {
@@ -9706,6 +9706,121 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     });
     window.candleSeries = candleSeries;
     window.mainCandleSeries = candleSeries;
+
+    // =========================================================================
+    // INSTITUTIONAL 2D FREEDOM OF MOVEMENT: SEAMLESS VERTICAL CHART PANNING
+    // Allows user to grab and pan the chart up or down freely anywhere on screen
+    // =========================================================================
+    window.verticalPriceShift = 0;
+
+    function getAutoscaleInfoProvider() {
+      return function(originalRange) {
+        const res = originalRange();
+        if (!res) return null;
+        const shift = window.verticalPriceShift || 0;
+        return {
+          priceRange: {
+            minValue: res.priceRange.minValue + shift,
+            maxValue: res.priceRange.maxValue + shift,
+          },
+        };
+      };
+    }
+
+    function applyVerticalPanProvider(series) {
+      if (!series || !series.applyOptions) return;
+      try {
+        series.applyOptions({
+          autoscaleInfoProvider: getAutoscaleInfoProvider(),
+        });
+      } catch (e) {}
+    }
+    window.applyVerticalPanProvider = applyVerticalPanProvider;
+
+    // Attach provider to initial candle series
+    applyVerticalPanProvider(candleSeries);
+
+    // Interactive Drag Controller (Desktop Mouse & Mobile Touch)
+    let isVerticalChartDragging = false;
+    let chartDragStartY = 0;
+    let chartStartPriceShift = 0;
+
+    function getPricePerPixel() {
+      if (!container) return 0.25;
+      const rect = container.getBoundingClientRect();
+      const h = rect.height || container.clientHeight || 600;
+      if (candleSeries && candleSeries.coordinateToPrice && h > 0) {
+        const p0 = candleSeries.coordinateToPrice(0);
+        const p1 = candleSeries.coordinateToPrice(h);
+        if (p0 !== null && p1 !== null) {
+          return Math.abs(p0 - p1) / h;
+        }
+      }
+      return 0.25;
+    }
+
+    function triggerVerticalShiftUpdate() {
+      if (rawCandleData && rawCandleData.length && candleSeries) {
+        const last = rawCandleData[rawCandleData.length - 1];
+        try {
+          candleSeries.update({ ...last });
+        } catch (e) {}
+      }
+      if (typeof redrawDrawings === 'function') {
+        redrawDrawings();
+      }
+    }
+    window.triggerVerticalShiftUpdate = triggerVerticalShiftUpdate;
+
+    function handleChartDragStart(e) {
+      // Only trigger on primary left click or single touch
+      if (e.type === 'mousedown' && e.button !== 0) return;
+      // Skip if user is actively drawing with a specialized tool
+      if (typeof activeTool !== 'undefined' && activeTool && activeTool !== 'cursor' && activeTool !== 'crosshair') return;
+      // Skip if dragging a custom price line
+      if (typeof isLineDragging !== 'undefined' && isLineDragging) return;
+      if (typeof isDrawingRuler !== 'undefined' && isDrawingRuler) return;
+      if (typeof isDrawingBrush !== 'undefined' && isDrawingBrush) return;
+
+      const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : null);
+      if (clientY === null) return;
+
+      isVerticalChartDragging = true;
+      chartDragStartY = clientY;
+      chartStartPriceShift = window.verticalPriceShift || 0;
+    }
+
+    function handleChartDragMove(e) {
+      if (!isVerticalChartDragging) return;
+      if (e.type === 'mousemove' && e.buttons === 0) {
+        isVerticalChartDragging = false;
+        return;
+      }
+
+      const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : null);
+      if (clientY === null) return;
+
+      const dy = clientY - chartDragStartY;
+      if (Math.abs(dy) < 1) return;
+
+      const pPerPx = getPricePerPixel();
+      window.verticalPriceShift = chartStartPriceShift + (dy * pPerPx);
+      triggerVerticalShiftUpdate();
+    }
+
+    function handleChartDragEnd() {
+      isVerticalChartDragging = false;
+    }
+
+    if (container) {
+      container.addEventListener('mousedown', handleChartDragStart, true);
+      container.addEventListener('touchstart', handleChartDragStart, { passive: true, capture: true });
+    }
+    window.addEventListener('mousemove', handleChartDragMove, true);
+    window.addEventListener('touchmove', handleChartDragMove, { passive: true, capture: true });
+    window.addEventListener('mouseup', handleChartDragEnd, true);
+    window.addEventListener('touchend', handleChartDragEnd, { passive: true, capture: true });
+    window.addEventListener('touchcancel', handleChartDragEnd, { passive: true, capture: true });
 
     const ghostCandleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
       upColor: 'rgba(46, 160, 67, 0.40)',
@@ -10118,6 +10233,9 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           wickDownColor: isSMCInstitutionalClean ? '#121212' : '#f85149',
         });
         candleSeries.setData(rawCandleData);
+      }
+      if (typeof applyVerticalPanProvider === 'function') {
+        applyVerticalPanProvider(candleSeries);
       }
 
       // Restore custom price lines on new series
@@ -18094,7 +18212,7 @@ const ghostCandles = [
         if (chart && chart.priceScale) {
           chart.priceScale('right').applyOptions({
             autoScale: true,
-            scaleMargins: { top: 0.08, bottom: 0.28 }
+            scaleMargins: { top: 0.14, bottom: 0.20 }
           });
         }
       } catch (scaleErr) {}
@@ -19927,17 +20045,24 @@ const ghostCandles = [
     }
 
     function resetChartZoom() {
+      window.verticalPriceShift = 0;
       if (chart) {
         if (chart.priceScale) {
           chart.priceScale('right').applyOptions({
             autoScale: true,
-            scaleMargins: { top: 0.08, bottom: 0.28 }
+            scaleMargins: { top: 0.14, bottom: 0.20 }
           });
         }
         if (chart.timeScale) {
           chart.timeScale().fitContent();
           chart.timeScale().applyOptions({ rightOffset: 8 });
         }
+      }
+      if (typeof triggerVerticalShiftUpdate === 'function') {
+        triggerVerticalShiftUpdate();
+      }
+      if (typeof showSignalToast === 'function') {
+        showSignalToast('🎯 Chart centered & scale reset');
       }
     }
 
@@ -19975,7 +20100,7 @@ const ghostCandles = [
         lwContainer.style.display = 'block';
         chart.resize(container.clientWidth, container.clientHeight);
         if (chart.priceScale) {
-          chart.priceScale('right').applyOptions({ autoScale: true, scaleMargins: { top: 0.08, bottom: 0.28 } });
+          chart.priceScale('right').applyOptions({ autoScale: true, scaleMargins: { top: 0.14, bottom: 0.20 } });
         }
         chart.timeScale().fitContent();
         chart.timeScale().applyOptions({ rightOffset: 8 });
@@ -20277,7 +20402,7 @@ window.addEventListener('resize', () => {
         const h = container.clientHeight || (window.innerHeight - 124);
         chart.resize(w, h);
         if (chart.priceScale) {
-          chart.priceScale('right').applyOptions({ autoScale: true, scaleMargins: { top: 0.08, bottom: 0.28 } });
+          chart.priceScale('right').applyOptions({ autoScale: true, scaleMargins: { top: 0.14, bottom: 0.20 } });
         }
         if (typeof syncCanvasSize === 'function') syncCanvasSize();
       }
