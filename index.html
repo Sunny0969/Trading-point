@@ -24402,7 +24402,10 @@ const ghostCandles = [
     }
     window.showToast = showToast;
 
-    // Exness MT5 Bridge Live Order Execution Dispatcher
+    /* ========================================================
+       REAL MONEY MT5 BRIDGE EXECUTION COMMENTED OUT PER USER REQUEST
+       All real-money trading is safely disabled and isolated.
+       ========================================================
     async function executeLiveExnessOrder(direction, lotSize = 0.01, slOverride = null, tpOverride = null) {
       const spotEl = document.getElementById('spot-price');
       const fallbackSpot = (typeof currentLiveSpot !== 'undefined' && currentLiveSpot) ? currentLiveSpot : 3907.00;
@@ -24458,6 +24461,13 @@ const ghostCandles = [
         console.error('Bridge Connection Failed:', error);
         return { status: 'ERROR', message: error.message };
       }
+    }
+    ======================================================== */
+
+    // Safe Stub: Real Money Trading is safely commented out and disabled
+    async function executeLiveExnessOrder(direction, lotSize = 0.01) {
+      console.log('[SAFETY LOCK] Real money trading is commented out and disabled per user request.');
+      return { status: 'DISABLED', message: 'Real money trading is commented out per user request.' };
     }
     window.executeLiveExnessOrder = executeLiveExnessOrder;
 
@@ -25643,10 +25653,12 @@ window.addEventListener('resize', () => {
       if (isNaN(lots) || lots < 0.01) lots = 0.01;
       if (lots > 5.0) lots = 5.0;
 
-      // Direct Dispatch to Live Exness MT5 Bridge
+      /* ========================================================
+         REAL MONEY MT5 BRIDGE EXECUTION COMMENTED OUT PER USER REQUEST:
       if (typeof executeLiveExnessOrder === 'function') {
         executeLiveExnessOrder(type, lots).catch(err => console.warn('[Exness Bridge] Direct dispatch warning:', err));
       }
+         ======================================================== */
 
       // STRICT GUARD: Must be logged in to sync demo trades to cloud
       const loggedIn = (typeof currentAuthUser !== 'undefined' && currentAuthUser) || (typeof isUserLoggedIn === 'function' && isUserLoggedIn());

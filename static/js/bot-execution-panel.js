@@ -316,7 +316,8 @@
 
     lastTelemetry.innerText = 'DISPATCHING SCALP...';
 
-    // Hook Live Exness MT5 Local Bridge Execution
+    /* ========================================================
+       REAL MONEY MT5 BRIDGE EXECUTION COMMENTED OUT PER USER REQUEST
     try {
       if (typeof window.executeLiveExnessOrder === 'function') {
         window.executeLiveExnessOrder(payload.direction, parseFloat(signalData.lot || 0.01), payload.sl, payload.tp);
@@ -324,6 +325,7 @@
     } catch (bridgeErr) {
       console.warn('[QuantAgent] Live Exness MT5 bridge dispatch warning:', bridgeErr);
     }
+       ======================================================== */
 
     try {
       const response = await fetch('/api/quant-agent', {
@@ -374,13 +376,15 @@
       if (lastDispatchedHash !== sigKey) {
         lastDispatchedHash = sigKey;
         const dir = (pos.direction === 'SELL' || pos.type === 'SHORT') ? 'SELL' : 'BUY';
-        // Direct trigger to Live Exness MT5 Bridge
+        /* ========================================================
+           REAL MONEY MT5 BRIDGE EXECUTION COMMENTED OUT PER USER REQUEST
         const posEntry = parseFloat(pos.entry);
         const minimalSl = (dir === 'BUY') ? Math.max(parseFloat(pos.sl) || (posEntry - 1.10), posEntry - 1.10) : Math.min(parseFloat(pos.sl) || (posEntry + 1.10), posEntry + 1.10);
         const targetTp = (dir === 'BUY') ? (parseFloat(pos.tp) || (posEntry + 2.20)) : (parseFloat(pos.tp) || (posEntry - 2.20));
         if (typeof window.executeLiveExnessOrder === 'function') {
           window.executeLiveExnessOrder(dir, 0.01, minimalSl, targetTp).catch(e => console.warn('[QuantAgent] Direct MT5 bridge trigger warning:', e));
         }
+           ======================================================== */
         window.dispatchQuantSignalToServer({
           source: pos.source || 'INSTITUTIONAL_SMC',
           direction: (pos.direction === 'SELL' || pos.type === 'SHORT') ? 'SELL' : 'BUY',
@@ -436,8 +440,18 @@
     window.supabase.auth.onAuthStateChange?.(() => syncSettingsFromServer());
   }
 
-  // Fallback definition of executeLiveExnessOrder for standalone bot execution
+  // Fallback definition of executeLiveExnessOrder for standalone bot execution (Real Money Disabled)
   if (typeof window.executeLiveExnessOrder !== 'function') {
+    window.executeLiveExnessOrder = async function(direction, lotSize = 0.01, slOverride = null, tpOverride = null) {
+      /* REAL MONEY HTTP FETCH COMMENTED OUT PER USER REQUEST
+      ... fetch('http://127.0.0.1:5000/api/execute-trade') ...
+      */
+      console.log('[SAFETY LOCK] Real money trading is commented out / disabled.');
+      return { status: 'DISABLED', message: 'Real money trading is commented out per user request.' };
+    };
+  }
+  /* REAL MONEY STANDALONE EXECUTION COMMENTED OUT PER USER REQUEST:
+  if (false && typeof window.executeLiveExnessOrder !== 'function') {
     window.executeLiveExnessOrder = async function(direction, lotSize = 0.01, slOverride = null, tpOverride = null) {
       const currentPrice = parseFloat(document.getElementById('spot-price')?.innerText?.replace(/[^0-9.]/g, '') || (typeof currentLiveSpot !== 'undefined' ? currentLiveSpot : 3907.00));
       const slInput = (slOverride !== null && !isNaN(slOverride) && slOverride > 0) ? parseFloat(slOverride) : parseFloat(document.getElementById('sl-input')?.value || (direction === 'BUY' ? currentPrice - 3.0 : currentPrice + 3.0));
@@ -481,5 +495,7 @@
     };
   }
 
-  console.log('[TradingPoint] Autonomous Quant Execution Panel loaded successfully.');
+  }
+  */
+  console.log('[TradingPoint] Autonomous Quant Execution Panel loaded successfully (Real Money Disabled).');
 })();
