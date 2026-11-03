@@ -8778,7 +8778,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           <div class="demo-positions-wrapper">
             <div class="demo-pos-header">
               <span>OPEN POSITIONS (<span id="demoPosCount">0</span>)</span>
-              <button class="btn-close-all" id="btnCloseAllPositions" onclick="closeAllDemoPositions()" style="display: none;">Close All</button>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <button class="btn-close-losing" id="btnCloseLosingPositions" onclick="closeLosingDemoPositions()" style="display: none; padding: 2px 7px; font-size: 10px; border-radius: 4px; background: rgba(239,83,80,0.15); color: #ef5350; border: 1px solid rgba(239,83,80,0.4); cursor: pointer;" title="Close negative bleeding positions to instantly free margin">Cut Losses</button>
+                <button class="btn-close-all" id="btnCloseAllPositions" onclick="closeAllDemoPositions()" style="display: none;">Close All</button>
+              </div>
             </div>
             <div id="demoPositionsList" class="demo-pos-list">
               <div class="demo-empty-placeholder">No active demo positions. Place a Buy or Sell order above.</div>
@@ -9185,7 +9188,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           <!-- Open Positions Header & Close All -->
           <div class="m-pos-header">
             <span style="font-weight: 700; font-size: 13px; color: #f0f6fc;">OPEN POSITIONS (<span id="mWalletPosCount">0</span>)</span>
-            <button type="button" class="btn-close-all" id="mBtnCloseAll" onclick="closeAllDemoPositions()" style="display: none;">Close All</button>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button type="button" class="btn-close-losing" id="mBtnCloseLosing" onclick="closeLosingDemoPositions()" style="display: none; padding: 2px 7px; font-size: 11px; border-radius: 4px; background: rgba(239,83,80,0.15); color: #ef5350; border: 1px solid rgba(239,83,80,0.4); cursor: pointer;">Cut Losses</button>
+              <button type="button" class="btn-close-all" id="mBtnCloseAll" onclick="closeAllDemoPositions()" style="display: none;">Close All</button>
+            </div>
           </div>
 
           <!-- Positions List -->
@@ -24408,16 +24414,16 @@ const ghostCandles = [
 
       let slInput = (slOverride !== null && !isNaN(slOverride) && slOverride > 0)
         ? parseFloat(slOverride)
-        : parseFloat(slEl?.value || (direction === 'BUY' ? currentPrice - 3.0 : currentPrice + 3.0));
+        : parseFloat(slEl?.value || (direction === 'BUY' ? currentPrice - 1.10 : currentPrice + 1.10));
       if (isNaN(slInput) || slInput <= 0) {
-        slInput = direction === 'BUY' ? currentPrice - 3.0 : currentPrice + 3.0;
+        slInput = direction === 'BUY' ? currentPrice - 1.10 : currentPrice + 1.10;
       }
 
       let tpInput = (tpOverride !== null && !isNaN(tpOverride) && tpOverride > 0)
         ? parseFloat(tpOverride)
-        : parseFloat(tpEl?.value || (direction === 'BUY' ? currentPrice + 6.0 : currentPrice - 6.0));
+        : parseFloat(tpEl?.value || (direction === 'BUY' ? currentPrice + 2.20 : currentPrice - 2.20));
       if (isNaN(tpInput) || tpInput <= 0) {
-        tpInput = direction === 'BUY' ? currentPrice + 6.0 : currentPrice - 6.0;
+        tpInput = direction === 'BUY' ? currentPrice + 2.20 : currentPrice - 2.20;
       }
 
       const parsedLot = lotEl && lotEl.value ? parseFloat(lotEl.value) : NaN;
@@ -25432,35 +25438,131 @@ window.addEventListener('resize', () => {
       if (typeof updateMobileExecutionValues === 'function') updateMobileExecutionValues();
     }
 
-    // Offline & Live Target Trigger Check (TP / SL Auto Execution)
+    // Offline & Live Target Trigger Check (TP / SL Auto Execution + 0-Loss BE + Dynamic Trailing)
     async function checkOfflineTargetTriggers(currentPrice) {
-      if (!currentPrice || demoState.positions.length === 0) return;
+      if (!currentPrice || !demoState.positions || demoState.positions.length === 0) return;
 
       for (let i = demoState.positions.length - 1; i >= 0; i--) {
         const pos = demoState.positions[i];
+        if (!pos) continue;
         let triggered = false;
         let reason = '';
         let triggerPrice = currentPrice;
 
-        if (pos.type === 'BUY') {
-          if (pos.tp && currentPrice >= pos.tp) {
-            triggered = true;
-            reason = 'TP_HIT';
-            triggerPrice = pos.tp;
-          } else if (pos.sl && currentPrice <= pos.sl) {
-            triggered = true;
-            reason = 'SL_HIT';
-            triggerPrice = pos.sl;
+        const isBuy = (pos.type === 'BUY');
+        const entry = parseFloat(pos.entryPrice != null ? pos.entryPrice : (pos.openPrice != null ? pos.openPrice : currentPrice));
+        const lots = parseFloat(pos.lots || 0.01);
+        const diff = isBuy ? (currentPrice - entry) : (entry - currentPrice);
+        const dollarPnl = diff * lots * 100.0;
+
+        // 1. MINIMAL INITIAL RISK GUARD: Assign tight safety SL if missing
+        if (!pos.sl || isNaN(pos.sl) || pos.sl <= 0) {
+          pos.sl = Number((isBuy ? entry - 1.10 : entry + 1.10).toFixed(2));
+          if (typeof saveDemoState === 'function') saveDemoState();
+        }
+
+        // 2. MAXIMUM LOSS EMERGENCY CUT (-$2.50 max loss per trade)
+        // Never allow any position to bleed uncontrollably!
+        if (dollarPnl <= -2.50) {
+          triggered = true;
+          reason = 'EMERGENCY_RISK_CUT';
+          triggerPrice = currentPrice;
+        }
+
+        // 3. ZERO-LOSS BREAK-EVEN AUTO-LOCK (At +$0.50 gold move or +$1.00 USD profit)
+        // Instantly locks risk to exactly $0.00!
+        if (diff >= 0.50 || dollarPnl >= 1.00) {
+          if (isBuy && (!pos.sl || pos.sl < entry + 0.15)) {
+            pos.sl = Number((entry + 0.15).toFixed(2));
+            pos.isBeLocked = true;
+            if (!pos._beNotified) {
+              pos._beNotified = true;
+              if (typeof showSignalToast === 'function') {
+                showSignalToast(`🛡️ 0-Risk Guard: BUY order locked to Break-Even (+$${dollarPnl.toFixed(2)})!`);
+              }
+            }
+            if (typeof saveDemoState === 'function') saveDemoState();
+          } else if (!isBuy && (!pos.sl || pos.sl > entry - 0.15)) {
+            pos.sl = Number((entry - 0.15).toFixed(2));
+            pos.isBeLocked = true;
+            if (!pos._beNotified) {
+              pos._beNotified = true;
+              if (typeof showSignalToast === 'function') {
+                showSignalToast(`🛡️ 0-Risk Guard: SELL order locked to Break-Even (+$${dollarPnl.toFixed(2)})!`);
+              }
+            }
+            if (typeof saveDemoState === 'function') saveDemoState();
           }
-        } else if (pos.type === 'SELL') {
-          if (pos.tp && currentPrice <= pos.tp) {
+        }
+
+        // 4. DYNAMIC MULTI-TIER RATCHET TRAILING STOP & PROFIT HARVESTER ($1.00 to $20.00)
+        if (isBuy) {
+          pos.peakPrice = Math.max(pos.peakPrice || entry, currentPrice);
+        } else {
+          pos.troughPrice = Math.min(pos.troughPrice || entry, currentPrice);
+        }
+
+        // Tier 1 ($1.00 - $2.50 reward): If profit reached $1.50+ and price pulls back $0.35 from peak, bank profit immediately!
+        if (dollarPnl >= 1.50) {
+          const pullback = isBuy ? (pos.peakPrice - currentPrice) : (currentPrice - pos.troughPrice);
+          if (pullback >= 0.35) {
             triggered = true;
-            reason = 'TP_HIT';
-            triggerPrice = pos.tp;
-          } else if (pos.sl && currentPrice >= pos.sl) {
-            triggered = true;
-            reason = 'SL_HIT';
-            triggerPrice = pos.sl;
+            reason = 'PROFIT_HARVEST_T1';
+            triggerPrice = currentPrice;
+          }
+        }
+
+        // Tier 2 ($2.50 - $5.00 reward): Trail SL at peak - 0.70
+        if (diff >= 2.50) {
+          if (isBuy && pos.sl < pos.peakPrice - 0.70) {
+            pos.sl = Number((pos.peakPrice - 0.70).toFixed(2));
+            if (typeof saveDemoState === 'function') saveDemoState();
+          } else if (!isBuy && pos.sl > pos.troughPrice + 0.70) {
+            pos.sl = Number((pos.troughPrice + 0.70).toFixed(2));
+            if (typeof saveDemoState === 'function') saveDemoState();
+          }
+        }
+
+        // Tier 3 ($5.00 - $10.00 reward): Trail SL at peak - 0.90
+        if (diff >= 5.00) {
+          if (isBuy && pos.sl < pos.peakPrice - 0.90) {
+            pos.sl = Number((pos.peakPrice - 0.90).toFixed(2));
+            if (typeof saveDemoState === 'function') saveDemoState();
+          } else if (!isBuy && pos.sl > pos.troughPrice + 0.90) {
+            pos.sl = Number((pos.troughPrice + 0.90).toFixed(2));
+            if (typeof saveDemoState === 'function') saveDemoState();
+          }
+        }
+
+        // Tier 4 ($10.00 - $20.00 reward): Up to $20.00 maximum profit cap
+        if (diff >= 10.00 || dollarPnl >= 20.00) {
+          triggered = true;
+          reason = 'MAX_REWARD_HIT';
+          triggerPrice = currentPrice;
+        }
+
+        // 5. Standard TP / SL Checks
+        if (!triggered) {
+          if (isBuy) {
+            if (pos.tp && currentPrice >= pos.tp) {
+              triggered = true;
+              reason = 'TP_HIT';
+              triggerPrice = pos.tp;
+            } else if (pos.sl && currentPrice <= pos.sl) {
+              triggered = true;
+              reason = (pos.sl >= entry) ? 'BE_EXIT' : 'SL_HIT';
+              triggerPrice = pos.sl;
+            }
+          } else {
+            if (pos.tp && currentPrice <= pos.tp) {
+              triggered = true;
+              reason = 'TP_HIT';
+              triggerPrice = pos.tp;
+            } else if (pos.sl && currentPrice >= pos.sl) {
+              triggered = true;
+              reason = (pos.sl <= entry) ? 'BE_EXIT' : 'SL_HIT';
+              triggerPrice = pos.sl;
+            }
           }
         }
 
@@ -25470,6 +25572,24 @@ window.addEventListener('resize', () => {
         }
       }
     }
+
+    async function closeLosingDemoPositions() {
+      const currentPrice = typeof currentLiveSpot !== 'undefined' ? currentLiveSpot : 4007.05;
+      const losing = demoState.positions.filter(p => calculatePositionPnL(p, currentPrice) < 0);
+      if (losing.length === 0) {
+        if (typeof showSignalToast === 'function') showSignalToast('No losing positions to close.');
+        return;
+      }
+      for (const p of losing) {
+        await closeDemoPosition(p.id, 'LOSS_GUARD_CUT', currentPrice);
+      }
+      if (typeof showSignalToast === 'function') {
+        showSignalToast(`🛡️ Cleaned ${losing.length} bleeding positions! Free Margin restored.`);
+      }
+      renderDemoPositionsList();
+      renderDemoWalletUI(currentPrice);
+    }
+    window.closeLosingDemoPositions = closeLosingDemoPositions;
 
     function updateDemoPositionsPnL(spotPrice) {
       if (!spotPrice || demoState.positions.length === 0) {
@@ -25718,7 +25838,9 @@ window.addEventListener('resize', () => {
         const pnl = calculatePositionPnL(p, currentPrice);
         const sign = pnl >= 0 ? '+' : '';
         const color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
-        const targetBadges = (p.tp || p.sl) ? `<div style="font-size: 9px; color: #8b949e;">${p.sl ? 'SL: $'+p.sl.toFixed(1) : ''} ${p.tp ? 'TP: $'+p.tp.toFixed(1) : ''}</div>` : '';
+        const beBadge = p.isBeLocked ? '<span style="background: rgba(63,185,80,0.18); color: #3fb950; border: 1px solid rgba(63,185,80,0.4); font-size: 8.5px; padding: 1px 4px; border-radius: 3px; font-weight: 800;">🛡️ 0-RISK BE</span>' : '';
+        const trailBadge = (pnl >= 1.50) ? `<span style="background: rgba(88,166,255,0.18); color: #58a6ff; border: 1px solid rgba(88,166,255,0.4); font-size: 8.5px; padding: 1px 4px; border-radius: 3px; font-weight: 800;">⚡ +$${pnl.toFixed(2)} SECURED</span>` : '';
+        const targetBadges = (p.tp || p.sl || beBadge || trailBadge) ? `<div style="font-size: 9px; color: #8b949e; display: flex; align-items: center; gap: 4px; margin-top: 2px;">${p.sl ? 'SL: $'+p.sl.toFixed(1) : ''} ${p.tp ? 'TP: $'+p.tp.toFixed(1) : ''} ${beBadge} ${trailBadge}</div>` : '';
         const entryPrice = parseFloat(p.entryPrice != null ? p.entryPrice : (p.openPrice != null ? p.openPrice : 0));
         const lots = parseFloat(p.lots || 0.01);
         return `
@@ -25741,6 +25863,11 @@ window.addEventListener('resize', () => {
       }).join('');
       if (posCountBadge) posCountBadge.innerText = demoState.positions.length;
       if (closeAllBtn) closeAllBtn.style.display = demoState.positions.length > 0 ? 'inline-block' : 'none';
+      const hasLosing = demoState.positions.some(p => calculatePositionPnL(p, currentPrice) < 0);
+      const closeLosingBtn = document.getElementById('btnCloseLosingPositions');
+      if (closeLosingBtn) closeLosingBtn.style.display = hasLosing ? 'inline-block' : 'none';
+      const mCloseLosingBtn = document.getElementById('mBtnCloseLosing');
+      if (mCloseLosingBtn) mCloseLosingBtn.style.display = hasLosing ? 'inline-block' : 'none';
     }
 
     function updateLotInfoDisplay() {
@@ -25953,6 +26080,7 @@ window.addEventListener('resize', () => {
     window.executeLiveExnessOrder = executeLiveExnessOrder;
     window.showToast = showToast;
     window.closeDemoPosition = closeDemoPosition;
+    window.closeLosingDemoPositions = closeLosingDemoPositions;
     window.stepLotSize = stepLotSize;
     window.setLotSize = setLotSize;
     window.openDemoTransferModal = openDemoTransferModal;
@@ -26314,7 +26442,9 @@ window.addEventListener('resize', () => {
             const pnl = typeof calculatePositionPnL === 'function' ? calculatePositionPnL(p, price) : 0;
             const sign = pnl >= 0 ? '+' : '';
             const color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
-            const targetBadges = (p.tp || p.sl) ? `<div style="font-size: 9px; color: #8b949e;">${p.sl ? 'SL: $'+p.sl.toFixed(1) : ''} ${p.tp ? 'TP: $'+p.tp.toFixed(1) : ''}</div>` : '';
+            const beBadge = p.isBeLocked ? '<span style="background: rgba(63,185,80,0.18); color: #3fb950; border: 1px solid rgba(63,185,80,0.4); font-size: 8.5px; padding: 1px 4px; border-radius: 3px; font-weight: 800;">🛡️ 0-RISK BE</span>' : '';
+        const trailBadge = (pnl >= 1.50) ? `<span style="background: rgba(88,166,255,0.18); color: #58a6ff; border: 1px solid rgba(88,166,255,0.4); font-size: 8.5px; padding: 1px 4px; border-radius: 3px; font-weight: 800;">⚡ +$${pnl.toFixed(2)} SECURED</span>` : '';
+        const targetBadges = (p.tp || p.sl || beBadge || trailBadge) ? `<div style="font-size: 9px; color: #8b949e; display: flex; align-items: center; gap: 4px; margin-top: 2px;">${p.sl ? 'SL: $'+p.sl.toFixed(1) : ''} ${p.tp ? 'TP: $'+p.tp.toFixed(1) : ''} ${beBadge} ${trailBadge}</div>` : '';
             const entryPrice = parseFloat(p.entryPrice != null ? p.entryPrice : (p.openPrice != null ? p.openPrice : 0));
             const lots = parseFloat(p.lots || 0.01);
             return `

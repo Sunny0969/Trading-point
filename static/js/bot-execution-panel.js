@@ -293,13 +293,24 @@
       return { status: 'ABORTED', reason: 'Authentication required' };
     }
 
+    const entryVal = parseFloat(signalData.entry);
+    const isBuy = (signalData.direction === 'BUY');
+    // Minimal Initial Risk Guard ($1.10 max SL distance)
+    const tightSl = isBuy 
+      ? Math.max(parseFloat(signalData.sl) || (entryVal - 1.10), entryVal - 1.10)
+      : Math.min(parseFloat(signalData.sl) || (entryVal + 1.10), entryVal + 1.10);
+    // Scalp TP target ($2.20 distance, dynamic trailing extends up to $20.00)
+    const tightTp = isBuy
+      ? (parseFloat(signalData.tp) || (entryVal + 2.20))
+      : (parseFloat(signalData.tp) || (entryVal - 2.20));
+
     const payload = {
       userId: userId,
       source: signalData.source || 'SMC_CONFLUENCE',
       direction: signalData.direction || 'BUY',
-      entry: parseFloat(signalData.entry),
-      sl: parseFloat(signalData.sl),
-      tp: parseFloat(signalData.tp),
+      entry: entryVal,
+      sl: Number(tightSl.toFixed(2)),
+      tp: Number(tightTp.toFixed(2)),
       candleTime: signalData.candleTime || Math.floor(Date.now() / 1000)
     };
 
@@ -364,8 +375,11 @@
         lastDispatchedHash = sigKey;
         const dir = (pos.direction === 'SELL' || pos.type === 'SHORT') ? 'SELL' : 'BUY';
         // Direct trigger to Live Exness MT5 Bridge
+        const posEntry = parseFloat(pos.entry);
+        const minimalSl = (dir === 'BUY') ? Math.max(parseFloat(pos.sl) || (posEntry - 1.10), posEntry - 1.10) : Math.min(parseFloat(pos.sl) || (posEntry + 1.10), posEntry + 1.10);
+        const targetTp = (dir === 'BUY') ? (parseFloat(pos.tp) || (posEntry + 2.20)) : (parseFloat(pos.tp) || (posEntry - 2.20));
         if (typeof window.executeLiveExnessOrder === 'function') {
-          window.executeLiveExnessOrder(dir, 0.01, parseFloat(pos.sl), parseFloat(pos.tp)).catch(e => console.warn('[QuantAgent] Direct MT5 bridge trigger warning:', e));
+          window.executeLiveExnessOrder(dir, 0.01, minimalSl, targetTp).catch(e => console.warn('[QuantAgent] Direct MT5 bridge trigger warning:', e));
         }
         window.dispatchQuantSignalToServer({
           source: pos.source || 'INSTITUTIONAL_SMC',

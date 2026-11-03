@@ -38,10 +38,10 @@ DB_HOST = os.environ.get("SUPABASE_DB_HOST", "aws-0-ap-northeast-1.pooler.supaba
 DB_PORT = int(os.environ.get("SUPABASE_DB_PORT", "5432"))
 DB_NAME = os.environ.get("SUPABASE_DB_NAME", "postgres")
 
-# User directive: "mujhe heavy profit nhn chaiye, bot chote chote profit le, loss minimum ho bilkul na hone ke barabar, long stop loss na le"
-MAX_SL_DISTANCE = 1.35   # Max $1.35 SL distance (loss strictly minimized to ~$1.35 - $2.70)
-SCALP_TP_DISTANCE = 2.50 # Quick $2.50 profit target (quick scalp banking $2.50 - $5.00 per trade)
-BE_LOCK_DISTANCE = 0.80  # Once price moves +$0.80 into profit, lock Break-Even (0 Loss Guard)
+# User directive: "bot pa koshish karwian as much reward ho mle rish minimal ya 0 ho please reward phir bhlt 1 dollar ka ho ya 20 dollar ka ho no isue but reward mile rish boht kam mile pelase"
+MAX_SL_DISTANCE = 1.10   # Minimal initial risk distance (max ~$1.10 - $2.20 per trade)
+SCALP_TP_DISTANCE = 2.20 # Quick scalp target, dynamic ratchet trails up to $20.00
+BE_LOCK_DISTANCE = 0.50  # Once price moves +$0.50, instantly lock 0-Loss Break-Even (0 Risk!)
 
 # Shared Telemetry State
 _daemon_started = False
@@ -314,19 +314,40 @@ def harvest_open_bot_orders(conn, live_price: float):
         diff = (live_price - entry) if is_buy else (entry - live_price)
         dollar_pnl = round(diff * lots * 100.0, 2)
 
-        # 1. Break-Even 0-Loss Lock
+        # 1. Break-Even 0-Loss Lock (Once price moves +$0.50 into profit, lock Break-Even with +0.15 buffer -> 0 Risk!)
         if diff >= BE_LOCK_DISTANCE:
             if is_buy and sl < entry + 0.10:
                 new_sl = round(entry + 0.15, 2)
                 conn.run("UPDATE public.orders SET sl = :nsl, stop_loss = :nsl WHERE id = :oid", nsl=new_sl, oid=oid)
                 _last_telemetry["be_locked_count"] += 1
-                _log_decision_pg(conn, uid, sig_id, 'BE_LOCKED', lots, 0, 0, f"Break-Even 0-Loss Guard locked SL at ${new_sl} (+{diff:.2f} move)")
+                _log_decision_pg(conn, uid, sig_id, 'BE_LOCKED', lots, 0, 0, f"0-Loss Guard locked SL at ${new_sl} (+{diff:.2f} move)")
                 sl = new_sl
             elif (not is_buy) and sl > entry - 0.10:
                 new_sl = round(entry - 0.15, 2)
                 conn.run("UPDATE public.orders SET sl = :nsl, stop_loss = :nsl WHERE id = :oid", nsl=new_sl, oid=oid)
                 _last_telemetry["be_locked_count"] += 1
-                _log_decision_pg(conn, uid, sig_id, 'BE_LOCKED', lots, 0, 0, f"Break-Even 0-Loss Guard locked SL at ${new_sl} (+{diff:.2f} move)")
+                _log_decision_pg(conn, uid, sig_id, 'BE_LOCKED', lots, 0, 0, f"0-Loss Guard locked SL at ${new_sl} (+{diff:.2f} move)")
+                sl = new_sl
+
+        # 2. Dynamic Ratchet Trailing Stop ($1.00 to $20.00 Reward Protection)
+        # Lock in banked profit as market expands so green trades NEVER turn into red
+        if is_buy:
+            if diff >= 2.20 and sl < entry + 1.10:
+                new_sl = round(entry + 1.10, 2)
+                conn.run("UPDATE public.orders SET sl = :nsl, stop_loss = :nsl WHERE id = :oid", nsl=new_sl, oid=oid)
+                sl = new_sl
+            elif diff >= 4.50 and sl < live_price - 1.10:
+                new_sl = round(live_price - 1.10, 2)
+                conn.run("UPDATE public.orders SET sl = :nsl, stop_loss = :nsl WHERE id = :oid", nsl=new_sl, oid=oid)
+                sl = new_sl
+        else:
+            if diff >= 2.20 and sl > entry - 1.10:
+                new_sl = round(entry - 1.10, 2)
+                conn.run("UPDATE public.orders SET sl = :nsl, stop_loss = :nsl WHERE id = :oid", nsl=new_sl, oid=oid)
+                sl = new_sl
+            elif diff >= 4.50 and sl > live_price + 1.10:
+                new_sl = round(live_price + 1.10, 2)
+                conn.run("UPDATE public.orders SET sl = :nsl, stop_loss = :nsl WHERE id = :oid", nsl=new_sl, oid=oid)
                 sl = new_sl
 
         # 2. Take Profit Triggered (Banking $2 - $10 Profit Directly)
