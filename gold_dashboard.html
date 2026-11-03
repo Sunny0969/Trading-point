@@ -1691,6 +1691,153 @@
       opacity: 0.45;
     }
 
+    /* 4.5 Upper Setup HUD Card (Institutional Clean & Compact) */
+    .chart-setup-hud {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      z-index: 25;
+      background: rgba(13, 17, 23, 0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(56, 139, 253, 0.40);
+      border-radius: 8px;
+      padding: 6px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.50);
+      pointer-events: none;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+      max-width: calc(100% - 24px);
+    }
+    .chart-setup-hud.sell-mode {
+      border-color: rgba(248, 81, 73, 0.55);
+      box-shadow: 0 4px 20px rgba(248, 81, 73, 0.18);
+    }
+    .chart-setup-hud.buy-mode {
+      border-color: rgba(63, 185, 80, 0.55);
+      box-shadow: 0 4px 20px rgba(63, 185, 80, 0.18);
+    }
+    .hud-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .hud-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hud-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #3fb950;
+      box-shadow: 0 0 8px #3fb950;
+    }
+    .hud-status-dot.sell {
+      background: #f85149;
+      box-shadow: 0 0 8px #f85149;
+    }
+    .hud-title {
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      color: #ffffff;
+    }
+    .hud-zone {
+      background: rgba(88, 166, 255, 0.12);
+      border: 1px solid rgba(88, 166, 255, 0.28);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 9.5px;
+      font-weight: 600;
+      color: #58a6ff;
+      font-family: monospace;
+    }
+    .hud-status-badge {
+      background: rgba(63, 185, 80, 0.15);
+      border: 1px solid rgba(63, 185, 80, 0.35);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 9.5px;
+      font-weight: 700;
+      color: #3fb950;
+      letter-spacing: 0.5px;
+    }
+    .hud-status-badge.sell {
+      background: rgba(248, 81, 73, 0.15);
+      border-color: rgba(248, 81, 73, 0.35);
+      color: #f85149;
+    }
+    .hud-metrics {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hud-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .hud-lbl {
+      font-size: 9px;
+      font-weight: 700;
+      color: #8b949e;
+      letter-spacing: 0.5px;
+    }
+    .hud-val {
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .hud-val small {
+      font-size: 9px;
+      font-weight: 600;
+      opacity: 0.85;
+    }
+    .hud-val.hud-entry {
+      color: #e6edf3;
+    }
+    .hud-val.hud-sl {
+      color: #ff5252;
+    }
+    .hud-val.hud-tp {
+      color: #3fb950;
+    }
+    .hud-val.hud-rr {
+      color: #ffd700;
+    }
+    @media (max-width: 600px) {
+      .chart-setup-hud {
+        top: 6px;
+        left: 8px;
+        padding: 4px 8px;
+        gap: 3px;
+        max-width: calc(100% - 16px);
+      }
+      .hud-title {
+        font-size: 10px;
+      }
+      .hud-zone, .hud-status-badge {
+        font-size: 8.5px;
+        padding: 1px 4px;
+      }
+      .hud-metrics {
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .hud-lbl {
+        font-size: 8px;
+      }
+      .hud-val {
+        font-size: 9.5px;
+      }
+    }
+
     /* TradingView Left Drawing Toolbar */
     .tv-left-toolbar {
       width: 44px;
@@ -8451,6 +8598,35 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           <span class="smc-wm-sep">|</span>
           <span class="watermark-tag">15M SMC</span>
         </div>
+        <!-- Upper Setup HUD Card (Compact, Ultra-Clean & Realtime Telemetry) -->
+        <div id="chartSetupHud" class="chart-setup-hud">
+          <div class="hud-header">
+            <div class="hud-title-wrap">
+              <span class="hud-status-dot" id="hudDot"></span>
+              <span class="hud-title" id="hudTitle">SMC SETUP</span>
+              <span class="hud-zone" id="hudZone">Supply OB · 15M FVG</span>
+            </div>
+            <span class="hud-status-badge" id="hudStatus">ACTIVE</span>
+          </div>
+          <div class="hud-metrics">
+            <div class="hud-item">
+              <span class="hud-lbl">ENTRY</span>
+              <span class="hud-val hud-entry" id="hudEntry">$3,916.60</span>
+            </div>
+            <div class="hud-item">
+              <span class="hud-lbl">SL</span>
+              <span class="hud-val hud-sl" id="hudSl">$3,922.10 <small>(-$5.5)</small></span>
+            </div>
+            <div class="hud-item">
+              <span class="hud-lbl">TP</span>
+              <span class="hud-val hud-tp" id="hudTp">$3,896.60 <small>(+$20.0)</small></span>
+            </div>
+            <div class="hud-item">
+              <span class="hud-lbl">R:R</span>
+              <span class="hud-val hud-rr" id="hudRr">1 : 3.6</span>
+            </div>
+          </div>
+        </div>
         <div id="chart" style="width: 100%; height: 100%;"></div>
         <!-- Zero-Lag Canvas Overlay for Drawings -->
         <canvas id="drawingCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></canvas>
@@ -14227,10 +14403,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           ctx.lineWidth = 1.3;
           ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-          ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-          ctx.fillStyle = '#f0abfc';
-          ctx.textBaseline = 'top';
-          ctx.fillText(`SUPPLY · $${setup.supplyBox.low} - $${setup.supplyBox.high}`, boxX + 6, boxY + 3);
+          // Supply box text suppressed for clean chart
         }
       }
 
@@ -14247,21 +14420,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           ctx.stroke();
           ctx.setLineDash([]);
 
-          const chText = `CHOCH · $${Number(setup.chochLevel).toFixed(2)}`;
-          ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-          const tw = ctx.measureText(chText).width;
-          const bw = Math.round(tw + 8);
-          const bh = 15;
-          const bx = 35;
-          const by = Math.round(yCHoCH - bh / 2);
-
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-          ctx.fillRect(bx, by, bw, bh);
-          ctx.strokeStyle = 'rgba(244, 63, 94, 0.85)';
-          ctx.strokeRect(bx, by, bw, bh);
-          ctx.fillStyle = '#fb7185';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(chText, bx + 4, yCHoCH);
+          // CHoCH line drawn; text badge suppressed for clean chart
         }
       }
 
@@ -14278,22 +14437,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           ctx.stroke();
           ctx.setLineDash([]);
 
-          const indText = `LIQUIDITY (X) · $${Number(setup.inducementLevel).toFixed(2)}`;
-          ctx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-          const tw = ctx.measureText(indText).width;
-          const bw = Math.round(tw + 10);
-          const bh = 16;
-          const bx = canvasCssWidth - bw - 70;
-          const by = Math.round(yInd - bh / 2);
-
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-          ctx.fillRect(bx, by, bw, bh);
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(bx, by, bw, bh);
-          ctx.fillStyle = '#38bdf8';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(indText, bx + 5, yInd);
+          // Liquidity line drawn; text badge suppressed for clean chart
         }
       }
 
@@ -14310,41 +14454,11 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           ctx.stroke();
           ctx.setLineDash([]);
 
-          const eqlText = `EQL · $${Number(setup.eqlLevel).toFixed(2)}`;
-          ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-          const tw = ctx.measureText(eqlText).width;
-          const bw = Math.round(tw + 8);
-          const bh = 15;
-          const bx = 35;
-          const by = Math.round(yEQL - bh / 2);
-
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-          ctx.fillRect(bx, by, bw, bh);
-          ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)';
-          ctx.strokeRect(bx, by, bw, bh);
-          ctx.fillStyle = '#fbbf24';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(eqlText, bx + 4, yEQL);
+          // EQL line drawn; text badge suppressed for clean chart
         }
       }
 
-      // 5. Clean, Professional Status Badge during Waiting Phase (Discrete & Non-Intrusive)
-      if (!setup.isTriggered) {
-        const pillText = '⚡ SMC INDUCEMENT: MONITORING SWEEP';
-        ctx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-        const pw = Math.round(ctx.measureText(pillText).width + 16);
-        const px = 20;
-        const py = 12;
-        ctx.fillStyle = 'rgba(22, 27, 34, 0.88)';
-        ctx.fillRect(px, py, pw, 20);
-        ctx.strokeStyle = 'rgba(217, 70, 239, 0.7)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(px, py, pw, 20);
-        ctx.fillStyle = '#f0abfc';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(pillText, px + 8, py + 10);
-      }
+      // Status badge on canvas suppressed; routed cleanly to upper HUD card
 
       // 6. TradingView Style Short Position Tool on Trigger
       if (setup.isTriggered && setup.entry && setup.sl && setup.tp) {
@@ -14393,34 +14507,24 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           ctx.lineTo(endX, yEntry);
           ctx.stroke();
 
-          // Pills
-          ctx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'middle';
+          // Clean horizontal lines across trigger box; text pills routed to upper HUD card
+          ctx.strokeStyle = '#f85149';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath();
+          ctx.moveTo(startX, riskTopY);
+          ctx.lineTo(endX, riskTopY);
+          ctx.stroke();
+          ctx.setLineDash([]);
 
-          // SL pill
-          const slTxt = `SL $${Number(setup.sl).toFixed(1)} (-$${Number(setup.risk).toFixed(1)})`;
-          const slW = ctx.measureText(slTxt).width + 8;
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-          ctx.fillRect(startX + 4, riskTopY + 2, slW, 14);
-          ctx.fillStyle = '#ff5252';
-          ctx.fillText(slTxt, startX + 8, riskTopY + 9);
-
-          // TP pill (EQL Liquidity Target)
-          const tpTxt = `EQL TP $${Number(setup.tp).toFixed(1)} (+$${Number(setup.reward).toFixed(1)}) · ${setup.rr} RR`;
-          const tpW = ctx.measureText(tpTxt).width + 8;
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-          ctx.fillRect(startX + 4, rewBotY - 16, tpW, 14);
-          ctx.fillStyle = '#3fb950';
-          ctx.fillText(tpTxt, startX + 8, rewBotY - 9);
-
-          // Entry pill
-          const entTxt = `Supply Tap Entry $${Number(setup.entry).toFixed(1)}`;
-          const entW = ctx.measureText(entTxt).width + 8;
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-          ctx.fillRect(startX + 4, yEntry - 7, entW, 14);
-          ctx.fillStyle = '#ffffff';
-          ctx.fillText(entTxt, startX + 8, yEntry);
+          ctx.strokeStyle = '#26a69a';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath();
+          ctx.moveTo(startX, rewBotY);
+          ctx.lineTo(endX, rewBotY);
+          ctx.stroke();
+          ctx.setLineDash([]);
         }
       }
 
@@ -18285,48 +18389,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           drawingCtx.strokeRect(startX, topY, width, height);
           drawingCtx.setLineDash([]);
 
-          // 3. Crisp single badge inside the box, positioned on the forward RIGHT side clear of candles
-          const labelText = zone.label || (isSupply ? 'Supply OB' : 'Demand OB');
-          drawingCtx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-          const metrics = drawingCtx.measureText(labelText);
-          const badgeW = Math.round(metrics.width + 10);
-          const badgeH = 15;
-          let badgeX = Math.max(startX + 10, endX - badgeW - 8);
-          // Place badge neatly at top of zone (or middle if height is very small)
-          let badgeY = (height >= 20) 
-            ? Math.max(3, topY + 2) 
-            : Math.max(3, Math.min(canvasCssHeight - badgeH - 3, topY + Math.max(1, (height - badgeH) / 2)));
-
-          // Collision Avoidance: If position box pill is sitting at startX + 4 at this vertical level,
-          // shift badge horizontally to startX + 130 so they NEVER collide!
-          if (posEntryY !== null && Math.abs(badgeY - posEntryY) < 18) {
-            badgeX = Math.min(endX - badgeW - 10, startX + 130);
-          } else if (posSLY !== null && Math.abs(badgeY - posSLY) < 18) {
-            badgeX = Math.min(endX - badgeW - 10, startX + 130);
-          }
-
-          drawingCtx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
-          drawingCtx.beginPath();
-          if (drawingCtx.roundRect) drawingCtx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
-          else drawingCtx.rect(badgeX, badgeY, badgeW, badgeH);
-          drawingCtx.fill();
-
-          drawingCtx.strokeStyle = isSupply ? 'rgba(239, 83, 80, 0.70)' : 'rgba(38, 166, 154, 0.70)';
-          drawingCtx.lineWidth = 1;
-          drawingCtx.stroke();
-
-          drawingCtx.fillStyle = isSupply ? '#ff5252' : '#26a69a';
-          drawingCtx.textAlign = 'left';
-          drawingCtx.textBaseline = 'middle';
-          drawingCtx.fillText(labelText, badgeX + 5, badgeY + (badgeH / 2));
-
-          // Range text next to pill (only if space permits and no collision)
-          if (width >= 170 && badgeX === startX + 6) {
-            const rangeTxt = `$${zone.bottom.toFixed(1)} - $${zone.top.toFixed(1)}`;
-            drawingCtx.font = '500 8.5px monospace';
-            drawingCtx.fillStyle = isSMCInstitutionalClean ? 'rgba(18, 18, 18, 0.65)' : 'rgba(200, 210, 225, 0.65)';
-            drawingCtx.fillText(rangeTxt, badgeX + badgeW + 6, badgeY + (badgeH / 2));
-          }
+          // Text badges suppressed on canvas for pristine chart; telemetry routed to upper HUD card
 
           // 4. 50% Equilibrium level (only if box height >= 16px and width >= 140px)
           const isMitigated = zone.hasTapped || 
@@ -18347,18 +18410,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
               drawingCtx.lineTo(endX, eqY);
               drawingCtx.stroke();
 
-              // Suppress text if box is narrow or if colliding with badge or position box
-              let canDrawEQText = (width >= 140) && (Math.abs(eqY - (badgeY + badgeH / 2)) >= 10);
-              if (posEntryY !== null && Math.abs(eqY - posEntryY) < 14) canDrawEQText = false;
-              if (posSLY !== null && Math.abs(eqY - posSLY) < 14) canDrawEQText = false;
-
-              if (canDrawEQText) {
-                const eqTxt = `50% EQ $${eq.toFixed(1)}`;
-                drawingCtx.font = '600 8px monospace';
-                drawingCtx.fillStyle = isSupply ? '#ff5252' : '#26a69a';
-                drawingCtx.textAlign = 'right';
-                drawingCtx.fillText(eqTxt, endX - 4, eqY - 3);
-              }
+              // 50% EQ dashed line drawn cleanly; text suppressed for zero clutter
               drawingCtx.restore();
             }
           }
@@ -18423,24 +18475,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         drawingCtx.strokeRect(startX, topY, width, height);
         drawingCtx.setLineDash([]);
 
-        const obLabel = ob.label || (isSupply ? 'Supply OB' : 'Demand OB');
-        drawingCtx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-        const txtW = drawingCtx.measureText(obLabel).width;
-        const pillW = Math.round(txtW + 10);
-        const pillH = 15;
-        const pillX = Math.max(startX + 10, endX - pillW - 8);
-        const pillY = Math.max(2, topY + Math.max(1, (height - pillH) / 2));
-
-        drawingCtx.fillStyle = 'rgba(10, 14, 23, 0.92)';
-        drawingCtx.fillRect(pillX, pillY, pillW, pillH);
-        drawingCtx.strokeStyle = isSupply ? '#ef5350' : '#26a69a';
-        drawingCtx.lineWidth = 1;
-        drawingCtx.strokeRect(pillX, pillY, pillW, pillH);
-
-        drawingCtx.fillStyle = isSupply ? '#ef5350' : '#26a69a';
-        drawingCtx.textAlign = 'left';
-        drawingCtx.textBaseline = 'middle';
-        drawingCtx.fillText(obLabel, pillX + 5, pillY + (pillH / 2));
+        // Order block text suppressed on canvas; sheer colored box preserved
       });
     }
 
@@ -18859,63 +18894,32 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       ctx.lineTo(endX, yEntry);
       ctx.stroke();
 
-      // 4. CLEAN TEXT PILLS (TradingView Short/Long Position Style)
-      ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
+      // 4. CLEAN HORIZONTAL REFERENCE LINES (TradingView Style - Zero Text Over Candles)
+      // Stop Loss horizontal line across full box width
+      const slYCoord = isShort ? riskTopY : (riskTopY + riskHeight);
+      ctx.strokeStyle = '#f85149';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(startX, slYCoord);
+      ctx.lineTo(endX, slYCoord);
+      ctx.stroke();
+      ctx.setLineDash([]);
 
-      // Stop Loss text pill (aligned to right forward edge so candles are 100% visible)
-      const riskVal = setup.risk ? Number(setup.risk).toFixed(1) : (Math.abs(Number(setup.entry) - Number(setup.sl))).toFixed(1);
-      const slTxt = `SL $${Number(setup.sl).toFixed(1)} (-$${riskVal})`;
-      const slW = ctx.measureText(slTxt).width + 8;
-      const slY = isShort ? Math.max(riskTopY + 8, 14) : Math.min(riskTopY + riskHeight - 8, canvasCssHeight - 14);
-      const slX = Math.max(startX + 10, endX - slW - 8);
-      ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
-      ctx.fillRect(slX, slY - 7, slW, 14);
-      ctx.strokeStyle = 'rgba(248, 81, 73, 0.70)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(slX, slY - 7, slW, 14);
-      ctx.fillStyle = '#ff5252';
-      ctx.fillText(slTxt, slX + 4, slY);
+      // Take Profit horizontal line across full box width
+      const tpYCoord = isShort ? (rewTopY + rewHeight) : rewTopY;
+      ctx.strokeStyle = '#26a69a';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath();
+      ctx.moveTo(startX, tpYCoord);
+      ctx.lineTo(endX, tpYCoord);
+      ctx.stroke();
+      ctx.setLineDash([]);
 
-      // Take Profit text pill (aligned to right forward edge so candles are 100% visible)
-      const rewVal = setup.reward ? Number(setup.reward).toFixed(1) : (Math.abs(Number(setup.tp) - Number(setup.entry))).toFixed(1);
-      const tpTxt = `TP $${Number(setup.tp).toFixed(1)} (+$${rewVal})`;
-      const tpW = ctx.measureText(tpTxt).width + 8;
-      const tpY = isShort ? Math.min(rewTopY + rewHeight - 8, canvasCssHeight - 14) : Math.max(rewTopY + 8, 14);
-      const tpX = Math.max(startX + 10, endX - tpW - 8);
-      ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
-      ctx.fillRect(tpX, tpY - 7, tpW, 14);
-      ctx.strokeStyle = 'rgba(56, 139, 253, 0.70)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(tpX, tpY - 7, tpW, 14);
-      ctx.fillStyle = '#388bfd';
-      ctx.fillText(tpTxt, tpX + 4, tpY);
-
-      // Entry text pill (aligned to right forward edge)
-      const entryTxt = `Entry $${Number(setup.entry).toFixed(1)}`;
-      const entW = ctx.measureText(entryTxt).width + 8;
-      const entX = Math.max(startX + 10, endX - entW - 8);
-      ctx.fillStyle = isSMCInstitutionalClean ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 14, 23, 0.92)';
-      ctx.fillRect(entX, yEntry - 7, entW, 14);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.60)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(entX, yEntry - 7, entW, 14);
-      ctx.fillStyle = isSMCInstitutionalClean ? '#121212' : '#ffffff';
-      ctx.fillText(entryTxt, entX + 4, yEntry);
-
-      // R:R Ratio Badge (positioned left of Entry pill in clean forward space)
-      const rrTxt = setup.rrRatio ? `1:${setup.rrRatio} RR` : (setup.rr ? setup.rr : '1:4.3 RR');
-      const rrW = ctx.measureText(rrTxt).width + 8;
-      const rrX = Math.max(startX + 8, entX - rrW - 6);
-      ctx.fillStyle = 'rgba(56, 139, 253, 0.90)';
-      ctx.fillRect(rrX, yEntry - 7, rrW, 14);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(rrTxt, rrX + 4, yEntry);
-
-      // 5. TARGET LINE (Only drawn if within visible chart canvas)
+      // 5. Extended Target Line to price scale (clean line without text pill)
       if (yTPRaw !== null && yTPRaw >= 10 && yTPRaw <= canvasCssHeight - 10) {
-        ctx.strokeStyle = 'rgba(56, 139, 253, 0.70)';
+        ctx.strokeStyle = 'rgba(38, 166, 154, 0.65)';
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 3]);
         ctx.beginPath();
@@ -18923,14 +18927,6 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         ctx.lineTo(canvasCssWidth - 65, yTPRaw);
         ctx.stroke();
         ctx.setLineDash([]);
-
-        // Target Tag on right price scale
-        ctx.fillStyle = 'rgba(56, 139, 253, 0.90)';
-        ctx.fillRect(canvasCssWidth - 63, yTPRaw - 7, 58, 14);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '700 9px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(`TARGET`, canvasCssWidth - 34, yTPRaw);
       }
 
       ctx.restore();
@@ -18992,9 +18988,109 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       }
     }
 
+    // Institutional Upper Setup HUD Card Manager
+    function updateChartSetupHud() {
+      const hud = document.getElementById('chartSetupHud');
+      if (!hud) return;
+
+      let setup = null;
+      let zoneName = 'Supply OB · 15M FVG';
+
+      if (window.activeTradingPointPosition && window.activeTradingPointPosition.status === 'ACTIVE') {
+        setup = window.activeTradingPointPosition;
+        if (setup.reason && setup.reason.includes('Supply')) zoneName = 'Supply OB · 15M FVG';
+        else if (setup.reason && setup.reason.includes('Demand')) zoneName = 'Demand OB · 15M FVG';
+        else if (setup.direction === 'SELL' || setup.type === 'SHORT') zoneName = 'Supply OB · 15M FVG';
+        else zoneName = 'Demand OB · 15M FVG';
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcInducementSupply && window.latestSMC_InducementSupply) {
+        setup = window.latestSMC_InducementSupply;
+        zoneName = 'CHoCH Supply Sniper';
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcPullbackSniper && window.latestSMC_OB_Fibo) {
+        setup = window.latestSMC_OB_Fibo;
+        zoneName = 'M5 Pullback Sniper';
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.smcRev && window.latestSMC_BearishReversal) {
+        setup = window.latestSMC_BearishReversal;
+        zoneName = 'CHoCH Reversal Peak';
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.lsExp && window.latestLS_EXP) {
+        setup = window.latestLS_EXP;
+        zoneName = 'Liquidity Sweep Expansion';
+      } else if (typeof currentSMCZones !== 'undefined' && currentSMCZones && currentSMCZones.activeRRSetup) {
+        setup = currentSMCZones.activeRRSetup;
+        zoneName = (setup.type === 'SHORT' || setup.type === 'SELL') ? 'Supply OB' : 'Demand OB';
+      }
+
+      if (!setup || (!showRROverlay && !smcEnabled)) {
+        hud.style.display = 'none';
+        return;
+      }
+
+      hud.style.display = 'flex';
+
+      const isShort = (setup.direction === 'SELL' || setup.type === 'SHORT' || setup.type === 'SELL');
+      hud.classList.toggle('sell-mode', isShort);
+      hud.classList.toggle('buy-mode', !isShort);
+
+      const dot = document.getElementById('hudDot');
+      if (dot) {
+        dot.className = 'hud-status-dot ' + (isShort ? 'sell' : 'buy');
+      }
+
+      const title = document.getElementById('hudTitle');
+      if (title) {
+        title.innerText = isShort ? '🎯 SMC SHORT SETUP' : '🎯 SMC LONG SETUP';
+      }
+
+      const zoneEl = document.getElementById('hudZone');
+      if (zoneEl) {
+        zoneEl.innerText = zoneName;
+      }
+
+      const status = document.getElementById('hudStatus');
+      if (status) {
+        const liveSpot = (typeof currentLiveSpot !== 'undefined' && currentLiveSpot) ? currentLiveSpot : null;
+        let statusText = 'ACTIVE';
+        if (setup.isTriggered === false) {
+          statusText = 'MONITORING SWEEP';
+        } else if (liveSpot && setup.entry) {
+          const entryPrice = Number(setup.entry);
+          const pips = isShort ? (entryPrice - liveSpot) : (liveSpot - entryPrice);
+          if (pips > 0.4) statusText = `+${pips.toFixed(1)} PTS IN PROFIT`;
+          else if (pips < -0.4) statusText = `${pips.toFixed(1)} PTS`;
+          else statusText = 'AT ENTRY';
+        }
+        status.innerText = statusText;
+        status.className = 'hud-status-badge ' + (isShort ? 'sell' : 'buy');
+      }
+
+      const entryEl = document.getElementById('hudEntry');
+      if (entryEl && setup.entry) {
+        entryEl.innerText = '$' + Number(setup.entry).toFixed(2);
+      }
+
+      const slEl = document.getElementById('hudSl');
+      if (slEl && setup.sl) {
+        const riskVal = setup.risk ? Number(setup.risk).toFixed(1) : Math.abs(Number(setup.entry) - Number(setup.sl)).toFixed(1);
+        slEl.innerHTML = `$${Number(setup.sl).toFixed(2)} <small>(-$${riskVal})</small>`;
+      }
+
+      const tpEl = document.getElementById('hudTp');
+      if (tpEl && setup.tp) {
+        const rewVal = setup.reward ? Number(setup.reward).toFixed(1) : Math.abs(Number(setup.tp) - Number(setup.entry)).toFixed(1);
+        tpEl.innerHTML = `$${Number(setup.tp).toFixed(2)} <small>(+$${rewVal})</small>`;
+      }
+
+      const rrEl = document.getElementById('hudRr');
+      if (rrEl) {
+        const ratio = setup.rrRatio || (setup.rr ? setup.rr.replace('1 : ', '').replace('1:', '') : '3.6');
+        rrEl.innerText = `1 : ${ratio}`;
+      }
+    }
+    window.updateChartSetupHud = updateChartSetupHud;
+
     function redrawDrawings() {
-    window.redrawDrawings = redrawDrawings;
-      if (!drawingCtx || !drawingCanvas) return;
+      window.redrawDrawings = redrawDrawings;
+      if (typeof updateChartSetupHud === 'function') updateChartSetupHud();
+        if (!drawingCtx || !drawingCanvas) return;
       drawingCtx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
       drawMacroNewsReleaseMarker(drawingCtx);
 
