@@ -13263,11 +13263,21 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           ctx.lineWidth = 1;
           ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-          const fvgLabel = `${isBull ? 'Bullish' : 'Bearish'} FVG · $${fvg.bottom.toFixed(1)}-$${fvg.top.toFixed(1)}`;
-          ctx.font = '600 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          // Short label on right side of FVG: FVG
+          const fvgTagV = 'FVG';
+          ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const fwV = ctx.measureText(fvgTagV).width + 6;
+          const fhV = 13;
+          const fxV = boxX + boxW - fwV - 4;
+          const fyV = boxY + Math.max(1, Math.min(boxH - fhV - 1, (boxH - fhV) / 2));
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.fillRect(fxV, fyV, fwV, fhV);
+          ctx.strokeStyle = isBull ? '#26a69a' : '#ef5350';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(fxV, fyV, fwV, fhV);
           ctx.fillStyle = isBull ? '#26a69a' : '#ef5350';
-          ctx.textBaseline = 'top';
-          ctx.fillText(fvgLabel, boxX + 4, boxY + 2);
+          ctx.textBaseline = 'middle';
+          ctx.fillText(fvgTagV, fxV + 3, fyV + fhV / 2);
 
           if (vwapResult.active) {
             const yEntry = candleSeries.priceToCoordinate(vwapResult.entry) || boxY;
@@ -13488,10 +13498,21 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           ctx.strokeRect(boxX, boxY, boxW, boxH);
           ctx.setLineDash([]);
 
-          ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          // Short label on right side of FVG: FVG
+          const fvgTagM5 = 'FVG';
+          ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const fwM5 = ctx.measureText(fvgTagM5).width + 6;
+          const fhM5 = 13;
+          const fxM5 = boxX + boxW - fwM5 - 4;
+          const fyM5 = boxY + Math.max(1, Math.min(boxH - fhM5 - 1, (boxH - fhM5) / 2));
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.fillRect(fxM5, fyM5, fwM5, fhM5);
+          ctx.strokeStyle = '#60a5fa';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(fxM5, fyM5, fwM5, fhM5);
           ctx.fillStyle = '#60a5fa';
-          ctx.textBaseline = 'top';
-          ctx.fillText(`M5 Upper FVG · $${Number(setup.fvg.bottom).toFixed(1)} - $${Number(setup.fvg.top).toFixed(1)}`, boxX + 6, boxY + 3);
+          ctx.textBaseline = 'middle';
+          ctx.fillText(fvgTagM5, fxM5 + 3, fyM5 + fhM5 / 2);
         }
       }
 
@@ -14473,7 +14494,21 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           ctx.lineWidth = 1.3;
           ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-          // Supply box text suppressed for clean chart
+          // Short label on right side of box: Supply
+          const supText = 'Supply';
+          ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const supW = ctx.measureText(supText).width + 6;
+          const supH = 13;
+          const supX = boxX + boxW - supW - 4;
+          const supY = boxY + Math.max(1, Math.min(boxH - supH - 1, (boxH - supH) / 2));
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          ctx.fillRect(supX, supY, supW, supH);
+          ctx.strokeStyle = '#d946ef';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(supX, supY, supW, supH);
+          ctx.fillStyle = '#f5d0fe';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(supText, supX + 3, supY + supH / 2);
         }
       }
 
@@ -15528,15 +15563,15 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           ctx.lineWidth = 1.2;
           ctx.strokeRect(startX, topY, width, height);
 
-          // Continuation Label
-          const contLabel = `CONTINUATION ZONE $${contLow.toFixed(1)} - $${contHigh.toFixed(1)}`;
+          // Short label on right side: Supply
+          const contLabel = 'Supply';
           ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-          const cw = ctx.measureText(contLabel).width + 8;
-          const ch = 14;
-          const cx = startX + 6;
-          const cy = Math.max(4, topY - ch - 2);
+          const cw = ctx.measureText(contLabel).width + 6;
+          const ch = 13;
+          const cx = endX - cw - 4;
+          const cy = topY + Math.max(1, Math.min(height - ch - 1, (height - ch) / 2));
 
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
           ctx.fillRect(cx, cy, cw, ch);
           ctx.strokeStyle = '#3b82f6';
           ctx.lineWidth = 1;
@@ -15544,7 +15579,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
           ctx.fillStyle = '#60a5fa';
           ctx.textBaseline = 'middle';
-          ctx.fillText(contLabel, cx + 4, cy + ch / 2);
+          ctx.fillText(contLabel, cx + 3, cy + ch / 2);
         }
       }
 
@@ -16039,6 +16074,22 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       ctx.lineWidth = 1;
       ctx.strokeRect(startX, rewY, boxW, rewH);
 
+      // Short label on right side of Reward Box: RR
+      ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+      const rrLabel15 = 'RR';
+      const rrW15 = ctx.measureText(rrLabel15).width + 6;
+      const rrH15 = 13;
+      const rrX15 = endX - rrW15 - 3;
+      const rewLabelY = rewY + Math.max(1, Math.min(rewH - rrH15 - 1, (rewH - rrH15) / 2));
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.fillRect(rrX15, rewLabelY, rrW15, rrH15);
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(rrX15, rewLabelY, rrW15, rrH15);
+      ctx.fillStyle = '#10b981';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(rrLabel15, rrX15 + 3, rewLabelY + rrH15 / 2);
+
       // 2. Risk Box (Red sheer)
       const riskY = Math.min(yEntry, ySL);
       const riskH = Math.abs(yEntry - ySL);
@@ -16047,6 +16098,17 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
       ctx.lineWidth = 1;
       ctx.strokeRect(startX, riskY, boxW, riskH);
+
+      // Short label on right side of Risk Box: RR
+      const riskLabelY = riskY + Math.max(1, Math.min(riskH - rrH15 - 1, (riskH - rrH15) / 2));
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.fillRect(rrX15, riskLabelY, rrW15, rrH15);
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(rrX15, riskLabelY, rrW15, rrH15);
+      ctx.fillStyle = '#ef4444';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(rrLabel15, rrX15 + 3, riskLabelY + rrH15 / 2);
 
       // 3. Dashed TP Line (Green)
       ctx.strokeStyle = '#10b981';
@@ -16454,13 +16516,13 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           ctx.lineWidth = 1;
           ctx.strokeRect(zoneX, zoneY, zoneW, zoneH);
 
-          // Golden Pocket Badge on Forward Right Edge (clear of candles)
-          const gTag = `GOLDEN ZONE (0.50 - 0.618) $${p618.toFixed(2)} - $${p50.toFixed(2)}`;
+          // Short label on right side: Golden Zone
+          const gTag = 'Golden Zone';
           ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-          const gw = ctx.measureText(gTag).width + 8;
-          const gh = 15;
-          const gx = Math.max(zoneX + 10, endX - gw - 8);
-          const gy = zoneY + 2;
+          const gw = ctx.measureText(gTag).width + 6;
+          const gh = 13;
+          const gx = endX - gw - 4;
+          const gy = zoneY + Math.max(1, Math.min(zoneH - gh - 1, (zoneH - gh) / 2));
 
           ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
           ctx.fillRect(gx, gy, gw, gh);
@@ -16470,7 +16532,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
           ctx.fillStyle = '#10b981';
           ctx.textBaseline = 'middle';
-          ctx.fillText(gTag, gx + 4, gy + gh / 2);
+          ctx.fillText(gTag, gx + 3, gy + gh / 2);
         }
       }
 
@@ -16910,14 +16972,15 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           ctx.lineWidth = 1.2;
           ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-          const fvgTag = `FVG RETEST ZONE $${botPrice.toFixed(2)} - $${topPrice.toFixed(2)}`;
+          // Short label on right side of FVG Box: FVG
+          const fvgTag = 'FVG';
           ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
-          const fw = ctx.measureText(fvgTag).width + 8;
-          const fh = 14;
-          const fx = boxX + 6;
-          const fy = boxY + 2;
+          const fw = ctx.measureText(fvgTag).width + 6;
+          const fh = 13;
+          const fx = boxX + boxW - fw - 4;
+          const fy = boxY + Math.max(1, Math.min(boxH - fh - 1, (boxH - fh) / 2));
 
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
           ctx.fillRect(fx, fy, fw, fh);
           ctx.strokeStyle = '#ef4444';
           ctx.lineWidth = 1;
@@ -16925,7 +16988,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
           ctx.fillStyle = '#ef4444';
           ctx.textBaseline = 'middle';
-          ctx.fillText(fvgTag, fx + 4, fy + fh / 2);
+          ctx.fillText(fvgTag, fx + 3, fy + fh / 2);
         }
       }
 
@@ -18922,7 +18985,21 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           drawingCtx.strokeRect(startX, topY, width, height);
           drawingCtx.setLineDash([]);
 
-          // Text badges suppressed on canvas for pristine chart; telemetry routed to upper HUD card
+          // Short label on right side of box: FVG
+          const fvgText = 'FVG';
+          drawingCtx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+          const fvgW = drawingCtx.measureText(fvgText).width + 6;
+          const fvgH = 13;
+          const fvgX = endX - fvgW - 3;
+          const fvgY = topY + Math.max(1, Math.min(height - fvgH - 1, (height - fvgH) / 2));
+          drawingCtx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+          drawingCtx.fillRect(fvgX, fvgY, fvgW, fvgH);
+          drawingCtx.strokeStyle = isSupply ? '#ef5350' : '#26a69a';
+          drawingCtx.lineWidth = 1;
+          drawingCtx.strokeRect(fvgX, fvgY, fvgW, fvgH);
+          drawingCtx.fillStyle = isSupply ? '#ef5350' : '#26a69a';
+          drawingCtx.textBaseline = 'middle';
+          drawingCtx.fillText(fvgText, fvgX + 3, fvgY + fvgH / 2);
 
           // 4. 50% Equilibrium level (only if box height >= 16px and width >= 140px)
           const isMitigated = zone.hasTapped || 
@@ -19008,7 +19085,21 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         drawingCtx.strokeRect(startX, topY, width, height);
         drawingCtx.setLineDash([]);
 
-        // Order block text suppressed on canvas; sheer colored box preserved
+        // Short label on right side of box: OB
+        const obText = 'OB';
+        drawingCtx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        const obW = drawingCtx.measureText(obText).width + 6;
+        const obH = 13;
+        const obX = endX - obW - 3;
+        const obY = topY + Math.max(1, Math.min(height - obH - 1, (height - obH) / 2));
+        drawingCtx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+        drawingCtx.fillRect(obX, obY, obW, obH);
+        drawingCtx.strokeStyle = isSupply ? '#ef5350' : '#26a69a';
+        drawingCtx.lineWidth = 1;
+        drawingCtx.strokeRect(obX, obY, obW, obH);
+        drawingCtx.fillStyle = isSupply ? '#ef5350' : '#26a69a';
+        drawingCtx.textBaseline = 'middle';
+        drawingCtx.fillText(obText, obX + 3, obY + obH / 2);
       });
     }
 
@@ -19412,12 +19503,39 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       ctx.lineWidth = 1;
       ctx.strokeRect(startX, riskTopY, boxW, riskHeight);
 
+      // Short label on right side of Risk Box: RR
+      ctx.font = '700 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+      const rrLabel = 'RR';
+      const rrW = ctx.measureText(rrLabel).width + 6;
+      const rrH = 13;
+      const rrX = endX - rrW - 3;
+      const rrRiskY = riskTopY + Math.max(1, Math.min(riskHeight - rrH - 1, (riskHeight - rrH) / 2));
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.fillRect(rrX, rrRiskY, rrW, rrH);
+      ctx.strokeStyle = '#f85149';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(rrX, rrRiskY, rrW, rrH);
+      ctx.fillStyle = '#f85149';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(rrLabel, rrX + 3, rrRiskY + rrH / 2);
+
       // 2. REWARD BOX (Clean, modern subtle sheer blue fill 0.05)
       ctx.fillStyle = 'rgba(56, 139, 253, 0.05)';
       ctx.fillRect(startX, rewTopY, boxW, rewHeight);
       ctx.strokeStyle = 'rgba(56, 139, 253, 0.40)';
       ctx.lineWidth = 1;
       ctx.strokeRect(startX, rewTopY, boxW, rewHeight);
+
+      // Short label on right side of Reward Box: RR
+      const rrRewY = rewTopY + Math.max(1, Math.min(rewHeight - rrH - 1, (rewHeight - rrH) / 2));
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      ctx.fillRect(rrX, rrRewY, rrW, rrH);
+      ctx.strokeStyle = isShort ? '#38bdf8' : '#26a69a';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(rrX, rrRewY, rrW, rrH);
+      ctx.fillStyle = isShort ? '#38bdf8' : '#26a69a';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(rrLabel, rrX + 3, rrRewY + rrH / 2);
 
       // 3. ENTRY MIDLINE
       ctx.strokeStyle = isSMCInstitutionalClean ? '#121212' : '#ffffff';
