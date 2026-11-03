@@ -9202,6 +9202,14 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
   <audio id="audioSell" src="https://assets.mixkit.co/active_storage/sfx/2873/2873-preview.mp3" preload="auto"></audio>
   <div id="signalToast" class="signal-toast"></div>
 
+  <!-- Exness MT5 Bridge Telemetry & Input Anchor -->
+  <div id="exnessBridgeHead" style="display:none;" aria-hidden="true">
+    <span id="spot-price">3907.00</span>
+    <input type="hidden" id="sl-input" value="">
+    <input type="hidden" id="tp-input" value="">
+    <input type="hidden" id="lot-input" value="0.01">
+  </div>
+
   <!-- ========================================================
        APPLICATION LOGIC & REAL-TIME DATA ENGINE
        ======================================================== -->
@@ -23815,6 +23823,8 @@ const ghostCandles = [
       const sellTickerEl = document.getElementById('demoSellTicker');
       if (buyTickerEl) buyTickerEl.innerText = '$' + currentLiveSpot.toFixed(2);
       if (sellTickerEl) sellTickerEl.innerText = '$' + currentLiveSpot.toFixed(2);
+      const bridgeSpot = document.getElementById('spot-price');
+      if (bridgeSpot) bridgeSpot.innerText = currentLiveSpot.toFixed(2);
 
       const targetPrice = (currentLiveSpot + 12.0).toFixed(2);
       const targetPriceStr = '$' + targetPrice;
@@ -24367,6 +24377,108 @@ const ghostCandles = [
       toast.innerText = msg;
       toast.style.display = 'block';
       setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    // Exness MT5 Bridge Toast Notification Dispatcher
+    function showToast(msg, type = 'info') {
+      if (typeof showSignalToast === 'function') {
+        showSignalToast(msg);
+      } else {
+        const toast = document.getElementById('signalToast');
+        if (toast) {
+          toast.innerText = msg;
+          toast.style.display = 'block';
+          setTimeout(() => { toast.style.display = 'none'; }, 4000);
+        } else {
+          console.log(`[TOAST (${type})] ${msg}`);
+        }
+      }
+    }
+    window.showToast = showToast;
+
+    // Exness MT5 Bridge Live Order Execution Dispatcher
+    async function executeLiveExnessOrder(direction, lotSize = 0.01, slOverride = null, tpOverride = null) {
+      const spotEl = document.getElementById('spot-price');
+      const fallbackSpot = (typeof currentLiveSpot !== 'undefined' && currentLiveSpot) ? currentLiveSpot : 3907.00;
+      const currentPrice = parseFloat(spotEl?.innerText?.replace(/[^0-9.]/g, '') || fallbackSpot);
+
+      const slEl = document.getElementById('sl-input') || document.getElementById('demoSlInput') || document.getElementById('mDemoSlInput');
+      const tpEl = document.getElementById('tp-input') || document.getElementById('demoTpInput') || document.getElementById('mDemoTpInput');
+      const lotEl = document.getElementById('lot-input') || document.getElementById('demoLotInput') || document.getElementById('mDemoLotInput');
+
+      let slInput = (slOverride !== null && !isNaN(slOverride) && slOverride > 0)
+        ? parseFloat(slOverride)
+        : parseFloat(slEl?.value || (direction === 'BUY' ? currentPrice - 3.0 : currentPrice + 3.0));
+      if (isNaN(slInput) || slInput <= 0) {
+        slInput = direction === 'BUY' ? currentPrice - 3.0 : currentPrice + 3.0;
+      }
+
+      let tpInput = (tpOverride !== null && !isNaN(tpOverride) && tpOverride > 0)
+        ? parseFloat(tpOverride)
+        : parseFloat(tpEl?.value || (direction === 'BUY' ? currentPrice + 6.0 : currentPrice - 6.0));
+      if (isNaN(tpInput) || tpInput <= 0) {
+        tpInput = direction === 'BUY' ? currentPrice + 6.0 : currentPrice - 6.0;
+      }
+
+      const parsedLot = lotEl && lotEl.value ? parseFloat(lotEl.value) : NaN;
+      const effectiveLot = !isNaN(parsedLot) && parsedLot >= 0.01 ? parsedLot : (lotSize || 0.01);
+
+      const payload = {
+        symbol: "XAUUSDm",
+        direction: direction,
+        lot_size: Number(effectiveLot.toFixed(2)),
+        stop_loss: Number(slInput.toFixed(2)),
+        take_profit: Number(tpInput.toFixed(2))
+      };
+
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/execute-trade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const res = await response.json();
+        if (res.status === 'SUCCESS') {
+          showToast(`✅ Exness Live Order Placed! Ticket: #${res.order_id} @ $${res.price}`, 'success');
+          console.log('Order Executed:', res);
+        } else {
+          showToast(`❌ Exness Rejected: ${res.message || 'Execution error'}`, 'error');
+          console.error('Execution Error:', res);
+        }
+        return res;
+      } catch (error) {
+        showToast(`❌ Bridge Offline: Ensure start_bot.bat is running!`, 'error');
+        console.error('Bridge Connection Failed:', error);
+        return { status: 'ERROR', message: error.message };
+      }
+    }
+    window.executeLiveExnessOrder = executeLiveExnessOrder;
+
+    function syncExnessBridgeInputs() {
+      const spotEl = document.getElementById('spot-price');
+      if (spotEl && typeof currentLiveSpot !== 'undefined' && currentLiveSpot) {
+        spotEl.innerText = currentLiveSpot.toFixed(2);
+      }
+      const slInput = document.getElementById('sl-input');
+      const tpInput = document.getElementById('tp-input');
+      const lotInput = document.getElementById('lot-input');
+
+      const demoSl = document.getElementById('demoSlInput');
+      const demoTp = document.getElementById('demoTpInput');
+      const demoLot = document.getElementById('demoLotInput');
+
+      const mSl = document.getElementById('mDemoSlInput');
+      const mTp = document.getElementById('mDemoTpInput');
+      const mLot = document.getElementById('mDemoLotInput');
+
+      if (demoSl && slInput) demoSl.addEventListener('input', () => { slInput.value = demoSl.value; });
+      if (demoTp && tpInput) demoTp.addEventListener('input', () => { tpInput.value = demoTp.value; });
+      if (demoLot && lotInput) demoLot.addEventListener('input', () => { lotInput.value = demoLot.value; });
+
+      if (mSl && slInput) mSl.addEventListener('input', () => { slInput.value = mSl.value; });
+      if (mTp && tpInput) mTp.addEventListener('input', () => { tpInput.value = mTp.value; });
+      if (mLot && lotInput) mLot.addEventListener('input', () => { lotInput.value = mLot.value; });
     }
 
     // Window Resize Handling
@@ -25026,6 +25138,7 @@ window.addEventListener('resize', () => {
       updateLotInfoDisplay();
       renderDemoWalletUI();
       renderDemoPositionsList();
+      if (typeof syncExnessBridgeInputs === 'function') syncExnessBridgeInputs();
       window.demoState = demoState;
       window.renderDemoPositionsList = renderDemoPositionsList;
       window.saveDemoState = saveDemoState;
@@ -25402,15 +25515,6 @@ window.addEventListener('resize', () => {
     }
 
     async function executeDemoOrder(type) {
-      // STRICT GUARD: Must be logged in to trade
-      const loggedIn = (typeof currentAuthUser !== 'undefined' && currentAuthUser) || (typeof isUserLoggedIn === 'function' && isUserLoggedIn());
-      if (!loggedIn) {
-        openAuthModal('login');
-        if (typeof showSignalToast === 'function') {
-          showSignalToast("🔒 Authentication Required: Please log in to place demo trades!");
-        }
-        return;
-      }
       const lotInput = document.getElementById('demoLotInput');
       const slInput = document.getElementById('demoSlInput');
       const tpInput = document.getElementById('demoTpInput');
@@ -25418,6 +25522,21 @@ window.addEventListener('resize', () => {
       let lots = parseFloat(lotInput ? lotInput.value : 0.01);
       if (isNaN(lots) || lots < 0.01) lots = 0.01;
       if (lots > 5.0) lots = 5.0;
+
+      // Direct Dispatch to Live Exness MT5 Bridge
+      if (typeof executeLiveExnessOrder === 'function') {
+        executeLiveExnessOrder(type, lots).catch(err => console.warn('[Exness Bridge] Direct dispatch warning:', err));
+      }
+
+      // STRICT GUARD: Must be logged in to sync demo trades to cloud
+      const loggedIn = (typeof currentAuthUser !== 'undefined' && currentAuthUser) || (typeof isUserLoggedIn === 'function' && isUserLoggedIn());
+      if (!loggedIn) {
+        openAuthModal('login');
+        if (typeof showSignalToast === 'function') {
+          showSignalToast("🔒 Authentication Required: Please log in to sync demo orders to account!");
+        }
+        return;
+      }
 
       const slVal = slInput && slInput.value ? parseFloat(slInput.value) : null;
       const tpVal = tpInput && tpInput.value ? parseFloat(tpInput.value) : null;
@@ -25831,6 +25950,8 @@ window.addEventListener('resize', () => {
     window.handleAuthSubmit = submitAuthForm;
     window.handleSupabaseLogout = handleSupabaseLogout;
     window.executeDemoOrder = executeDemoOrder;
+    window.executeLiveExnessOrder = executeLiveExnessOrder;
+    window.showToast = showToast;
     window.closeDemoPosition = closeDemoPosition;
     window.stepLotSize = stepLotSize;
     window.setLotSize = setLotSize;
@@ -26096,6 +26217,8 @@ window.addEventListener('resize', () => {
       if (buyPrice) buyPrice.innerText = priceStr;
       if (sellPrice) sellPrice.innerText = priceStr;
       if (topSpot) topSpot.innerText = priceStr;
+      const bridgeSpot = document.getElementById('spot-price');
+      if (bridgeSpot) bridgeSpot.innerText = price.toFixed(2);
 
       if (typeof demoState !== 'undefined') {
         const totalPnl = typeof getTotalFloatingPnL === 'function' ? getTotalFloatingPnL(price) : 0;

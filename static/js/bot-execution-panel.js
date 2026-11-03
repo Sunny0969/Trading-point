@@ -305,6 +305,15 @@
 
     lastTelemetry.innerText = 'DISPATCHING SCALP...';
 
+    // Hook Live Exness MT5 Local Bridge Execution
+    try {
+      if (typeof window.executeLiveExnessOrder === 'function') {
+        window.executeLiveExnessOrder(payload.direction, parseFloat(signalData.lot || 0.01), payload.sl, payload.tp);
+      }
+    } catch (bridgeErr) {
+      console.warn('[QuantAgent] Live Exness MT5 bridge dispatch warning:', bridgeErr);
+    }
+
     try {
       const response = await fetch('/api/quant-agent', {
         method: 'POST',
@@ -353,6 +362,11 @@
       const sigKey = `${pos.direction || pos.type}_${pos.entry}_${pos.sl}_${pos.tp}_${pos.startCandleTime || pos.startTime || ''}`;
       if (lastDispatchedHash !== sigKey) {
         lastDispatchedHash = sigKey;
+        const dir = (pos.direction === 'SELL' || pos.type === 'SHORT') ? 'SELL' : 'BUY';
+        // Direct trigger to Live Exness MT5 Bridge
+        if (typeof window.executeLiveExnessOrder === 'function') {
+          window.executeLiveExnessOrder(dir, 0.01, parseFloat(pos.sl), parseFloat(pos.tp)).catch(e => console.warn('[QuantAgent] Direct MT5 bridge trigger warning:', e));
+        }
         window.dispatchQuantSignalToServer({
           source: pos.source || 'INSTITUTIONAL_SMC',
           direction: (pos.direction === 'SELL' || pos.type === 'SHORT') ? 'SELL' : 'BUY',
@@ -406,6 +420,51 @@
   window.addEventListener('load', syncSettingsFromServer);
   if (window.supabase?.auth) {
     window.supabase.auth.onAuthStateChange?.(() => syncSettingsFromServer());
+  }
+
+  // Fallback definition of executeLiveExnessOrder for standalone bot execution
+  if (typeof window.executeLiveExnessOrder !== 'function') {
+    window.executeLiveExnessOrder = async function(direction, lotSize = 0.01, slOverride = null, tpOverride = null) {
+      const currentPrice = parseFloat(document.getElementById('spot-price')?.innerText?.replace(/[^0-9.]/g, '') || (typeof currentLiveSpot !== 'undefined' ? currentLiveSpot : 3907.00));
+      const slInput = (slOverride !== null && !isNaN(slOverride) && slOverride > 0) ? parseFloat(slOverride) : parseFloat(document.getElementById('sl-input')?.value || (direction === 'BUY' ? currentPrice - 3.0 : currentPrice + 3.0));
+      const tpInput = (tpOverride !== null && !isNaN(tpOverride) && tpOverride > 0) ? parseFloat(tpOverride) : parseFloat(document.getElementById('tp-input')?.value || (direction === 'BUY' ? currentPrice + 6.0 : currentPrice - 6.0));
+
+      const payload = {
+        symbol: "XAUUSDm",
+        direction: direction,
+        lot_size: lotSize,
+        stop_loss: Number(slInput.toFixed(2)),
+        take_profit: Number(tpInput.toFixed(2))
+      };
+
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/execute-trade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const res = await response.json();
+        if (res.status === 'SUCCESS') {
+          if (typeof window.showToast === 'function') {
+            window.showToast(`✅ Exness Live Order Placed! Ticket: #${res.order_id} @ $${res.price}`, 'success');
+          }
+          console.log('Order Executed:', res);
+        } else {
+          if (typeof window.showToast === 'function') {
+            window.showToast(`❌ Exness Rejected: ${res.message || 'Execution error'}`, 'error');
+          }
+          console.error('Execution Error:', res);
+        }
+        return res;
+      } catch (error) {
+        if (typeof window.showToast === 'function') {
+          window.showToast(`❌ Bridge Offline: Ensure start_bot.bat is running!`, 'error');
+        }
+        console.error('Bridge Connection Failed:', error);
+        return { status: 'ERROR', message: error.message };
+      }
+    };
   }
 
   console.log('[TradingPoint] Autonomous Quant Execution Panel loaded successfully.');
