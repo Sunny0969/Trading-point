@@ -39,6 +39,7 @@ DB_PORT = int(os.environ.get("SUPABASE_DB_PORT", "5432"))
 DB_NAME = os.environ.get("SUPABASE_DB_NAME", "postgres")
 
 # User directive: "bot pa koshish karwian as much reward ho mle rish minimal ya 0 ho please reward phir bhlt 1 dollar ka ho ya 20 dollar ka ho no isue but reward mile rish boht kam mile pelase"
+AUTONOMOUS_BOT_ENABLED = False  # Master Safety Lock: ALL demo and live order dispatch HALTED
 MAX_SL_DISTANCE = 1.10   # Minimal initial risk distance (max ~$1.10 - $2.20 per trade)
 SCALP_TP_DISTANCE = 2.20 # Quick scalp target, dynamic ratchet trails up to $20.00
 BE_LOCK_DISTANCE = 0.50  # Once price moves +$0.50, instantly lock 0-Loss Break-Even (0 Risk!)
@@ -141,6 +142,8 @@ def process_signal_server_authoritative(payload: dict) -> dict:
 
     candle_time = str(payload.get("candleTime", ""))
 
+    if not AUTONOMOUS_BOT_ENABLED:
+        return {"status": "HALTED", "reason": "Bot trading is paused by safety directive. Test in paper engine first."}
     if not user_id:
         return {"status": "FAILED", "reason": "Missing authenticated userId"}
 
@@ -390,6 +393,8 @@ def harvest_open_bot_orders(conn, live_price: float):
 
 
 def autonomous_market_scanner(conn, live_spot: dict):
+    if not AUTONOMOUS_BOT_ENABLED:
+        return 0, []
     """
     Server-side market scanner that runs when the user's browser is closed.
     Finds high-probability micro-scalp setups and opens trades autonomously.
