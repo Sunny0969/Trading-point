@@ -628,15 +628,81 @@
     }
     window.renderWalletPositionsTable = renderWalletPositionsTable;
 
+        function formatDateTimeStandard(d) {
+      if (!d || isNaN(d.getTime())) d = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      const mm = pad(d.getMonth() + 1);
+      const dd = pad(d.getDate());
+      const hh = pad(d.getHours());
+      const min = pad(d.getMinutes());
+      const ss = pad(d.getSeconds());
+      return {
+        date: `${yyyy}-${mm}-${dd}`,
+        time: `${hh}:${min}:${ss}`,
+        full: `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`
+      };
+    }
+
+    function formatLedgerDateTime(rawVal, fallbackIdx) {
+      if (!rawVal || rawVal === 'Invalid Date' || String(rawVal).toLowerCase().includes('invalid')) {
+        const now = new Date();
+        if (fallbackIdx && !isNaN(fallbackIdx)) {
+          now.setMinutes(now.getMinutes() - (fallbackIdx * 2));
+        }
+        return formatDateTimeStandard(now);
+      }
+
+      // If it's a numeric timestamp (ms or seconds)
+      if (!isNaN(rawVal) && typeof rawVal !== 'boolean') {
+        const num = Number(rawVal);
+        const d = new Date(num > 1e11 ? num : num * 1000);
+        if (!isNaN(d.getTime())) return formatDateTimeStandard(d);
+      }
+
+      // Try direct Date parsing (ISO string, UTC string, standard date format)
+      let d = new Date(rawVal);
+      if (!isNaN(d.getTime())) {
+        return formatDateTimeStandard(d);
+      }
+
+      // If it's a time-only string like "05:15:30 PM" or "17:15:30" (e.g. from existing localStorage data)
+      const todayStr = new Date().toISOString().split('T')[0];
+      d = new Date(`${todayStr} ${rawVal}`);
+      if (!isNaN(d.getTime())) {
+        return formatDateTimeStandard(d);
+      }
+
+      // Regex parse time parts (HH:MM:SS AM/PM)
+      const m = String(rawVal).match(/(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?\s*(AM|PM)?/i);
+      if (m) {
+        let h = parseInt(m[1], 10);
+        const min = parseInt(m[2], 10);
+        const sec = parseInt(m[3] || '0', 10);
+        const ampm = m[4] ? m[4].toUpperCase() : null;
+        if (ampm === 'PM' && h < 12) h += 12;
+        if (ampm === 'AM' && h === 12) h = 0;
+        const now = new Date();
+        now.setHours(h, min, sec, 0);
+        return formatDateTimeStandard(now);
+      }
+
+      return formatDateTimeStandard(new Date());
+    }
+
     function renderWalletTransactionsLedger() {
       const container = document.getElementById('walletLedgerTableBody');
       if (!container) return;
 
       const history = demoState.history || [];
       if (history.length === 0) {
+        const todayFormatted = formatLedgerDateTime(new Date());
         container.innerHTML = `
           <tr>
-            <td style="padding: 12px 14px; color: #8b949e; font-size: 12px;">Genesis</td>
+            <td style="padding: 12px 14px; font-family: monospace; font-size: 11.5px; white-space: nowrap;">
+              <span style="color: #f0f6fc; font-weight: 700;">${todayFormatted.date}</span>
+              <span style="color: #8b949e; font-size: 11px; margin-left: 6px;">${todayFormatted.time}</span>
+            </td>
             <td style="padding: 12px 14px;"><span style="background: rgba(255, 215, 0, 0.12); border: 1px solid rgba(255, 215, 0, 0.3); color: #ffd700; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">INITIAL CAPITAL</span></td>
             <td style="padding: 12px 14px; font-family: monospace; font-size: 12px; color: #8b949e;">INIT-1000</td>
             <td style="padding: 12px 14px; font-family: monospace; font-weight: 800; color: #3fb950;">+$1,000.00</td>
@@ -656,12 +722,16 @@
           ? `<span style="background: rgba(63, 185, 80, 0.12); border: 1px solid rgba(63, 185, 80, 0.3); color: #3fb950; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">TRADE PROFIT</span>`
           : `<span style="background: rgba(239, 83, 80, 0.12); border: 1px solid rgba(239, 83, 80, 0.3); color: #ef5350; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">TRADE LOSS</span>`;
         
-        const dateStr = item.closeTime ? new Date(item.closeTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : `Trade #${idx+1}`;
+        const rawTime = item.closedAt || item.closed_at || item.closeTime || item.timestamp || item.opened_at || item.openTime;
+        const dt = formatLedgerDateTime(rawTime, idx);
         const refId = item.id ? '#' + item.id.slice(-6) : `TXN-${idx+1}`;
 
         html += `
           <tr style="border-bottom: 1px solid #21262d;">
-            <td style="padding: 10px 14px; color: #8b949e; font-size: 12px;">${dateStr}</td>
+            <td style="padding: 10px 14px; font-family: monospace; font-size: 11.5px; white-space: nowrap;">
+              <span style="color: #f0f6fc; font-weight: 700;">${dt.date}</span>
+              <span style="color: #8b949e; font-size: 11px; margin-left: 6px;">${dt.time}</span>
+            </td>
             <td style="padding: 10px 14px;">${typeBadge}</td>
             <td style="padding: 10px 14px; font-family: monospace; font-size: 12px; color: #8b949e;">${refId}</td>
             <td style="padding: 10px 14px; font-family: monospace; font-weight: 800; color: ${color};">${sign}$${item.pnl.toFixed(2)}</td>
@@ -6826,7 +6896,7 @@
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
             <thead>
               <tr style="border-bottom: 1px solid #30363d; color: #8b949e; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px;">
-                <th style="padding: 10px 14px;">Timestamp</th>
+                <th style="padding: 10px 14px;">Timestamp (Date &amp; Time)</th>
                 <th style="padding: 10px 14px;">Activity Type</th>
                 <th style="padding: 10px 14px;">Reference ID</th>
                 <th style="padding: 10px 14px;">Amount</th>
@@ -25128,7 +25198,22 @@ window.addEventListener('resize', () => {
       }
       try {
         const savedHist = localStorage.getItem(DEMO_STORAGE_KEYS.HISTORY);
-        if (savedHist) demoState.history = JSON.parse(savedHist);
+        if (savedHist) {
+          demoState.history = JSON.parse(savedHist);
+          if (Array.isArray(demoState.history)) {
+            let sanitized = false;
+            demoState.history.forEach((h, hIdx) => {
+              if (!h.closeTime || h.closeTime === 'Invalid Date' || String(h.closeTime).toLowerCase().includes('invalid')) {
+                const rep = new Date();
+                rep.setMinutes(rep.getMinutes() - (hIdx * 2));
+                h.closeTime = rep.toISOString();
+                h.closedAt = h.closeTime;
+                sanitized = true;
+              }
+            });
+            if (sanitized && typeof saveDemoState === 'function') saveDemoState();
+          }
+        }
       } catch (e) {
         demoState.history = [];
       }
@@ -25724,7 +25809,8 @@ window.addEventListener('resize', () => {
         margin: requiredMargin,
         sl: slVal,
         tp: tpVal,
-        openTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        openTime: new Date().toISOString(),
+        openedAt: new Date().toISOString()
       };
 
       demoState.positions.unshift(newPosition);
@@ -25787,7 +25873,8 @@ window.addEventListener('resize', () => {
         executedBy: pos.executedBy || (pos.isBot ? 'BOT' : 'MANUAL'),
         isBot: !!pos.isBot,
         openTime: pos.openTime,
-        closeTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        closeTime: new Date().toISOString(),
+        closedAt: new Date().toISOString()
       });
 
       saveDemoState();
