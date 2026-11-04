@@ -1,38 +1,123 @@
 """
 Trade Log & Session Tracker Module
 ==================================
-Har trade ko CSV mein persist karta hai with:
-date, time, session (Asia, London, New York, Overlap), direction,
-entry, sl, tp, exit, exit_reason, pnl_points, r_multiple.
+Persists completed paper trades to CSV with institutional telemetry matching demo_trades.csv:
+trade_id,date,time_pkt,session,direction,timeframe,entry_price,sl_price,tp_price,
+lot,exit_price,exit_time_pkt,exit_reason,pnl_usd,r_multiple,entry_reason,filters_passed,notes
 """
 
 import os
 import csv
-from dataclasses import dataclass, asdict
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 import pandas as pd
 
 
-@dataclass
 class CompletedTrade:
-    """Structure representing a completed paper trade record."""
-    trade_id: str
-    date: str           # YYYY-MM-DD
-    time: str           # HH:MM:SS
-    session: str        # 'Asia', 'London', 'New York', 'Overlap'
-    direction: str      # 'BUY' ya 'SELL'
-    entry: float        # Virtual fill price (after spread)
-    sl: float           # Stop Loss
-    tp: float           # Take Profit
-    exit: float         # Exit fill price
-    exit_reason: str    # 'TP', 'SL', 'MANUAL', 'KILL_SWITCH'
-    pnl_points: float   # Net gold price points (exit - entry for BUY)
-    r_multiple: float   # R-multiple realized (+2.0R for TP, -1.0R for SL)
-    exit_time: str = "" # Exit timestamp
+    """Structure representing a completed trade record (matching demo_trades.csv)."""
+
+    def __init__(
+        self,
+        trade_id: str,
+        date: str,
+        time_pkt: str = "",
+        session: str = "London",
+        direction: str = "BUY",
+        timeframe: str = "15m",
+        entry_price: float = 0.0,
+        sl_price: float = 0.0,
+        tp_price: float = 0.0,
+        lot: float = 0.01,
+        exit_price: float = 0.0,
+        exit_time_pkt: str = "",
+        exit_reason: str = "TP",
+        pnl_usd: float = 0.0,
+        r_multiple: float = 0.0,
+        entry_reason: str = "",
+        filters_passed: str = "",
+        notes: str = "",
+        **kwargs
+    ):
+        self.trade_id = str(trade_id)
+        self.date = str(date)
+        self.time_pkt = str(time_pkt or kwargs.get("time", ""))
+        self.session = str(session)
+        self.direction = str(direction)
+        self.timeframe = str(timeframe)
+        self.entry_price = float(entry_price or kwargs.get("entry", 0.0))
+        self.sl_price = float(sl_price or kwargs.get("sl", 0.0))
+        self.tp_price = float(tp_price or kwargs.get("tp", 0.0))
+        self.lot = float(lot)
+        self.exit_price = float(exit_price or kwargs.get("exit", 0.0))
+        self.exit_time_pkt = str(exit_time_pkt or kwargs.get("exit_time", ""))
+        self.exit_reason = str(exit_reason)
+        # If pnl_usd not explicitly given, fallback to pnl_points
+        self.pnl_usd = float(pnl_usd if pnl_usd != 0.0 else kwargs.get("pnl_points", 0.0))
+        self.r_multiple = float(r_multiple)
+        self.entry_reason = str(entry_reason)
+        self.filters_passed = str(filters_passed)
+        self.notes = str(notes)
+
+    # Backwards-compatibility properties
+    @property
+    def entry(self) -> float:
+        return self.entry_price
 
     @property
-    def exit_price(self) -> float:
-        return self.exit
+    def sl(self) -> float:
+        return self.sl_price
+
+    @property
+    def tp(self) -> float:
+        return self.tp_price
+
+    @property
+    def exit(self) -> float:
+        return self.exit_price
+
+    @property
+    def time(self) -> str:
+        return self.time_pkt
+
+    @property
+    def exit_time(self) -> str:
+        return self.exit_time_pkt
+
+    @property
+    def pnl_points(self) -> float:
+        # 1 lot on Gold = 100 oz. For 0.01 lot, 1 point = $1.00 USD
+        if self.lot > 0:
+            return round(self.pnl_usd / (self.lot * 100.0), 2)
+        return self.pnl_usd
+
+
+def to_pkt_time(val: Any) -> str:
+    """Convert timestamp/datetime to Pakistan Standard Time (PKT, UTC+5) formatted as HH:MM."""
+    if val is None or val == "":
+        return ""
+    try:
+        dt = pd.to_datetime(val)
+        if dt.tzinfo is None:
+            pkt = dt + pd.Timedelta(hours=5)
+        else:
+            pkt = dt.tz_convert("Asia/Karachi")
+        return pkt.strftime("%H:%M")
+    except Exception:
+        return str(val)[:5]
+
+
+def to_pkt_date(val: Any) -> str:
+    """Convert timestamp/datetime to PKT date formatted as YYYY-MM-DD."""
+    if val is None or val == "":
+        return ""
+    try:
+        dt = pd.to_datetime(val)
+        if dt.tzinfo is None:
+            pkt = dt + pd.Timedelta(hours=5)
+        else:
+            pkt = dt.tz_convert("Asia/Karachi")
+        return pkt.strftime("%Y-%m-%d")
+    except Exception:
+        return str(val)[:10]
 
 
 def determine_market_session(dt: pd.Timestamp) -> str:
@@ -92,12 +177,13 @@ def calculate_pnl_points(direction: str, entry: float, exit_price: Optional[floa
 
 
 class TradeLogger:
-    """Handles logging of completed virtual trades into CSV."""
+    """Handles logging of completed virtual trades into CSV matching demo_trades.csv."""
 
     CSV_HEADER = [
-        "trade_id", "date", "time", "session", "direction",
-        "entry", "sl", "tp", "exit", "exit_time",
-        "exit_reason", "pnl_points", "r_multiple"
+        "trade_id", "date", "time_pkt", "session", "direction",
+        "timeframe", "entry_price", "sl_price", "tp_price", "lot",
+        "exit_price", "exit_time_pkt", "exit_reason", "pnl_usd",
+        "r_multiple", "entry_reason", "filters_passed", "notes"
     ]
 
     def __init__(self, csv_filepath: str):
@@ -121,17 +207,22 @@ class TradeLogger:
         row = [
             trade.trade_id,
             trade.date,
-            trade.time,
+            trade.time_pkt,
             trade.session,
             trade.direction,
-            f"{trade.entry:.2f}",
-            f"{trade.sl:.2f}",
-            f"{trade.tp:.2f}",
-            f"{trade.exit:.2f}",
-            trade.exit_time,
+            trade.timeframe,
+            f"{trade.entry_price:.2f}",
+            f"{trade.sl_price:.2f}",
+            f"{trade.tp_price:.2f}",
+            f"{trade.lot:.2f}",
+            f"{trade.exit_price:.2f}",
+            trade.exit_time_pkt,
             trade.exit_reason,
-            f"{trade.pnl_points:.2f}",
-            f"{trade.r_multiple:.2f}"
+            f"{trade.pnl_usd:.2f}",
+            f"{trade.r_multiple:.2f}",
+            trade.entry_reason,
+            trade.filters_passed,
+            trade.notes
         ]
         with open(self.csv_filepath, 'a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
@@ -149,25 +240,43 @@ class TradeLogger:
             return pd.DataFrame(columns=self.CSV_HEADER)
 
     def load_trades(self) -> List[CompletedTrade]:
-        """Load all logged trades as a list of CompletedTrade dataclass instances."""
+        """Load all logged trades as a list of CompletedTrade instances."""
         df = self.read_all_trades()
         if df.empty:
             return []
         trades = []
         for _, row in df.iterrows():
+            time_pkt = str(row.get('time_pkt', row.get('time', '')))
+            entry_p = float(row.get('entry_price', row.get('entry', 0.0)))
+            sl_p = float(row.get('sl_price', row.get('sl', 0.0)))
+            tp_p = float(row.get('tp_price', row.get('tp', 0.0)))
+            exit_p = float(row.get('exit_price', row.get('exit', 0.0)))
+            exit_time_pkt = str(row.get('exit_time_pkt', row.get('exit_time', '')))
+            pnl_u = float(row.get('pnl_usd', row.get('pnl_points', 0.0)))
+            lot_v = float(row.get('lot', 0.01))
+            tf_v = str(row.get('timeframe', '15m'))
+            e_reason = str(row.get('entry_reason', '')) if pd.notna(row.get('entry_reason')) else ''
+            f_passed = str(row.get('filters_passed', '')) if pd.notna(row.get('filters_passed')) else ''
+            notes_v = str(row.get('notes', '')) if pd.notna(row.get('notes')) else ''
+
             trades.append(CompletedTrade(
                 trade_id=str(row['trade_id']),
                 date=str(row['date']),
-                time=str(row['time']),
+                time_pkt=time_pkt,
                 session=str(row['session']),
                 direction=str(row['direction']),
-                entry=float(row['entry']),
-                sl=float(row['sl']),
-                tp=float(row['tp']),
-                exit=float(row['exit']),
+                timeframe=tf_v,
+                entry_price=entry_p,
+                sl_price=sl_p,
+                tp_price=tp_p,
+                lot=lot_v,
+                exit_price=exit_p,
+                exit_time_pkt=exit_time_pkt,
                 exit_reason=str(row['exit_reason']),
-                pnl_points=float(row['pnl_points']),
+                pnl_usd=pnl_u,
                 r_multiple=float(row['r_multiple']),
-                exit_time=str(row.get('exit_time', ''))
+                entry_reason=e_reason,
+                filters_passed=f_passed,
+                notes=notes_v
             ))
         return trades

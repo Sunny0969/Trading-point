@@ -51,7 +51,7 @@ class PaperTradingConfig:
 
     # File Paths
     data_dir: str = "data"
-    trade_log_csv: str = os.path.join("data", "paper_trades.csv")
+    trade_log_csv: str = os.path.join("data", "demo_trades.csv")
     report_html: str = os.path.join("data", "performance_report.html")
     report_csv: str = os.path.join("data", "performance_summary.csv")
 

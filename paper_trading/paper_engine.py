@@ -25,7 +25,9 @@ from paper_trading.trade_log import (
     CompletedTrade,
     determine_market_session,
     calculate_r_multiple,
-    calculate_pnl_points
+    calculate_pnl_points,
+    to_pkt_time,
+    to_pkt_date
 )
 
 logger = logging.getLogger("PaperEngine.Execution")
@@ -41,6 +43,11 @@ class PendingSignal:
     raw_sl: float
     raw_tp: float
     atr: float
+    entry_reason: str = ""
+    filters_passed: str = ""
+    timeframe: str = "15m"
+    lot: float = 0.01
+    notes: str = ""
 
 
 @dataclass
@@ -55,6 +62,11 @@ class VirtualTrade:
     initial_risk_dist: float
     session: str
     status: str = "OPEN"    # 'OPEN', 'CLOSED'
+    entry_reason: str = ""
+    filters_passed: str = ""
+    timeframe: str = "15m"
+    lot: float = 0.01
+    notes: str = ""
 
 
 class PaperTradingEngine:
@@ -173,6 +185,12 @@ class PaperTradingEngine:
                 events["new_signal"] = sig_result
 
                 if sig_result.direction in ("BUY", "SELL"):
+                    # Build filters_passed string
+                    filters_list = ["HTF", "RSI"]
+                    if sig_result.fvg_found:
+                        filters_list.append("FVG")
+                    filters_str = ",".join(filters_list)
+
                     # Queue for next candle OPEN fill
                     self.pending_signal = PendingSignal(
                         signal_id=f"SIG-{c_time.strftime('%Y%m%d%H%M')}-{uuid.uuid4().hex[:4]}",
@@ -181,7 +199,12 @@ class PaperTradingEngine:
                         signal_close=sig_result.close_price,
                         raw_sl=sig_result.sl_price,
                         raw_tp=sig_result.tp_price,
-                        atr=sig_result.atr
+                        atr=sig_result.atr,
+                        entry_reason=sig_result.reason,
+                        filters_passed=filters_str,
+                        timeframe=self.config.signal_timeframe,
+                        lot=0.01,
+                        notes=""
                     )
                     logger.info(
                         f"[SIGNAL QUEUED] {sig_result.direction} at closed price ${sig_result.close_price:.2f}. "
@@ -227,7 +250,12 @@ class PaperTradingEngine:
             tp_price=tp_price,
             initial_risk_dist=initial_risk_dist,
             session=session,
-            status="OPEN"
+            status="OPEN",
+            entry_reason=pending.entry_reason,
+            filters_passed=pending.filters_passed,
+            timeframe=pending.timeframe,
+            lot=pending.lot,
+            notes=pending.notes
         )
 
         logger.info(
@@ -285,26 +313,33 @@ class PaperTradingEngine:
         exit_time: pd.Timestamp,
         reason: str
     ) -> CompletedTrade:
-        """Construct a finalized CompletedTrade object with R-multiple calculation."""
+        """Construct a finalized CompletedTrade object matching demo_trades.csv."""
         pnl_points = calculate_pnl_points(trade.direction, trade.entry_price, exit_price)
         r_mult = calculate_r_multiple(trade.direction, trade.entry_price, trade.sl_price, exit_price)
+        # Gold 1 lot = 100 oz; 0.01 lot * 100 = $1.00 USD per price point
+        pnl_usd = round(pnl_points * (trade.lot * 100.0), 2)
 
         trade.status = "CLOSED"
 
         return CompletedTrade(
             trade_id=trade.trade_id,
-            date=trade.entry_time.strftime("%Y-%m-%d"),
-            time=trade.entry_time.strftime("%H:%M:%S"),
+            date=to_pkt_date(trade.entry_time),
+            time_pkt=to_pkt_time(trade.entry_time),
             session=trade.session,
             direction=trade.direction,
-            entry=trade.entry_price,
-            sl=trade.sl_price,
-            tp=trade.tp_price,
-            exit=round(exit_price, 2),
-            exit_time=exit_time.strftime("%Y-%m-%d %H:%M:%S"),
+            timeframe=trade.timeframe,
+            entry_price=round(trade.entry_price, 2),
+            sl_price=round(trade.sl_price, 2),
+            tp_price=round(trade.tp_price, 2),
+            lot=trade.lot,
+            exit_price=round(exit_price, 2),
+            exit_time_pkt=to_pkt_time(exit_time),
             exit_reason=reason,
-            pnl_points=pnl_points,
-            r_multiple=r_mult
+            pnl_usd=pnl_usd,
+            r_multiple=r_mult,
+            entry_reason=trade.entry_reason,
+            filters_passed=trade.filters_passed,
+            notes=trade.notes
         )
 
     def _force_close_active_trade(
