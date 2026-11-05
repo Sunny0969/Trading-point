@@ -35,11 +35,11 @@ SUPABASE_KEY = os.environ.get("SUPABASE_ANON_KEY", "sb_publishable_r39tpba3IS43B
 DB_USER = os.environ.get("SUPABASE_DB_USER", "postgres.tcwboskfypcrsrniatni")
 DB_PASSWORD = os.environ.get("SUPABASE_DB_PASSWORD", "GuEyWSzHSDmLDn9u")
 DB_HOST = os.environ.get("SUPABASE_DB_HOST", "aws-0-ap-northeast-1.pooler.supabase.com")
-DB_PORT = int(os.environ.get("SUPABASE_DB_PORT", "5432"))
+DB_PORT = int(os.environ.get("SUPABASE_DB_PORT", "6543"))
 DB_NAME = os.environ.get("SUPABASE_DB_NAME", "postgres")
 
 # User directive: "bot pa koshish karwian as much reward ho mle rish minimal ya 0 ho please reward phir bhlt 1 dollar ka ho ya 20 dollar ka ho no isue but reward mile rish boht kam mile pelase"
-AUTONOMOUS_BOT_ENABLED = False  # Master Safety Lock: ALL demo and live order dispatch HALTED
+AUTONOMOUS_BOT_ENABLED = True   # Fresh $100 Auto Bot Engine ACTIVE: Micro-Scalp Execution
 MAX_SL_DISTANCE = 1.10   # Minimal initial risk distance (max ~$1.10 - $2.20 per trade)
 SCALP_TP_DISTANCE = 2.20 # Quick scalp target, dynamic ratchet trails up to $20.00
 BE_LOCK_DISTANCE = 0.50  # Once price moves +$0.50, instantly lock 0-Loss Break-Even (0 Risk!)
@@ -55,7 +55,7 @@ _last_telemetry = {
     "closed_harvests": 0,
     "be_locked_count": 0,
     "total_harvested_profit_usd": 0.0,
-    "last_log": "Engine initialized"
+    "last_log": "Fresh 100 USD Bot Initialized"
 }
 
 def _get_rest_headers():
@@ -233,9 +233,14 @@ def _process_via_pg(conn, user_id, source, direction, entry, sl, tp, signal_hash
         _update_signal_status_pg(conn, user_id, signal_hash, 'CANCELLED')
         return {"status": "SKIPPED", "reason": "Invalid SL distance"}
 
-    raw_lot = max_allowed_risk_usd / (sl_distance * 100.0)
-    final_lot = math.floor(raw_lot * 100.0 + 1e-9) / 100.0
-    final_lot = max(0.01, min(final_lot, 0.02))
+    # Strict Micro-Lot sizing for $100 Account
+    if wallet_balance <= 500.0:
+        final_lot = 0.01
+        max_trades = 1
+    else:
+        raw_lot = max_allowed_risk_usd / (sl_distance * 100.0)
+        final_lot = math.floor(raw_lot * 100.0 + 1e-9) / 100.0
+        final_lot = max(0.01, min(final_lot, 0.02))
 
     actual_risk_usd = final_lot * sl_distance * 100.0
     order_uuid = str(uuid.uuid4())
@@ -422,11 +427,17 @@ def autonomous_market_scanner(conn, live_spot: dict):
             continue
 
         w_rows = conn.run("SELECT balance FROM public.wallets WHERE user_id = :uid", uid=uid)
-        balance = float(w_rows[0][0]) if w_rows else 1000.0
+        balance = float(w_rows[0][0]) if w_rows else 100.0
+
+        # Calibrate for $100 capital: strict 1 trade limit and 0.01 micro-lot
+        if balance <= 500.0:
+            max_trades = 1
+            lots = 0.01
+        else:
+            lots = 0.02 if balance >= 1000.0 else 0.01
 
         direction = "BUY" if (curr_p >= open_p or signal >= 0) else "SELL"
         sl, tp = apply_micro_scalp_levels(direction, curr_p, 0, 0)
-        lots = 0.02 if balance >= 1000.0 else 0.01
 
         order_uuid = str(uuid.uuid4())
         sig_hash = hashlib.sha256(f"AUTONOMOUS_SERVER|{direction}|{curr_p:.2f}|{int(time.time() // 60)}".encode()).hexdigest()

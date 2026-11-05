@@ -804,6 +804,36 @@
     }
     window.depositDemoFunds = depositDemoFunds;
 
+    async function resetDemoWalletTo100() {
+      demoState.balance = 100.00;
+      demoState.positions = [];
+      try {
+        localStorage.setItem('demo_wallet_balance', '100.00');
+        localStorage.setItem('demo_positions', '[]');
+        localStorage.setItem('demo_wallet_fresh_100_v1', 'true');
+      } catch (e) {}
+
+      // If user is authenticated, sync with Supabase cloud
+      if (currentAuthUser && supabaseClient) {
+        try {
+          await supabaseClient.from('profiles').update({ demo_balance: 100.00 }).eq('id', currentAuthUser.id);
+          await supabaseClient.from('wallets').update({ balance: 100.00 }).eq('user_id', currentAuthUser.id);
+          await supabaseClient.from('orders').update({ status: 'CLOSED', close_reason: 'MANUAL_RESET' }).eq('user_id', currentAuthUser.id).eq('status', 'OPEN');
+        } catch (dbErr) {
+          console.warn('[RESET] Cloud sync warning:', dbErr);
+        }
+      }
+
+      if (typeof saveDemoState === 'function') saveDemoState();
+      if (typeof renderDemoPositionsList === 'function') renderDemoPositionsList();
+      if (typeof renderDemoWalletUI === 'function') renderDemoWalletUI();
+      if (typeof renderWalletPortalData === 'function') renderWalletPortalData();
+      if (typeof showSignalToast === 'function') {
+        showSignalToast('🔄 Demo Wallet & Bot Reset to $100.00 USD Fresh Capital!');
+      }
+    }
+    window.resetDemoWalletTo100 = resetDemoWalletTo100;
+
     function submitCustomDemoDeposit() {
       const input = document.getElementById('walletCustomDepositInput');
       if (!input) return;
@@ -6763,6 +6793,9 @@
             <span style="color: #8b949e;">XAU/USD Spot:</span>
             <strong id="walletLiveSpotDisplay" style="color: #ffd700; font-family: monospace; font-size: 13px; margin-left: 6px;">$3,875.64</strong>
           </div>
+          <button type="button" onclick="resetDemoWalletTo100()" style="background: rgba(56,189,248,0.15); border: 1px solid #38bdf8; color: #38bdf8; font-weight: 800; font-size: 12px; padding: 8px 14px; border-radius: 7px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);">
+            <span>🔄 Fresh Bot $100</span>
+          </button>
           <button type="button" onclick="switchPortalView('trade')" style="background: linear-gradient(135deg, #ffd700, #ffaa00); color: #0d1117; border: none; font-weight: 800; font-size: 12px; padding: 9px 16px; border-radius: 7px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);">
             <span>📈 Open Terminal</span>
           </button>
@@ -6784,6 +6817,7 @@
             <button type="button" onclick="depositDemoFunds(500)" style="background: #161b22; border: 1px solid #30363d; color: #3fb950; font-weight: 700; font-size: 10px; padding: 4px 8px; border-radius: 4px; cursor: pointer;">+ $500</button>
             <button type="button" onclick="depositDemoFunds(1000)" style="background: #161b22; border: 1px solid #30363d; color: #3fb950; font-weight: 700; font-size: 10px; padding: 4px 8px; border-radius: 4px; cursor: pointer;">+ $1k</button>
             <button type="button" onclick="depositDemoFunds(5000)" style="background: #161b22; border: 1px solid #30363d; color: #ffd700; font-weight: 700; font-size: 10px; padding: 4px 8px; border-radius: 4px; cursor: pointer;">+ $5k</button>
+            <button type="button" onclick="resetDemoWalletTo100()" title="Reset account to fresh $100 USD capital for bot" style="background: rgba(56,189,248,0.15); border: 1px solid #38bdf8; color: #38bdf8; font-weight: 800; font-size: 10px; padding: 4px 8px; border-radius: 4px; cursor: pointer;">🔄 Reset $100</button>
           </div>
         </div>
 
@@ -6892,7 +6926,8 @@
           </div>
           <p style="font-size: 12px; color: #8b949e; margin-bottom: 14px;">Inject virtual demo funds into your account to test higher-tier lot sizes and margin scaling.</p>
 
-          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px;">
+          <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px;">
+            <button type="button" onclick="resetDemoWalletTo100()" title="Reset account to fresh $100 USD capital for bot" style="background: rgba(56,189,248,0.15); border: 1px solid #38bdf8; color: #38bdf8; font-weight: 800; font-size: 11px; padding: 8px 4px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">🔄 $100</button>
             <button type="button" onclick="depositDemoFunds(1000)" style="background: #161b22; border: 1px solid #30363d; color: #f0f6fc; font-weight: 700; font-size: 11px; padding: 8px 4px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">+$1,000</button>
             <button type="button" onclick="depositDemoFunds(2500)" style="background: #161b22; border: 1px solid #30363d; color: #f0f6fc; font-weight: 700; font-size: 11px; padding: 8px 4px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">+$2,500</button>
             <button type="button" onclick="depositDemoFunds(5000)" style="background: #161b22; border: 1px solid #30363d; color: #ffd700; font-weight: 700; font-size: 11px; padding: 8px 4px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">+$5,000</button>
@@ -25269,7 +25304,7 @@ window.addEventListener('resize', () => {
       HISTORY: 'demo_history'
     };
 
-    const DEFAULT_DEMO_BALANCE = 1000.00;
+    const DEFAULT_DEMO_BALANCE = 100.00; // Fresh 100 USD account start
     const CONTRACT_SIZE = 100; // 1 Lot = 100 Troy Ounces
     const LEVERAGE = 100; // 1:100 Standard Institutional Demo Leverage
 
@@ -25611,6 +25646,18 @@ window.addEventListener('resize', () => {
       const savedBalance = localStorage.getItem(DEMO_STORAGE_KEYS.BALANCE);
       demoState.balance = savedBalance !== null ? parseFloat(savedBalance) : DEFAULT_DEMO_BALANCE;
       if (isNaN(demoState.balance) || demoState.balance < 0) demoState.balance = DEFAULT_DEMO_BALANCE;
+
+      // Fresh $100 USD Bot Capital Migration
+      const fresh100Migrated = localStorage.getItem('demo_wallet_fresh_100_v1');
+      if (!fresh100Migrated || demoState.balance === 5261.93 || demoState.balance === 1000.0) {
+        demoState.balance = 100.00;
+        demoState.positions = [];
+        try {
+          localStorage.setItem('demo_wallet_fresh_100_v1', 'true');
+          localStorage.setItem(DEMO_STORAGE_KEYS.BALANCE, '100.00');
+          localStorage.setItem(DEMO_STORAGE_KEYS.POSITIONS, '[]');
+        } catch (e) {}
+      }
 
       try {
         const savedPos = localStorage.getItem(DEMO_STORAGE_KEYS.POSITIONS);
