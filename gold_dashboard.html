@@ -601,10 +601,14 @@
         const badgeBg = isBuy ? 'rgba(63, 185, 80, 0.15)' : 'rgba(239, 83, 80, 0.15)';
         const badgeBorder = isBuy ? 'rgba(63, 185, 80, 0.4)' : 'rgba(239, 83, 80, 0.4)';
         const badgeColor = isBuy ? '#3fb950' : '#ef5350';
+        const openDt = formatLedgerDateTime(pos.opened_at || pos.openTime || pos.timestamp);
 
         html += `
           <tr style="border-bottom: 1px solid #21262d; transition: background 0.15s ease;">
-            <td style="padding: 12px 14px; font-family: monospace; font-size: 12px; color: #8b949e;">#${pos.id ? pos.id.slice(-6) : 'ORD'}</td>
+            <td style="padding: 12px 14px; font-family: monospace; font-size: 12px; color: #8b949e;">
+              <div style="color: #f0f6fc; font-weight: 700;">#${pos.id ? pos.id.slice(-6) : 'ORD'}</div>
+              <div style="font-size: 10.5px; color: #ffd700; margin-top: 2px; white-space: nowrap;">📅 ${openDt.date} <span style="color: #8b949e;">${openDt.time}</span></div>
+            </td>
             <td style="padding: 12px 14px;">
               <span style="background: ${badgeBg}; border: 1px solid ${badgeBorder}; color: ${badgeColor}; font-weight: 800; font-size: 10.5px; padding: 3px 8px; border-radius: 4px;">
                 ${pos.type} ${pos.lots}L
@@ -722,15 +726,28 @@
           ? `<span style="background: rgba(63, 185, 80, 0.12); border: 1px solid rgba(63, 185, 80, 0.3); color: #3fb950; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">TRADE PROFIT</span>`
           : `<span style="background: rgba(239, 83, 80, 0.12); border: 1px solid rgba(239, 83, 80, 0.3); color: #ef5350; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 4px;">TRADE LOSS</span>`;
         
-        const rawTime = item.closedAt || item.closed_at || item.closeTime || item.timestamp || item.opened_at || item.openTime;
-        const dt = formatLedgerDateTime(rawTime, idx);
+        const closeRaw = item.closedAt || item.closed_at || item.closeTime || item.timestamp;
+        const openRaw = item.opened_at || item.openTime;
+        const closeDt = formatLedgerDateTime(closeRaw || openRaw, idx);
+        const openDt = openRaw ? formatLedgerDateTime(openRaw, idx) : null;
         const refId = item.id ? '#' + item.id.slice(-6) : `TXN-${idx+1}`;
 
         html += `
           <tr style="border-bottom: 1px solid #21262d;">
             <td style="padding: 10px 14px; font-family: monospace; font-size: 11.5px; white-space: nowrap;">
-              <span style="color: #f0f6fc; font-weight: 700;">${dt.date}</span>
-              <span style="color: #8b949e; font-size: 11px; margin-left: 6px;">${dt.time}</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="color: #f0f6fc; font-weight: 700;">${closeDt.date}</span>
+                <span style="color: #ffd700; font-size: 11px; font-weight: 600;">${closeDt.time}</span>
+              </div>
+              ${(openDt && openDt.time !== closeDt.time) ? `
+                <div style="font-size: 10px; color: #8b949e; margin-top: 2px;">
+                  Open: <span style="color: #c9d1d9;">${openDt.date === closeDt.date ? openDt.time : openDt.full}</span>
+                </div>
+              ` : `
+                <div style="font-size: 10px; color: #8b949e; margin-top: 2px;">
+                  Settled: <span style="color: #c9d1d9;">${closeDt.time}</span>
+                </div>
+              `}
             </td>
             <td style="padding: 10px 14px;">${typeBadge}</td>
             <td style="padding: 10px 14px; font-family: monospace; font-size: 12px; color: #8b949e;">${refId}</td>
@@ -870,13 +887,17 @@
           closedBody.innerHTML = '<tr><td colspan="6" style="padding: 24px; text-align: center; color: #8b949e;">No closed trades yet. Place and close demo orders to build ledger.</td></tr>';
         } else {
           let rows = '';
-          history.slice(0, 15).forEach(h => {
+          history.slice(0, 15).forEach((h, hIdx) => {
             const isWin = h.pnl >= 0;
             const sign = isWin ? '+' : '';
             const color = isWin ? '#3fb950' : '#ef5350';
+            const hDt = formatLedgerDateTime(h.closedAt || h.closed_at || h.closeTime || h.opened_at || h.openTime, hIdx);
             rows += `
               <tr style="border-bottom: 1px solid #21262d;">
-                <td style="padding: 10px 14px; font-family: monospace; color: #8b949e;">#${h.id ? h.id.slice(-6) : 'TRD'}</td>
+                <td style="padding: 10px 14px; font-family: monospace; color: #8b949e; font-size: 11px; white-space: nowrap;">
+                  <div style="font-weight: 700; color: #c9d1d9;">#${h.id ? h.id.slice(-6) : 'TRD'}</div>
+                  <div style="font-size: 9.5px; color: #ffd700; margin-top: 1px;">📅 ${hDt.date} <span style="color: #8b949e;">${hDt.time}</span></div>
+                </td>
                 <td style="padding: 10px 14px; font-weight: 700; color: ${h.type === 'BUY' ? '#3fb950' : '#ef5350'};">${h.type} ${h.lots}L</td>
                 <td style="padding: 10px 14px; font-family: monospace; color: #c9d1d9;">$${h.openPrice ? h.openPrice.toFixed(2) : '-'}</td>
                 <td style="padding: 10px 14px; font-family: monospace; color: #ffd700;">$${h.closePrice ? h.closePrice.toFixed(2) : '-'}</td>
@@ -25049,12 +25070,14 @@ window.addEventListener('resize', () => {
             type: o.type,
             lots: parseFloat(o.lots),
             entryPrice: parseFloat(o.entry_price),
+            openPrice: parseFloat(o.entry_price),
             margin: parseFloat(o.margin || 0),
             sl: o.sl ? parseFloat(o.sl) : null,
             tp: o.tp ? parseFloat(o.tp) : null,
             executedBy: o.executed_by || 'MANUAL',
             isBot: o.executed_by === 'BOT',
-            openTime: new Date(o.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            opened_at: o.opened_at || o.created_at || new Date().toISOString(),
+            openTime: o.opened_at || o.created_at || new Date().toISOString()
           }));
         }
       } catch (err) {
@@ -25076,13 +25099,17 @@ window.addEventListener('resize', () => {
             type: o.type,
             lots: parseFloat(o.lots),
             entryPrice: parseFloat(o.entry_price),
+            openPrice: parseFloat(o.entry_price),
             closePrice: parseFloat(o.close_price || o.entry_price),
             pnl: parseFloat(o.realized_pnl || 0),
             reason: o.close_reason || 'CLOSED',
             executedBy: o.executed_by || 'MANUAL',
             isBot: o.executed_by === 'BOT',
-            openTime: new Date(o.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-            closeTime: o.closed_at ? new Date(o.closed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''
+            opened_at: o.opened_at || o.created_at || null,
+            closed_at: o.closed_at || null,
+            openTime: o.opened_at || o.created_at || (o.closed_at ? o.closed_at : new Date().toISOString()),
+            closeTime: o.closed_at || o.opened_at || new Date().toISOString(),
+            closedAt: o.closed_at || o.opened_at || new Date().toISOString()
           }));
         }
       } catch (histErr) {
@@ -25208,6 +25235,13 @@ window.addEventListener('resize', () => {
                 rep.setMinutes(rep.getMinutes() - (hIdx * 2));
                 h.closeTime = rep.toISOString();
                 h.closedAt = h.closeTime;
+                sanitized = true;
+              }
+              if (!h.openTime || h.openTime === 'Invalid Date' || String(h.openTime).toLowerCase().includes('invalid')) {
+                const repOpen = new Date(h.closeTime || new Date());
+                repOpen.setMinutes(repOpen.getMinutes() - 5);
+                h.openTime = repOpen.toISOString();
+                h.opened_at = h.openTime;
                 sanitized = true;
               }
             });
@@ -25942,13 +25976,17 @@ window.addEventListener('resize', () => {
         const targetBadges = (p.tp || p.sl || beBadge || trailBadge) ? `<div style="font-size: 9px; color: #8b949e; display: flex; align-items: center; gap: 4px; margin-top: 2px;">${p.sl ? 'SL: $'+p.sl.toFixed(1) : ''} ${p.tp ? 'TP: $'+p.tp.toFixed(1) : ''} ${beBadge} ${trailBadge}</div>` : '';
         const entryPrice = parseFloat(p.entryPrice != null ? p.entryPrice : (p.openPrice != null ? p.openPrice : 0));
         const lots = parseFloat(p.lots || 0.01);
+        const openDt = formatLedgerDateTime(p.opened_at || p.openTime || p.timestamp);
         return `
           <div class="demo-pos-item" id="pos_row_${p.id}">
             <div>
-              <div style="display: flex; align-items: center; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                 <span class="demo-pos-badge ${p.type.toLowerCase()}">${p.type}</span>
                 <span style="font-weight: 700; color: #f0f6fc;">${lots.toFixed(2)}L</span>
                 <span style="color: #8b949e;">@ $${entryPrice.toFixed(2)}</span>
+                <span style="font-size: 9.5px; color: #ffd700; font-family: monospace; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1);">
+                  📅 ${openDt.date} <span style="color: #f0f6fc;">${openDt.time}</span>
+                </span>
                 ${(p.executedBy === 'BOT' || p.isBot) ? '<span style="background: rgba(38,166,154,0.18); color: #26a69a; border: 1px solid rgba(38,166,154,0.4); font-size: 8.5px; padding: 1px 4px; border-radius: 3px; font-weight: 800;">🤖 BOT SCALP</span>' : ''}
               </div>
               ${targetBadges}
