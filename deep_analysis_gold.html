@@ -717,9 +717,29 @@
         return;
       }
 
+      // -------------------------------------------------------------
+      // Accurate Dynamic Running Balance Calculation
+      // -------------------------------------------------------------
+      // history is ordered newest-first (index 0 is latest closed order).
+      // demoState.balance is the final current balance after history[0].
+      // For each preceding row i, runningBalance is calculated by subtracting subsequent PnLs:
+      const runningBalances = [];
+      let rollingBal = parseFloat(demoState.balance != null ? demoState.balance : 1000.00);
+
+      for (let i = 0; i < history.length; i++) {
+        if (i === 0) {
+          runningBalances.push(rollingBal);
+        } else {
+          const newerPnL = parseFloat(history[i - 1].pnl != null ? history[i - 1].pnl : (history[i - 1].realized_pnl || 0));
+          rollingBal = Math.round((rollingBal - newerPnL) * 100) / 100;
+          runningBalances.push(rollingBal);
+        }
+      }
+
       let html = '';
-      history.slice(0, 20).forEach((item, idx) => {
-        const isWin = item.pnl >= 0;
+      history.slice(0, 30).forEach((item, idx) => {
+        const pnlVal = parseFloat(item.pnl != null ? item.pnl : (item.realized_pnl || 0));
+        const isWin = pnlVal >= 0;
         const sign = isWin ? '+' : '';
         const color = isWin ? '#3fb950' : '#ef5350';
         const typeBadge = isWin 
@@ -731,6 +751,12 @@
         const closeDt = formatLedgerDateTime(closeRaw || openRaw, idx);
         const openDt = openRaw ? formatLedgerDateTime(openRaw, idx) : null;
         const refId = item.id ? '#' + item.id.slice(-6) : `TXN-${idx+1}`;
+
+        const rowRunningBal = runningBalances[idx] != null ? runningBalances[idx] : demoState.balance;
+        const pnlSign = pnlVal > 0 ? '+' : (pnlVal < 0 ? '-' : '');
+        const deltaBadge = pnlVal !== 0 
+          ? `<span style="font-size: 10px; color: ${color}; margin-left: 5px; font-weight: 600;">${pnlVal > 0 ? '▲' : '▼'} ${pnlSign}$${Math.abs(pnlVal).toFixed(2)}</span>`
+          : '';
 
         html += `
           <tr style="border-bottom: 1px solid #21262d;">
@@ -751,8 +777,11 @@
             </td>
             <td style="padding: 10px 14px;">${typeBadge}</td>
             <td style="padding: 10px 14px; font-family: monospace; font-size: 12px; color: #8b949e;">${refId}</td>
-            <td style="padding: 10px 14px; font-family: monospace; font-weight: 800; color: ${color};">${sign}$${item.pnl.toFixed(2)}</td>
-            <td style="padding: 10px 14px; font-family: monospace; font-weight: 700; color: #ffd700;">$${demoState.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td style="padding: 10px 14px; font-family: monospace; font-weight: 800; color: ${color};">${sign}$${pnlVal.toFixed(2)}</td>
+            <td style="padding: 10px 14px; font-family: monospace; font-size: 12px; white-space: nowrap;">
+              <span style="font-weight: 800; color: #ffd700;">$${rowRunningBal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              ${deltaBadge}
+            </td>
             <td style="padding: 10px 14px; text-align: right;"><span style="color: #3fb950; font-weight: 700; font-size: 11px;">SETTLED</span></td>
           </tr>
         `;
@@ -25041,84 +25070,104 @@ window.addEventListener('resize', () => {
       if (lockedOverlay) lockedOverlay.style.display = 'none';
       if (guestNotice) guestNotice.style.display = 'none';
 
-      // 1. Fetch or create Profile in Supabase
-      try {
-        const { data: profile, error } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
-        if (profile) {
-          demoState.balance = parseFloat(profile.demo_balance);
-        } else {
-          // Fallback create if trigger had delay
-          await supabaseClient.from('profiles').upsert({ id: user.id, email: user.email, demo_balance: 1000.00 });
-          demoState.balance = 1000.00;
+      // Reusable Real-Time Cloud Sync Function
+      async function syncDemoStateWithCloud(isPeriodic = false) {
+        if (!currentAuthUser || !supabaseClient) return;
+        try {
+          // 1. Fetch updated balance from profiles
+          const { data: profile } = await supabaseClient.from('profiles').select('demo_balance').eq('id', currentAuthUser.id).single();
+          let balanceChanged = false;
+          if (profile && profile.demo_balance != null) {
+            const newBal = parseFloat(profile.demo_balance);
+            if (Math.abs(demoState.balance - newBal) > 0.001) {
+              demoState.balance = newBal;
+              balanceChanged = true;
+            }
+          }
+
+          // 2. Fetch active open positions
+          const { data: dbOrders } = await supabaseClient.from('orders')
+            .select('*')
+            .eq('user_id', currentAuthUser.id)
+            .eq('status', 'OPEN')
+            .order('opened_at', { ascending: false });
+
+          if (dbOrders) {
+            demoState.positions = dbOrders.map(o => ({
+              id: o.id,
+              dbId: o.id,
+              type: o.type,
+              lots: parseFloat(o.lots),
+              entryPrice: parseFloat(o.entry_price),
+              openPrice: parseFloat(o.entry_price),
+              margin: parseFloat(o.margin || 0),
+              sl: o.sl ? parseFloat(o.sl) : null,
+              tp: o.tp ? parseFloat(o.tp) : null,
+              executedBy: o.executed_by || 'MANUAL',
+              isBot: o.executed_by === 'BOT',
+              opened_at: o.opened_at || o.created_at || new Date().toISOString(),
+              openTime: o.opened_at || o.created_at || new Date().toISOString()
+            }));
+          }
+
+          // 3. Fetch closed orders history
+          const { data: dbClosedOrders } = await supabaseClient.from('orders')
+            .select('*')
+            .eq('user_id', currentAuthUser.id)
+            .eq('status', 'CLOSED')
+            .order('closed_at', { ascending: false })
+            .limit(100);
+
+          let historyChanged = false;
+          if (dbClosedOrders && dbClosedOrders.length > 0) {
+            const currentHistCount = demoState.history ? demoState.history.length : 0;
+            if (currentHistCount !== dbClosedOrders.length || balanceChanged) {
+              historyChanged = true;
+            }
+            demoState.history = dbClosedOrders.map(o => ({
+              id: o.id,
+              type: o.type,
+              lots: parseFloat(o.lots),
+              entryPrice: parseFloat(o.entry_price),
+              openPrice: parseFloat(o.entry_price),
+              closePrice: parseFloat(o.close_price || o.entry_price),
+              pnl: parseFloat(o.realized_pnl || 0),
+              reason: o.close_reason || 'CLOSED',
+              executedBy: o.executed_by || 'MANUAL',
+              isBot: o.executed_by === 'BOT',
+              opened_at: o.opened_at || o.created_at || null,
+              closed_at: o.closed_at || null,
+              openTime: o.opened_at || o.created_at || (o.closed_at ? o.closed_at : new Date().toISOString()),
+              closeTime: o.closed_at || o.opened_at || new Date().toISOString(),
+              closedAt: o.closed_at || o.opened_at || new Date().toISOString()
+            }));
+          }
+
+          if (balanceChanged || historyChanged || !isPeriodic) {
+            saveDemoState();
+            const spot = typeof currentLiveSpot !== 'undefined' ? currentLiveSpot : 4007.05;
+            renderDemoWalletUI(spot);
+            renderDemoPositionsList();
+            renderWalletPortalData(spot);
+            renderDashboardPortalData(spot);
+            renderWalletTransactionsLedger();
+          }
+        } catch (err) {
+          if (!isPeriodic) console.warn('[SUPABASE] Cloud sync error:', err);
         }
-      } catch (err) {
-        console.warn('Profile fetch error:', err);
       }
+      window.syncDemoStateWithCloud = syncDemoStateWithCloud;
 
-      // 2. Fetch Open Orders from Supabase
-      try {
-        const { data: dbOrders, error: orderErr } = await supabaseClient.from('orders')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('status', 'OPEN')
-          .order('opened_at', { ascending: false });
+      // Initial Full Sync
+      await syncDemoStateWithCloud(false);
 
-        if (dbOrders) {
-          demoState.positions = dbOrders.map(o => ({
-            id: o.id,
-            dbId: o.id,
-            type: o.type,
-            lots: parseFloat(o.lots),
-            entryPrice: parseFloat(o.entry_price),
-            openPrice: parseFloat(o.entry_price),
-            margin: parseFloat(o.margin || 0),
-            sl: o.sl ? parseFloat(o.sl) : null,
-            tp: o.tp ? parseFloat(o.tp) : null,
-            executedBy: o.executed_by || 'MANUAL',
-            isBot: o.executed_by === 'BOT',
-            opened_at: o.opened_at || o.created_at || new Date().toISOString(),
-            openTime: o.opened_at || o.created_at || new Date().toISOString()
-          }));
+      // Start background cloud sync loop every 4 seconds
+      if (window._cloudSyncInterval) clearInterval(window._cloudSyncInterval);
+      window._cloudSyncInterval = setInterval(async () => {
+        if (typeof currentAuthUser !== 'undefined' && currentAuthUser && typeof supabaseClient !== 'undefined' && supabaseClient) {
+          await syncDemoStateWithCloud(true);
         }
-      } catch (err) {
-        console.warn('Orders fetch error:', err);
-      }
-
-      // 3. Fetch Closed Orders History from Supabase
-      try {
-        const { data: dbClosedOrders } = await supabaseClient.from('orders')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('status', 'CLOSED')
-          .order('closed_at', { ascending: false })
-          .limit(100);
-
-        if (dbClosedOrders && dbClosedOrders.length > 0) {
-          demoState.history = dbClosedOrders.map(o => ({
-            id: o.id,
-            type: o.type,
-            lots: parseFloat(o.lots),
-            entryPrice: parseFloat(o.entry_price),
-            openPrice: parseFloat(o.entry_price),
-            closePrice: parseFloat(o.close_price || o.entry_price),
-            pnl: parseFloat(o.realized_pnl || 0),
-            reason: o.close_reason || 'CLOSED',
-            executedBy: o.executed_by || 'MANUAL',
-            isBot: o.executed_by === 'BOT',
-            opened_at: o.opened_at || o.created_at || null,
-            closed_at: o.closed_at || null,
-            openTime: o.opened_at || o.created_at || (o.closed_at ? o.closed_at : new Date().toISOString()),
-            closeTime: o.closed_at || o.opened_at || new Date().toISOString(),
-            closedAt: o.closed_at || o.opened_at || new Date().toISOString()
-          }));
-        }
-      } catch (histErr) {
-        console.warn('Orders history fetch error:', histErr);
-      }
-
-      saveDemoState();
-      renderDemoWalletUI();
-      renderDemoPositionsList();
+      }, 4000);
 
       // Check offline target triggers
       const currentPrice = typeof currentLiveSpot !== 'undefined' ? currentLiveSpot : 4007.05;
