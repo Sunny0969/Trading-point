@@ -8384,7 +8384,37 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
               </label>
             </div>
 
-            <!-- Indicator: 15M High-Wick Candle Range Sweep & Retest Engine -->
+            <!-- Indicator: Conditional Structure & Multi-Scenario Levels Engine -->
+            <div class="tv-ind-row" onclick="clickModularToggle('condStructure', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #38bdf8;">⚡ Conditional Structure &amp; Multi-Scenario Levels Engine</b>
+                  <span style="font-size: 9px; background: rgba(56,189,248,0.18); color: #38bdf8; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 30%</span>
+                </div>
+                <small>Dynamic Swing High/Low, Bullish breakout, Bearish breakdown &amp; Invalidation zone with clean RR</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-condStructure" checked onchange="toggleModularIndicator('condStructure')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- Indicator: Conditional Structure & Multi-Scenario Levels Engine -->
+        <div class="indicator-row" onclick="clickModularToggle('condStructure', event)">
+          <div class="indicator-info">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #38bdf8;">⚡ Conditional Structure &amp; Multi-Scenario Levels Engine</b>
+              <span style="font-size: 9px; background: rgba(56,189,248,0.18); color: #38bdf8; padding: 1px 4px; border-radius: 4px; font-weight: 700;">WT: 30%</span>
+            </div>
+            <small>Dynamic Swing High/Low, Bullish breakout, Bearish breakdown &amp; Invalidation zone with clean RR</small>
+          </div>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="modal-toggle-condStructure" checked onchange="toggleModularIndicator('condStructure')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Indicator: 15M High-Wick Candle Range Sweep & Retest Engine -->
             <div class="tv-ind-row" onclick="clickModularToggle('wickRangeSweep', event)">
               <div class="tv-ind-info">
                 <div style="display: flex; align-items: center; gap: 6px;">
@@ -10536,6 +10566,12 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         } catch (e) { return false; }
       })(), // Dedicated: SMC Liquidity Sweep & Projection Engine (LS-EXP) - Weight: 30
       smcZones: true,        // Module 1: SMC Zones (FVG & Order Blocks) - Weight: 25
+      condStructure: (function() {
+        try {
+          const v = localStorage.getItem('indicator_cond_structure_active');
+          return v !== null ? (v === 'true') : true;
+        } catch (e) { return true; }
+      })(), // Dedicated: Conditional Structure & Multi-Scenario Levels Engine - Weight: 30
       wickRangeSweep: (function() {
         try {
           const v = localStorage.getItem('indicator_wick_range_sweep_active');
@@ -10573,6 +10609,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       amdFvg: 30,
       lsExp: 30,
       smcZones: 25,
+      condStructure: 30,
       wickRangeSweep: 30,
       smcInducementSupply: 25,
       smcPullbackSniper: 25,
@@ -10622,6 +10659,15 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     let currentSMCZones = { fvgList: [], obList: [] };
     var currentLiquidityPools = null;
     var smcEnabled = !!indicatorSettings.smcZones;
+    var condStructureEnabled = (() => {
+      try {
+        const v = localStorage.getItem('indicator_cond_structure_active');
+        return v !== null ? (v === 'true') : true;
+      } catch (e) { return true; }
+    })();
+    window.condStructureEnabled = condStructureEnabled;
+    window.latestCondStructure = null;
+    window.activeCondStructurePosition = null;
     var wickRangeSweepEnabled = (() => {
       try {
         const v = localStorage.getItem('indicator_wick_range_sweep_active');
@@ -11037,6 +11083,11 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           localStorage.setItem('indicator_smc_rev_active', newVal ? 'true' : 'false');
           window.smcRevEnabled = newVal;
         } catch (e) {}
+      } else if (moduleName === 'condStructure') {
+        try {
+          localStorage.setItem('indicator_cond_structure_active', newVal ? 'true' : 'false');
+          window.condStructureEnabled = newVal;
+        } catch (e) {}
       } else if (moduleName === 'wickRangeSweep') {
         try {
           localStorage.setItem('indicator_wick_range_sweep_active', newVal ? 'true' : 'false');
@@ -11083,6 +11134,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         lsExp: 'LS_EXP',
         smcZones: 'SMC',
         smcPullbackSniper: 'OB_FIBO',
+        condStructure: 'COND_STRUCT',
         wickRangeSweep: 'WICK_RANGE_SWEEP',
         smcInducementSupply: 'CHOCH_SUPPLY',
         liquidityHunter: 'LIQUIDITY',
@@ -11115,6 +11167,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         amdFvg: 'AMD FVG Trade Setup [LuxAlgo]',
         smcZones: 'SMC Zones (OB & FVG)',
         smcPullbackSniper: 'SMC M5 Pullback Sniper (BOS + OB + 0.618 Fibo)',
+        condStructure: 'Conditional Structure & Multi-Scenario Levels Engine',
         wickRangeSweep: '15M High-Wick Candle Range Sweep & Retest Engine',
         smcInducementSupply: 'SMC Inducement & CHoCH Supply Sniper',
         liquidityHunter: 'Liquidity & Order Flow Hunter',
@@ -11206,6 +11259,12 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         } catch (e) {}
         const railGoldenBtn = document.getElementById('tool-chobos-golden');
         if (railGoldenBtn) railGoldenBtn.classList.toggle('active', isChecked);
+      } else if (moduleName === 'condStructure') {
+        condStructureEnabled = isChecked;
+        window.condStructureEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_cond_structure_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
       } else if (moduleName === 'wickRangeSweep') {
         wickRangeSweepEnabled = isChecked;
         window.wickRangeSweepEnabled = isChecked;
@@ -14380,6 +14439,260 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     window.evaluateWickRangeSweep = evaluateWickRangeSweep;
 
     // Dedicated Canvas Overlay for 15M High-Wick Candle Range Sweep & Retest Engine
+
+    // =========================================================================
+    // CONDITIONAL STRUCTURE & MULTI-SCENARIO LEVELS ENGINE (INDEPENDENT)
+    // =========================================================================
+    function evaluateConditionalStructure(candles, liveSpot) {
+      if (!candles || candles.length < 10) return null;
+
+      const curPrice = (typeof liveSpot === 'number' && liveSpot > 0)
+        ? liveSpot
+        : candles[candles.length - 1].close;
+
+      const lookback = Math.min(candles.length, 35);
+      const recentCandles = candles.slice(candles.length - lookback);
+
+      let swingHigh = -Infinity;
+      let swingLow = Infinity;
+
+      for (let i = 0; i < recentCandles.length; i++) {
+        const c = recentCandles[i];
+        if (c.high > swingHigh) swingHigh = c.high;
+        if (c.low < swingLow) swingLow = c.low;
+      }
+
+      const totalRange = Math.max(3.0, swingHigh - swingLow);
+
+      // Local consolidation analysis (last 6-8 bars)
+      const localLookback = Math.min(recentCandles.length, 8);
+      const localCandles = recentCandles.slice(recentCandles.length - localLookback);
+      let localHigh = -Infinity;
+      let localLow = Infinity;
+      for (const c of localCandles) {
+        if (c.high > localHigh) localHigh = c.high;
+        if (c.low < localLow) localLow = c.low;
+      }
+
+      // Scenario 1: Bullish Case (Close above local resistance / 38.2% retracement)
+      const bullishTrigger = Number(Math.max(localHigh + 0.50, swingLow + (totalRange * 0.382)).toFixed(2));
+      const bullishEntry = bullishTrigger;
+      const bullishSL = Number(Math.max(swingLow - 1.20, localLow - 1.00).toFixed(2));
+      const bullishRisk = Math.max(1.5, Number((bullishEntry - bullishSL).toFixed(2)));
+      const bullishTP1 = Number((bullishEntry + (bullishRisk * 3.8)).toFixed(2));
+      const bullishTP2 = Number(swingHigh.toFixed(2));
+      const bullishRR = '1 : 3.8';
+
+      // Scenario 2: Bearish Case (Breakdown below swing low / major support)
+      const bearishTrigger = Number((swingLow).toFixed(2));
+      const bearishEntry = Number((bearishTrigger - 0.20).toFixed(2));
+      const bearishSL = Number(Math.min(bullishTrigger, swingLow + (totalRange * 0.28)).toFixed(2));
+      const bearishRisk = Math.max(1.5, Number((bearishSL - bearishEntry).toFixed(2)));
+      const bearishTP1 = Number((bearishEntry - (bearishRisk * 3.0)).toFixed(2));
+      const bearishTP2 = Number((bearishEntry - (totalRange * 0.618)).toFixed(2));
+      const bearishRR = '1 : 3.0';
+
+      // Scenario 3: Neutral / Invalidation Chop Zone (Between Support and Bullish Trigger)
+      const neutralLow = Number((swingLow + 0.30).toFixed(2));
+      const neutralHigh = Number((bullishTrigger - 0.40).toFixed(2));
+
+      // Determine active live state
+      let status = 'NEUTRAL_STANDBY';
+      let stateBadge = 'NEUTRAL CHOP (WAIT)';
+      let direction = 'NEUTRAL';
+      let isTriggered = false;
+      let activeEntry = curPrice;
+      let activeSL = swingLow;
+      let activeTP = bullishTP1;
+      let activeRR = 'WAIT';
+      let activeRisk = 1.0;
+      let activeReward = 1.0;
+
+      if (curPrice >= bullishTrigger) {
+        status = 'BULLISH_BREAKOUT_ACTIVE';
+        stateBadge = 'BULLISH TRIGGERED (1:3.8 RR)';
+        direction = 'BUY';
+        isTriggered = true;
+        activeEntry = bullishEntry;
+        activeSL = bullishSL;
+        activeTP = bullishTP1;
+        activeRR = bullishRR;
+        activeRisk = bullishRisk;
+        activeReward = Math.abs(bullishTP1 - bullishEntry);
+      } else if (curPrice <= bearishTrigger) {
+        status = 'BEARISH_BREAKDOWN_ACTIVE';
+        stateBadge = 'BEARISH TRIGGERED (1:3 RR)';
+        direction = 'SELL';
+        isTriggered = true;
+        activeEntry = bearishEntry;
+        activeSL = bearishSL;
+        activeTP = bearishTP1;
+        activeRR = bearishRR;
+        activeRisk = bearishRisk;
+        activeReward = Math.abs(bearishEntry - bearishTP1);
+      } else {
+        status = 'NEUTRAL_STANDBY';
+        stateBadge = 'NEUTRAL ZONE · AWAITING BREAK';
+        direction = 'NEUTRAL';
+        isTriggered = false;
+        activeEntry = curPrice;
+        activeSL = swingLow;
+        activeTP = bullishTrigger;
+        activeRR = 'WAIT';
+        activeRisk = 1.0;
+        activeReward = 1.0;
+      }
+
+      return {
+        swingHigh: Number(swingHigh.toFixed(2)),
+        swingLow: Number(swingLow.toFixed(2)),
+        bullishTrigger,
+        bullishEntry,
+        bullishSL,
+        bullishTP1,
+        bullishTP2,
+        bullishRR,
+        bearishTrigger,
+        bearishEntry,
+        bearishSL,
+        bearishTP1,
+        bearishTP2,
+        bearishRR,
+        neutralLow,
+        neutralHigh,
+        curPrice: Number(curPrice.toFixed(2)),
+        status,
+        stateBadge,
+        direction,
+        isTriggered,
+        entry: activeEntry,
+        sl: activeSL,
+        tp: activeTP,
+        rr: activeRR,
+        risk: activeRisk,
+        reward: activeReward,
+        confidence: {
+          bullish: '2/5',
+          bearish: '3/5',
+          neutral: '4/5'
+        }
+      };
+    }
+    window.evaluateConditionalStructure = evaluateConditionalStructure;
+
+    function drawConditionalStructureOverlay(ctx, setup, candles) {
+      if (!ctx || !candleSeries || !chart) return;
+      if (typeof indicatorSettings !== 'undefined' && !indicatorSettings.condStructure) return;
+      if (!setup || !setup.bullishTrigger || !setup.bearishTrigger) return;
+
+      ctx.save();
+
+      const yBullish = candleSeries.priceToCoordinate(Number(setup.bullishTrigger));
+      const yBearish = candleSeries.priceToCoordinate(Number(setup.bearishTrigger));
+      const yNeutLow = candleSeries.priceToCoordinate(Number(setup.neutralLow));
+      const yNeutHigh = candleSeries.priceToCoordinate(Number(setup.neutralHigh));
+
+      // 1. Shaded Neutral Chop Zone
+      if (yNeutLow !== null && yNeutHigh !== null) {
+        const topN = Math.min(yNeutLow, yNeutHigh);
+        const botN = Math.max(yNeutLow, yNeutHigh);
+        const nh = Math.max(4, botN - topN);
+
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.08)';
+        ctx.fillRect(15, topN, canvasCssWidth - 75, nh);
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(15, topN, canvasCssWidth - 75, nh);
+        ctx.setLineDash([]);
+
+        // Label inside Neutral Zone
+        ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.9)';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`⚠️ NEUTRAL CHOP ZONE ($${setup.neutralLow.toFixed(1)} - $${setup.neutralHigh.toFixed(1)}) · SCENARIOS INVALID (WAIT)`, 25, topN + (nh / 2));
+      }
+
+      // 2. Bullish Trigger Line (Green Dashed)
+      if (yBullish !== null) {
+        ctx.strokeStyle = 'rgba(0, 230, 118, 0.95)';
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(15, yBullish);
+        ctx.lineTo(canvasCssWidth - 60, yBullish);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const bullLabel = `BULLISH TRIGGER · Close > $${setup.bullishTrigger.toFixed(2)} [TP: $${setup.bullishTP1.toFixed(1)} | RR 1:3.8]`;
+        ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        const bw = ctx.measureText(bullLabel).width + 10;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+        ctx.fillRect(25, yBullish - 9, bw, 16);
+        ctx.strokeStyle = '#00E676';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(25, yBullish - 9, bw, 16);
+        ctx.fillStyle = '#00E676';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(bullLabel, 30, yBullish);
+      }
+
+      // 3. Bearish Breakdown Line (Red Dashed)
+      if (yBearish !== null) {
+        ctx.strokeStyle = 'rgba(255, 82, 82, 0.95)';
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(15, yBearish);
+        ctx.lineTo(canvasCssWidth - 60, yBearish);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const bearLabel = `BEARISH BREAKDOWN · Close < $${setup.bearishTrigger.toFixed(2)} [TP: $${setup.bearishTP1.toFixed(1)} | RR 1:3.0]`;
+        ctx.font = '700 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+        const lw = ctx.measureText(bearLabel).width + 10;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+        ctx.fillRect(25, yBearish - 9, lw, 16);
+        ctx.strokeStyle = '#FF5252';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(25, yBearish - 9, lw, 16);
+        ctx.fillStyle = '#FF5252';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(bearLabel, 30, yBearish);
+      }
+
+      // 4. Standby Watermark Badge (Top Right)
+      const badgeText = setup.isTriggered
+        ? `COND-STRUCT · ${setup.stateBadge} (${setup.direction} Entry: $${setup.entry.toFixed(2)})`
+        : `COND-STRUCT · ${setup.stateBadge} | Bull > $${setup.bullishTrigger.toFixed(1)} | Bear < $${setup.bearishTrigger.toFixed(1)}`;
+      ctx.font = '700 9.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
+      const badgeW = ctx.measureText(badgeText).width + 16;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+      ctx.fillRect(canvasCssWidth - badgeW - 70, 42, badgeW, 20);
+      ctx.strokeStyle = setup.isTriggered ? '#00E676' : '#38bdf8';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(canvasCssWidth - badgeW - 70, 42, badgeW, 20);
+      ctx.fillStyle = setup.isTriggered ? '#00E676' : '#38bdf8';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(badgeText, canvasCssWidth - badgeW - 62, 52);
+
+      // 5. If triggered, draw independent Risk/Reward box
+      if (setup.isTriggered && typeof drawRiskRewardOverlay === 'function') {
+        drawRiskRewardOverlay(ctx, {
+          type: setup.direction === 'BUY' ? 'LONG' : 'SHORT',
+          entry: Number(setup.entry),
+          sl: Number(setup.sl),
+          tp: Number(setup.tp),
+          risk: Number(setup.risk),
+          reward: Number(setup.reward),
+          rrRatio: String(setup.rr).replace('1 : ', '')
+        });
+      }
+
+      ctx.restore();
+    }
+    window.drawConditionalStructureOverlay = drawConditionalStructureOverlay;
+
     function drawWickRangeSweepOverlay(ctx, setup, candles) {
       if (!ctx || !candleSeries || !chart) return;
       if (typeof indicatorSettings !== 'undefined' && !indicatorSettings.wickRangeSweep) return;
@@ -17838,6 +18151,36 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         if (r5 && r5.length >= 8) c5 = r5;
       }
 
+      // Dedicated: CONDITIONAL STRUCTURE & MULTI-SCENARIO LEVELS TELEMETRY
+      const condResult = evaluateConditionalStructure(candles, currentLiveSpot);
+      window.latestCondStructure = condResult;
+
+      if (condResult) {
+        modularEngineState.indicators.COND_STRUCT = {
+          status: condResult.status,
+          stateBadge: condResult.stateBadge,
+          direction: condResult.direction === 'BUY' ? 'BUY / BULLISH' : (condResult.direction === 'SELL' ? 'SELL / BEARISH' : 'NEUTRAL / STANDBY'),
+          entry: '$' + Number(condResult.entry).toFixed(2),
+          sl: '$' + Number(condResult.sl).toFixed(2),
+          tp: '$' + Number(condResult.tp).toFixed(2),
+          rr: condResult.rr,
+          reason: condResult.isTriggered
+            ? `Conditional trigger activated: ${condResult.direction} scenario confirmed. Invalidation strictly at $${condResult.sl.toFixed(2)}.`
+            : `Standby. Bullish close above $${condResult.bullishTrigger.toFixed(2)} (RR 1:3.8, Conf: 2/5). Bearish breakdown below $${condResult.bearishTrigger.toFixed(2)} (RR 1:3, Conf: 3/5). Neutral Chop Zone: $${condResult.neutralLow.toFixed(2)}-$${condResult.neutralHigh.toFixed(2)} (Conf: 4/5).`
+        };
+      } else {
+        modularEngineState.indicators.COND_STRUCT = {
+          status: 'STANDBY',
+          stateBadge: 'STANDBY',
+          direction: 'NEUTRAL',
+          entry: '--',
+          sl: '--',
+          tp: '--',
+          rr: '--',
+          reason: 'Awaiting candlestick structure data.'
+        };
+      }
+
       const wickRangeResult = evaluateWickRangeSweep(c15, c5, currentLiveSpot);
       window.latestWickRangeSweep = wickRangeResult;
 
@@ -18188,11 +18531,12 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       if (!modularEngineState.activeTab) {
         modularEngineState.activeTab = 'SMC';
       }
-      const tabs = ['GOLD_15M_RR', 'CHOBOS_GOLDEN', 'WICK_RANGE_SWEEP', 'LIQ_MSS_FVG', 'BRK_BOUNCE', 'SMC_REV', 'AMD_FVG', 'LS_EXP', 'SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
+      const tabs = ['GOLD_15M_RR', 'CHOBOS_GOLDEN', 'COND_STRUCT', 'WICK_RANGE_SWEEP', 'LIQ_MSS_FVG', 'BRK_BOUNCE', 'SMC_REV', 'AMD_FVG', 'LS_EXP', 'SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
 
       const TAB_TITLES = {
         GOLD_15M_RR: '⚡ GOLD 15M SIGNALS + RR [FREE]',
         CHOBOS_GOLDEN: '⚡ SMC CHOCH + BOS GOLDEN SNIPER',
+        COND_STRUCT: '⚡ CONDITIONAL STRUCTURE & MULTI-SCENARIO ENGINE',
         WICK_RANGE_SWEEP: '⚡ 15M WICK-RANGE SWEEP & RETEST',
         LIQ_MSS_FVG: '⚡ ICT LIQUIDITY GRAB + MSS + FVG',
         BRK_BOUNCE: '⚡ BREAK & BOUNCE ENGINE (PDH/PDL RETEST)',
@@ -18207,6 +18551,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       const TAB_LABELS = {
         GOLD_15M_RR: 'GOLD-15M-RR ⚡',
         CHOBOS_GOLDEN: 'CHOBOS-GOLDEN ⚡',
+        COND_STRUCT: 'COND-STRUCT ⚡',
         WICK_RANGE_SWEEP: 'WICK-SWEEP ⚡',
         LIQ_MSS_FVG: 'LIQ-MSS-FVG ⚡',
         BRK_BOUNCE: 'BRK-BOUNCE ⚡',
@@ -18220,6 +18565,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       const TAB_COLORS = {
         GOLD_15M_RR: '#eab308',
         CHOBOS_GOLDEN: '#10b981',
+        COND_STRUCT: '#38bdf8',
         WICK_RANGE_SWEEP: '#38bdf8',
         LIQ_MSS_FVG: '#ec4899',
         BRK_BOUNCE: '#f59e0b',
@@ -18239,7 +18585,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
               ${activeHeaderTitle}
             </span>
             <span style="font-size: 10px; padding: 2px 7px; border-radius: 10px; background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; font-family: monospace; font-weight: 700;">
-              ${(activeTab === 'GOLD_15M_RR' || activeTab === 'CHOBOS_GOLDEN' || activeTab === 'WICK_RANGE_SWEEP' || activeTab === 'LIQ_MSS_FVG' || activeTab === 'BRK_BOUNCE' || activeTab === 'SMC_REV' || activeTab === 'LS_EXP' || activeTab === 'OB_FIBO' || activeTab === 'CHOCH_SUPPLY') && activeData.stateBadge ? activeData.stateBadge : activeData.direction}
+              ${(activeTab === 'GOLD_15M_RR' || activeTab === 'CHOBOS_GOLDEN' || activeTab === 'COND_STRUCT' || activeTab === 'WICK_RANGE_SWEEP' || activeTab === 'LIQ_MSS_FVG' || activeTab === 'BRK_BOUNCE' || activeTab === 'SMC_REV' || activeTab === 'LS_EXP' || activeTab === 'OB_FIBO' || activeTab === 'CHOCH_SUPPLY') && activeData.stateBadge ? activeData.stateBadge : activeData.direction}
             </span>
           </div>
 
@@ -19894,6 +20240,9 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       }
       if (typeof indicatorSettings !== 'undefined' && indicatorSettings.chobosGolden && typeof drawCHOBOSGoldenOverlay === 'function') {
         drawCHOBOSGoldenOverlay(drawingCtx, window.latestCHOBOSGolden, candles);
+      }
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.condStructure && typeof drawConditionalStructureOverlay === 'function') {
+        drawConditionalStructureOverlay(drawingCtx, window.latestCondStructure, candles);
       }
       if (typeof indicatorSettings !== 'undefined' && indicatorSettings.wickRangeSweep && typeof drawWickRangeSweepOverlay === 'function') {
         drawWickRangeSweepOverlay(drawingCtx, window.latestWickRangeSweep, candles);
