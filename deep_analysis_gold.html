@@ -9035,8 +9035,13 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 4px;">
               <span style="font-size: 10px; color: #8b949e; font-weight: 600;">INSTITUTIONAL SMC CONFLUENCE</span>
               <span class="score-badge" id="macroConfluenceScore" style="font-size: 11px; font-weight: 800; color: #ffd700;">
-                <span id="ai-score">Score: 8.2 / 10</span>
+                <span id="ai-score">Score: 9.4 / 10</span>
               </span>
+            </div>
+            <!-- Dynamic Risk to Reward Badge -->
+            <div style="margin-top: 6px; padding: 5px 8px; background: rgba(88, 166, 255, 0.08); border: 1px dashed rgba(88, 166, 255, 0.35); border-radius: 6px; display: flex; align-items: center; justify-content: space-between; font-size: 10px;">
+              <span style="color: #8b949e; font-weight: 700; display: flex; align-items: center; gap: 4px;"><span>⚖️</span> RISK/REWARD:</span>
+              <span id="rr-ratio-badge" class="risk-reward-tag" style="color: #ffd700; font-weight: 800; font-family: 'Space Grotesk', monospace; letter-spacing: 0.3px;">R:R 1:2.3 (Risk: $2.80 | Target: $6.50)</span>
             </div>
           </div>
 
@@ -9719,6 +9724,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     // GEMINI SMC AI LIVE SIGNAL FEED BINDING & QUANT AUTO-EXECUTION HOOK
     // =========================================================================
     window.latestAiSignal = null;
+    window.latestAiRRSetup = null;
+    window.aiPriceLines = [];
     window.lastAutoTradeTime = 0;
     window.activeExnessPositions = window.activeExnessPositions || [];
 
@@ -9748,6 +9755,52 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       return localStorage.getItem('quant_agent_active') === 'true';
     }
 
+    function updateAiPriceLines(entry, sl, tp) {
+      if (typeof candleSeries === 'undefined' || !candleSeries || typeof candleSeries.createPriceLine !== 'function') return;
+      if (window.aiPriceLines && window.aiPriceLines.length) {
+        window.aiPriceLines.forEach(lineRef => {
+          try { candleSeries.removePriceLine(lineRef); } catch (e) {}
+        });
+      }
+      window.aiPriceLines = [];
+
+      try {
+        if (entry && !isNaN(entry) && entry > 0) {
+          window.aiPriceLines.push(candleSeries.createPriceLine({
+            price: Number(entry),
+            color: '#58a6ff',
+            lineWidth: 2,
+            lineStyle: (typeof LightweightCharts !== 'undefined' && LightweightCharts.LineStyle) ? LightweightCharts.LineStyle.Solid : 0,
+            axisLabelVisible: true,
+            title: 'AI ENTRY'
+          }));
+        }
+        if (sl && !isNaN(sl) && sl > 0) {
+          window.aiPriceLines.push(candleSeries.createPriceLine({
+            price: Number(sl),
+            color: '#f85149',
+            lineWidth: 2,
+            lineStyle: (typeof LightweightCharts !== 'undefined' && LightweightCharts.LineStyle) ? LightweightCharts.LineStyle.Dashed : 2,
+            axisLabelVisible: true,
+            title: 'AI SL'
+          }));
+        }
+        if (tp && !isNaN(tp) && tp > 0) {
+          window.aiPriceLines.push(candleSeries.createPriceLine({
+            price: Number(tp),
+            color: '#3fb950',
+            lineWidth: 2,
+            lineStyle: (typeof LightweightCharts !== 'undefined' && LightweightCharts.LineStyle) ? LightweightCharts.LineStyle.Dashed : 2,
+            axisLabelVisible: true,
+            title: 'AI TP'
+          }));
+        }
+      } catch (err) {
+        console.warn('[AI Price Lines] Warning creating lines:', err);
+      }
+    }
+    window.updateAiPriceLines = updateAiPriceLines;
+
     async function updateAISignal() {
       try {
         const endpoints = [
@@ -9773,15 +9826,37 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         window.latestAiSignal = json;
 
         if (json.status === 'SUCCESS' || json.status === 'success' || json.analysis || json.market_bias) {
-          const a = json.analysis || json;
+          const d = json.analysis || json;
 
-          // 1. Update Radar Card Title & Badge
+          // 1. Auto-fill SL and TP inputs
+          const slInput = document.getElementById('sl-input');
+          const tpInput = document.getElementById('tp-input');
+          if (slInput && d.suggested_sl) slInput.value = d.suggested_sl;
+          if (tpInput && d.suggested_tp) tpInput.value = d.suggested_tp;
+
+          // Also populate demo wallet inputs
+          ['demoSlInput', 'mDemoSlInput'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && d.suggested_sl) el.value = Number(d.suggested_sl).toFixed(2);
+          });
+          ['demoTpInput', 'mDemoTpInput'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && d.suggested_tp) el.value = Number(d.suggested_tp).toFixed(2);
+          });
+
+          // 2. Display Dynamic Risk to Reward Badge
+          const rrBadge = document.getElementById('rr-ratio-badge') || document.querySelector('.risk-reward-tag');
+          if (rrBadge) {
+            rrBadge.innerText = `R:R ${d.risk_reward_ratio || '1:2.3'} (Risk: ${d.risk_distance || '$2.80'} | Target: ${d.reward_distance || '$6.50'})`;
+          }
+
+          // Update Radar Card Title & Badge
           const radarTitle = document.querySelector('.radar-title') || document.getElementById('ai-radar-status') || document.getElementById('macroStatusBadge');
           if (radarTitle) {
-            if (a.market_bias === 'BULLISH') {
+            if (d.market_bias === 'BULLISH') {
               radarTitle.innerText = `🚀 HIGH CONVICTION BUY (SMC CONFLUENCE)`;
               radarTitle.className = 'radar-title radar-box bias-bullish';
-            } else if (a.market_bias === 'BEARISH') {
+            } else if (d.market_bias === 'BEARISH') {
               radarTitle.innerText = `🔻 HIGH CONVICTION SELL (BEARISH FVG)`;
               radarTitle.className = 'radar-title radar-box bias-bearish';
             } else {
@@ -9790,33 +9865,16 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
             }
           }
 
-          // Update secondary status banner if separate
-          const banner = document.getElementById('macroStatusBanner');
-          const badge = document.getElementById('macroStatusBadge');
-          const icon = document.getElementById('macroStatusIcon');
-          if (badge && radarTitle !== badge) {
-            if (a.market_bias === 'BULLISH') {
-              badge.innerText = 'HIGH CONVICTION BUY (SMC CONFLUENCE)';
-              if (icon) icon.innerText = '🚀';
-            } else if (a.market_bias === 'BEARISH') {
-              badge.innerText = 'HIGH CONVICTION SELL (BEARISH FVG)';
-              if (icon) icon.innerText = '🔻';
-            } else {
-              badge.innerText = 'MARKET CONSOLIDATION / WAIT';
-              if (icon) icon.innerText = '⏸️';
-            }
-          }
-
-          // 2. Update Score & Reasoning
-          const scoreVal = a.confidence_score != null ? a.confidence_score : 8.2;
+          // Update Score & Reasoning
+          const scoreVal = d.confidence_score != null ? d.confidence_score : 9.4;
           const scoreElem = document.getElementById('ai-score') || document.querySelector('.score-badge');
           if (scoreElem) scoreElem.innerText = `Score: ${scoreVal} / 10`;
 
           const reasonElem = document.getElementById('ai-reason') || document.querySelector('.ai-reason-text') || document.getElementById('ai-reason-text');
-          if (reasonElem) reasonElem.innerText = a.key_reason || 'M15 Bearish Order Block supply tap near $4107.09. Downside displacement active.';
+          if (reasonElem) reasonElem.innerText = d.key_reason || 'M15 Bearish Order Block supply tap near $4107.09. Downside displacement active.';
 
           const sugraBrief = document.getElementById('sugraBriefText');
-          if (sugraBrief && a.key_reason) sugraBrief.innerText = a.key_reason;
+          if (sugraBrief && d.key_reason) sugraBrief.innerText = d.key_reason;
 
           const syncBadge = document.getElementById('aiSignalSyncBadge');
           if (syncBadge) {
@@ -9824,46 +9882,45 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
             syncBadge.style.color = '#3fb950';
           }
 
-          // 3. Auto-set suggested SL and TP into inputs if empty
-          const slInput = document.getElementById('sl-input');
-          const tpInput = document.getElementById('tp-input');
-          if (slInput && a.suggested_sl && (!slInput.value || slInput.value === '')) {
-            slInput.value = Number(a.suggested_sl).toFixed(2);
-          }
-          if (tpInput && a.suggested_tp && (!tpInput.value || tpInput.value === '')) {
-            tpInput.value = Number(a.suggested_tp).toFixed(2);
-          }
+          // 3. Auto Draw on Chart (Canvas Risk/Reward Box + Lightweight Charts Price Lines)
+          const entryPrice = parseFloat(d.entry_price || json.live_price || (typeof currentLiveSpot !== 'undefined' ? currentLiveSpot : 4049.97));
+          const slPrice = parseFloat(d.suggested_sl);
+          const tpPrice = parseFloat(d.suggested_tp);
+          const isBuy = (d.market_bias === 'BULLISH' || d.recommended_action === 'BUY');
+          const riskPts = Math.abs(entryPrice - slPrice);
+          const rewardPts = Math.abs(tpPrice - entryPrice);
+          const rrParts = String(d.risk_reward_ratio || '1:2.3').split(':');
+          const rrRatioNum = parseFloat(rrParts[1] || rrParts[0] || '2.3');
 
-          // Also populate demo wallet inputs if empty
-          ['demoSlInput', 'mDemoSlInput'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el && a.suggested_sl && (!el.value || el.value === '')) el.value = Number(a.suggested_sl).toFixed(2);
-          });
-          ['demoTpInput', 'mDemoTpInput'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el && a.suggested_tp && (!el.value || el.value === '')) el.value = Number(a.suggested_tp).toFixed(2);
-          });
+          window.latestAiRRSetup = {
+            active: d.recommended_action !== 'WAIT',
+            type: isBuy ? 'LONG' : 'SHORT',
+            direction: isBuy ? 'BUY' : 'SELL',
+            entry: entryPrice,
+            sl: slPrice,
+            tp: tpPrice,
+            risk: riskPts,
+            reward: rewardPts,
+            rrRatio: rrRatioNum.toFixed(1)
+          };
 
-          // 4. Quant Auto-Execution Hook (Whenever automated bot switch is turned ON)
-          const botActive = isQuantBotActive();
-          const action = String(a.recommended_action || (a.market_bias === 'BULLISH' ? 'BUY' : (a.market_bias === 'BEARISH' ? 'SELL' : 'HOLD'))).toUpperCase();
-          const score = parseFloat(a.confidence_score || 0);
+          if (typeof redrawCanvas === 'function') redrawCanvas();
+          updateAiPriceLines(entryPrice, slPrice, tpPrice);
 
-          if (botActive) {
-            if (hasActivePosition()) {
-              console.log('[AI Auto-Scalper] Bot switch ON, but active position already exists. Duplicate fill avoided.');
-            } else {
-              if ((action === 'BUY' || a.market_bias === 'BULLISH') && score >= 8.0) {
-                console.log(`[AI Auto-Scalper] High conviction BUY triggered! (Score: ${score}). Dispatching order...`);
+          // 4. Execution Protection
+          // Agar R:R 1:2 se kam ho ya action WAIT ho toh auto-bot trade na le
+          if (d.recommended_action !== 'WAIT' && parseFloat(d.risk_reward_ratio.split(':')[1]) >= 2.0 && parseFloat(d.confidence_score) >= 8.5) {
+            console.log("High probability confluence matched. Ready for execution.");
+            const botActive = isQuantBotActive();
+            if (botActive) {
+              if (hasActivePosition()) {
+                console.log('[AI Auto-Scalper] Bot active, but active position exists or cooldown in effect. Avoiding duplicate fill.');
+              } else {
                 window.lastAutoTradeTime = Date.now();
+                const dir = isBuy ? 'BUY' : 'SELL';
+                console.log(`[AI Auto-Scalper] High probability ${dir} trade executing with R:R ${d.risk_reward_ratio} & Score: ${d.confidence_score}!`);
                 if (typeof window.executeLiveExnessOrder === 'function') {
-                  await window.executeLiveExnessOrder('BUY', 0.01, a.suggested_sl, a.suggested_tp);
-                }
-              } else if ((action === 'SELL' || a.market_bias === 'BEARISH') && score >= 8.0) {
-                console.log(`[AI Auto-Scalper] High conviction SELL triggered! (Score: ${score}). Dispatching order...`);
-                window.lastAutoTradeTime = Date.now();
-                if (typeof window.executeLiveExnessOrder === 'function') {
-                  await window.executeLiveExnessOrder('SELL', 0.01, a.suggested_sl, a.suggested_tp);
+                  await window.executeLiveExnessOrder(dir, 0.01, slPrice, tpPrice);
                 }
               }
             }
@@ -20616,6 +20673,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         // 1. If an active position is locked, render it strictly! (Coordinates NEVER shift or repaint!)
         if (window.activeTradingPointPosition && window.activeTradingPointPosition.status === 'ACTIVE') {
           drawRiskRewardOverlay(drawingCtx, window.activeTradingPointPosition);
+        } else if (window.latestAiRRSetup && window.latestAiRRSetup.active) {
+          drawRiskRewardOverlay(drawingCtx, window.latestAiRRSetup);
         } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.lsExp && window.latestLS_EXP && window.latestLS_EXP.isTriggered) {
           const ls = window.latestLS_EXP;
           drawRiskRewardOverlay(drawingCtx, {

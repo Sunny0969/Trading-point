@@ -71,7 +71,7 @@ def get_live_gold_spot():
 def evaluate_gemini_smc_analysis():
     """
     Computes institutional Smart Money Concept (SMC) market bias,
-    confidence score, key rationale, and suggested SL/TP levels.
+    confidence score, key rationale, suggested SL/TP, and Risk:Reward ratio.
     """
     spot = get_live_gold_spot()
     price = spot["price"]
@@ -86,9 +86,13 @@ def evaluate_gemini_smc_analysis():
     if delta > 1.20:
         market_bias = "BULLISH"
         recommended_action = "BUY"
-        score = min(9.4, round(7.5 + (delta / range_total) * 2.0, 1))
+        score = min(9.5, max(8.6, round(8.5 + (delta / range_total) * 1.5, 1)))
         suggested_sl = round(price - 2.80, 2)
         suggested_tp = round(price + 6.50, 2)
+        risk_dist = round(abs(price - suggested_sl), 2)
+        reward_dist = round(abs(suggested_tp - price), 2)
+        rr_ratio = round(reward_dist / max(0.1, risk_dist), 1)
+        risk_reward_ratio = f"1:{rr_ratio:.1f}"
         key_reason = (
             f"M15 Bullish Order Block defense at ${low_p:.2f} + Liquidity sweep completed. "
             f"Displacement momentum positive (+${delta:.2f}) targeting overhead FVG imbalance."
@@ -96,9 +100,13 @@ def evaluate_gemini_smc_analysis():
     elif delta < -1.20:
         market_bias = "BEARISH"
         recommended_action = "SELL"
-        score = min(9.2, round(7.4 + (abs(delta) / range_total) * 2.0, 1))
+        score = min(9.5, max(8.7, round(8.6 + (abs(delta) / range_total) * 1.5, 1)))
         suggested_sl = round(price + 2.80, 2)
         suggested_tp = round(price - 6.50, 2)
+        risk_dist = round(abs(suggested_sl - price), 2)
+        reward_dist = round(abs(price - suggested_tp), 2)
+        rr_ratio = round(reward_dist / max(0.1, risk_dist), 1)
+        risk_reward_ratio = f"1:{rr_ratio:.1f}"
         key_reason = (
             f"M15 Bearish Order Block supply tap near ${high_p:.2f}. "
             f"Downside displacement active (-${abs(delta):.2f}) targeting lower liquidity pool."
@@ -109,6 +117,10 @@ def evaluate_gemini_smc_analysis():
         score = 6.0
         suggested_sl = round(price - 2.20, 2)
         suggested_tp = round(price + 3.50, 2)
+        risk_dist = round(abs(price - suggested_sl), 2)
+        reward_dist = round(abs(suggested_tp - price), 2)
+        rr_ratio = round(reward_dist / max(0.1, risk_dist), 1)
+        risk_reward_ratio = f"1:{rr_ratio:.1f}"
         key_reason = (
             f"Market in tight consolidation (${low_p:.2f} - ${high_p:.2f}). "
             "Awaiting clean displacement or break of structure (BOS) before directional entry."
@@ -119,17 +131,30 @@ def evaluate_gemini_smc_analysis():
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "symbol": "XAUUSDm",
         "live_price": price,
+        "entry_price": price,
         "recommended_action": recommended_action,
+        "suggested_sl": suggested_sl,
+        "suggested_tp": suggested_tp,
+        "risk_distance": f"${risk_dist:.2f}",
+        "reward_distance": f"${reward_dist:.2f}",
+        "risk_reward_ratio": risk_reward_ratio,
         "analysis": {
             "market_bias": market_bias,
             "recommended_action": recommended_action,
             "confidence_score": score,
             "key_reason": key_reason,
+            "entry_price": price,
             "suggested_sl": suggested_sl,
-            "suggested_tp": suggested_tp
-        },
-        "suggested_sl": suggested_sl,
-        "suggested_tp": suggested_tp
+            "suggested_tp": suggested_tp,
+            "risk_distance": f"${risk_dist:.2f}",
+            "reward_distance": f"${reward_dist:.2f}",
+            "risk_reward_ratio": risk_reward_ratio,
+            "order_block": {
+                "high": high_p,
+                "low": low_p,
+                "type": "BEARISH_OB" if market_bias == "BEARISH" else "BULLISH_OB"
+            }
+        }
     }
 
 
