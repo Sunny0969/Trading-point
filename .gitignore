@@ -9,3 +9,4 @@ edge_*
 *.csv
 *.jsonl
 scratch/
+run_bridge.py
