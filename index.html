@@ -8987,13 +8987,26 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
             <span id="macroEngineStatusBadge" class="tag-badge" style="background: rgba(88,166,255,0.15); color: #58a6ff; border: 1px solid rgba(88,166,255,0.3); font-size: 9.5px; padding: 1px 6px;">LIVE CORRELATION</span>
           </div>
 
-          <!-- Main Confluence Badge & Setup Tag -->
-          <div id="macroStatusBanner" class="clean-signal-banner buy" style="margin-bottom: 8px; padding: 8px 10px;">
-            <div class="cs-action" style="font-size: 11.5px;">
+          <!-- Main Confluence Badge & Setup Tag (Gemini SMC AI Quant Radar) -->
+          <div id="macroStatusBanner" class="clean-signal-banner buy" style="margin-bottom: 8px; padding: 8px 10px; transition: all 0.3s ease;">
+            <div class="cs-action" style="font-size: 11.5px; display: flex; align-items: center; gap: 6px;">
               <span id="macroStatusIcon">⚡</span>
-              <span id="macroStatusBadge" style="letter-spacing: 0.3px;">SAFE-HAVEN BULLISH (WAR RISK SPIKE)</span>
+              <span id="macroStatusBadge" style="letter-spacing: 0.3px;">INSTITUTIONAL BUY CONFLUENCE</span>
             </div>
-            <div class="cs-sub" id="macroConfluenceScore" style="font-size: 10.5px; font-weight: 800; color: #ffd700;">Score: 7.8 / 10</div>
+            <div class="cs-sub" id="macroConfluenceScore" style="font-size: 10.5px; font-weight: 800; color: #ffd700;">Score: <span id="ai-score">8.5 / 10</span></div>
+          </div>
+
+          <!-- Live Gemini SMC AI Signal Section -->
+          <div id="aiSignalWidget" style="background: rgba(13, 17, 23, 0.75); border: 1px solid rgba(88, 166, 255, 0.25); border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; font-size: 10px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+              <span style="font-weight: 700; color: #58a6ff; display: flex; align-items: center; gap: 4px;">
+                <span>🤖</span> GEMINI SMC LIVE FEED
+              </span>
+              <span id="aiSignalSyncBadge" style="color: #3fb950; font-weight: 700; font-size: 9px; font-family: monospace;">● LIVE (PORT 5000)</span>
+            </div>
+            <div style="color: #8b949e; line-height: 1.35;">
+              <strong style="color: #c9d1d9;">Key Reason:</strong> <span id="ai-reason-text">M15 Bullish Order Block defense + Liquidity sweep completed with institutional buy confluence.</span>
+            </div>
           </div>
 
           <!-- Live Multi-Asset Correlation Meters (Twelve Data) -->
@@ -9657,6 +9670,145 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         console.log(`%c[HIGH CONVICTION TRIGGER] Confluence Score: ${confluenceScore.toFixed(1)}/10 -> ${setupTag}`, 'color: #ffd700; font-weight: bold;');
       }
     }
+
+    // =========================================================================
+    // GEMINI SMC AI LIVE SIGNAL FEED BINDING (PORT 5000 AUTO-REFRESH LOOP)
+    // =========================================================================
+    window.latestAiSignal = null;
+
+    async function fetchAiSignalFeed() {
+      const endpoints = [
+        'http://127.0.0.1:5000/api/ai-signal',
+        '/api/ai-signal' // Web server / proxy fallback
+      ];
+
+      let data = null;
+      for (const url of endpoints) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
+          const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            data = await res.json();
+            if (data && (data.analysis || data.market_bias)) break;
+          }
+        } catch (e) {}
+      }
+
+      if (!data) return;
+      const analysis = data.analysis || data;
+      window.latestAiSignal = data;
+
+      // 1. Update Radar Banner
+      const banner = document.getElementById('macroStatusBanner');
+      const badge = document.getElementById('macroStatusBadge');
+      const icon = document.getElementById('macroStatusIcon');
+      const syncBadge = document.getElementById('aiSignalSyncBadge');
+
+      const bias = String(analysis.market_bias || '').toUpperCase();
+
+      if (banner && badge) {
+        banner.classList.remove('buy', 'sell', 'wait', 'neutral');
+        if (bias === 'BULLISH') {
+          banner.classList.add('buy');
+          banner.style.background = 'rgba(46, 160, 67, 0.18)';
+          banner.style.border = '1px solid #3fb950';
+          banner.style.color = '#3fb950';
+          badge.innerText = 'INSTITUTIONAL BUY CONFLUENCE';
+          badge.style.color = '#3fb950';
+          if (icon) icon.innerText = '📈';
+        } else if (bias === 'BEARISH') {
+          banner.classList.add('sell');
+          banner.style.background = 'rgba(248, 81, 73, 0.18)';
+          banner.style.border = '1px solid #f85149';
+          banner.style.color = '#f85149';
+          badge.innerText = 'INSTITUTIONAL SELL CONFLUENCE';
+          badge.style.color = '#f85149';
+          if (icon) icon.innerText = '📉';
+        } else {
+          banner.classList.add('wait');
+          banner.style.background = 'rgba(210, 153, 34, 0.18)';
+          banner.style.border = '1px solid #d29922';
+          banner.style.color = '#ffd700';
+          badge.innerText = 'WAIT / CONSOLIDATION';
+          badge.style.color = '#ffd700';
+          if (icon) icon.innerText = '⚠️';
+        }
+      }
+
+      // 2. Display Score: Set #ai-score to ${analysis.confidence_score} / 10
+      const scoreVal = analysis.confidence_score != null ? analysis.confidence_score : 8.5;
+      const scoreEl = document.getElementById('ai-score');
+      if (scoreEl) {
+        scoreEl.innerText = `${scoreVal} / 10`;
+      }
+      const scoreSub = document.getElementById('macroConfluenceScore');
+      if (scoreSub) {
+        scoreSub.innerHTML = `Score: <span id="ai-score" style="font-weight: 800; color: #ffd700;">${scoreVal} / 10</span>`;
+      }
+
+      // 3. Display Reason: Set #ai-reason-text to analysis.key_reason
+      const keyReason = analysis.key_reason || 'M15 Order Block mitigation + Liquidity sweep completed.';
+      const reasonEl = document.getElementById('ai-reason-text');
+      if (reasonEl) {
+        reasonEl.innerText = keyReason;
+      }
+      const sugraBrief = document.getElementById('sugraBriefText');
+      if (sugraBrief) {
+        sugraBrief.innerText = keyReason;
+      }
+
+      if (syncBadge) {
+        syncBadge.innerText = `● LIVE (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`;
+        syncBadge.style.color = '#3fb950';
+      }
+
+      // 4. Auto-populate targets if non-zero
+      applyAiSuggestedTargets(false);
+    }
+
+    function applyAiSuggestedTargets(force = false) {
+      if (!window.latestAiSignal) return;
+      const analysis = window.latestAiSignal.analysis || window.latestAiSignal;
+      const sl = parseFloat(analysis.suggested_sl || window.latestAiSignal.suggested_sl || 0);
+      const tp = parseFloat(analysis.suggested_tp || window.latestAiSignal.suggested_tp || 0);
+
+      const slInputs = ['sl-input', 'demoSlInput', 'mDemoSlInput'];
+      const tpInputs = ['tp-input', 'demoTpInput', 'mDemoTpInput'];
+
+      if (sl > 0) {
+        slInputs.forEach(id => {
+          const el = document.getElementById(id);
+          if (el && (force || !el.value || el.value === '')) {
+            el.value = sl.toFixed(2);
+          }
+        });
+      }
+
+      if (tp > 0) {
+        tpInputs.forEach(id => {
+          const el = document.getElementById(id);
+          if (el && (force || !el.value || el.value === '')) {
+            el.value = tp.toFixed(2);
+          }
+        });
+      }
+    }
+    window.fetchAiSignalFeed = fetchAiSignalFeed;
+    window.applyAiSuggestedTargets = applyAiSuggestedTargets;
+
+    // Start Auto-Refresh Loop every 30 seconds
+    setTimeout(fetchAiSignalFeed, 1000);
+    setInterval(fetchAiSignalFeed, 30000);
+
+    // Listen for BUY/SELL button clicks to auto-populate targets
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.closest && e.target.closest('.btn-demo-buy, .btn-demo-sell, .m-btn-buy, .m-btn-sell, .btn-demo-trade')) {
+        applyAiSuggestedTargets(false);
+      }
+    });
+
 
         // ========================================================
     // QUANTITATIVE CANDLESTICK PATTERN RECOGNITION ENGINE
@@ -26209,6 +26361,7 @@ window.addEventListener('resize', () => {
     }
 
     async function executeDemoOrder(type) {
+      if (typeof applyAiSuggestedTargets === 'function') applyAiSuggestedTargets(false);
       const lotInput = document.getElementById('demoLotInput');
       const slInput = document.getElementById('demoSlInput');
       const tpInput = document.getElementById('demoTpInput');

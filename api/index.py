@@ -447,6 +447,12 @@ class handler(BaseHTTPRequestHandler):
             elif "sugra/analyze" in target:
                 topic = query.get("topic", [None])[0]
                 return self._send_json(get_sugra_sentiment(topic))
+            elif "ai-signal" in target:
+                try:
+                    from gemini_smc_engine import evaluate_gemini_smc_analysis
+                    return self._send_json(evaluate_gemini_smc_analysis())
+                except Exception as e:
+                    return self._send_json({"status": "error", "message": str(e)})
             elif "quant-agent" in target:
                 try:
                     import quant_engine
