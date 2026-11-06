@@ -2411,6 +2411,45 @@
     .clean-signal-card:hover {
       border-color: rgba(255, 215, 0, 0.3);
     }
+        /* Gemini SMC AI Live Radar & Conviction Badges */
+    .radar-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 11.5px;
+      letter-spacing: 0.4px;
+      text-align: center;
+      transition: all 0.3s ease;
+      cursor: default;
+      user-select: none;
+    }
+    .radar-box.bias-bullish {
+      background: linear-gradient(135deg, rgba(46, 160, 67, 0.28) 0%, rgba(46, 160, 67, 0.10) 100%) !important;
+      border: 1px solid #3fb950 !important;
+      color: #3fb950 !important;
+      box-shadow: 0 0 16px rgba(46, 160, 67, 0.35);
+    }
+    .radar-box.bias-bearish {
+      background: linear-gradient(135deg, rgba(248, 81, 73, 0.28) 0%, rgba(248, 81, 73, 0.10) 100%) !important;
+      border: 1px solid #f85149 !important;
+      color: #f85149 !important;
+      box-shadow: 0 0 16px rgba(248, 81, 73, 0.35);
+    }
+    .radar-box.bias-neutral {
+      background: linear-gradient(135deg, rgba(210, 153, 34, 0.22) 0%, rgba(210, 153, 34, 0.08) 100%) !important;
+      border: 1px solid #d29922 !important;
+      color: #ffd700 !important;
+      box-shadow: 0 0 12px rgba(210, 153, 34, 0.2);
+    }
+    .score-badge {
+      font-family: 'Space Grotesk', monospace;
+      letter-spacing: 0.3px;
+    }
+
     .clean-signal-banner {
       display: flex;
       align-items: center;
@@ -8988,12 +9027,17 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
           </div>
 
           <!-- Main Confluence Badge & Setup Tag (Gemini SMC AI Quant Radar) -->
-          <div id="macroStatusBanner" class="clean-signal-banner buy" style="margin-bottom: 8px; padding: 8px 10px; transition: all 0.3s ease;">
-            <div class="cs-action" style="font-size: 11.5px; display: flex; align-items: center; gap: 6px;">
-              <span id="macroStatusIcon">⚡</span>
-              <span id="macroStatusBadge" style="letter-spacing: 0.3px;">INSTITUTIONAL BUY CONFLUENCE</span>
+          <div id="macroStatusBanner" style="margin-bottom: 8px;">
+            <div id="ai-radar-status" class="radar-title radar-box bias-bearish" style="margin-bottom: 6px;">
+              <span id="macroStatusIcon">🔻</span>
+              <span id="macroStatusBadge" style="letter-spacing: 0.3px;">HIGH CONVICTION SELL (BEARISH FVG)</span>
             </div>
-            <div class="cs-sub" id="macroConfluenceScore" style="font-size: 10.5px; font-weight: 800; color: #ffd700;">Score: <span id="ai-score">8.5 / 10</span></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 2px 4px;">
+              <span style="font-size: 10px; color: #8b949e; font-weight: 600;">INSTITUTIONAL SMC CONFLUENCE</span>
+              <span class="score-badge" id="macroConfluenceScore" style="font-size: 11px; font-weight: 800; color: #ffd700;">
+                <span id="ai-score">Score: 8.2 / 10</span>
+              </span>
+            </div>
           </div>
 
           <!-- Live Gemini SMC AI Signal Section -->
@@ -9005,11 +9049,11 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
               <span id="aiSignalSyncBadge" style="color: #3fb950; font-weight: 700; font-size: 9px; font-family: monospace;">● LIVE (PORT 5000)</span>
             </div>
             <div style="color: #8b949e; line-height: 1.35;">
-              <strong style="color: #c9d1d9;">Key Reason:</strong> <span id="ai-reason-text">M15 Bullish Order Block defense + Liquidity sweep completed with institutional buy confluence.</span>
+              <strong style="color: #c9d1d9;">Key Reason:</strong> <span id="ai-reason" class="ai-reason-text"><span id="ai-reason-text">M15 Bearish Order Block supply tap near $4107.09. Downside displacement active.</span></span>
             </div>
           </div>
 
-          <!-- Live Multi-Asset Correlation Meters (Twelve Data) -->
+          <!-- Live Multi-Asset Correlation Meters<!-- Live Multi-Asset Correlation Meters (Twelve Data) -->
           <div style="background: #161b22; border: 1px solid #21262d; border-radius: 8px; padding: 9px; margin-bottom: 8px;">
             <div style="font-size: 10px; color: #8b949e; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; justify-content: space-between;">
               <span>CROSS-ASSET METERS (TWELVE DATA)</span>
@@ -9672,100 +9716,162 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     }
 
     // =========================================================================
-    // GEMINI SMC AI LIVE SIGNAL FEED BINDING (PORT 5000 AUTO-REFRESH LOOP)
+    // GEMINI SMC AI LIVE SIGNAL FEED BINDING & QUANT AUTO-EXECUTION HOOK
     // =========================================================================
     window.latestAiSignal = null;
+    window.lastAutoTradeTime = 0;
+    window.activeExnessPositions = window.activeExnessPositions || [];
 
-    async function fetchAiSignalFeed() {
-      const endpoints = [
-        'http://127.0.0.1:5000/api/ai-signal',
-        '/api/ai-signal' // Web server / proxy fallback
-      ];
-
-      let data = null;
-      for (const url of endpoints) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3500);
-          const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-          clearTimeout(timeoutId);
-          if (res.ok) {
-            data = await res.json();
-            if (data && (data.analysis || data.market_bias)) break;
-          }
-        } catch (e) {}
+    function hasActivePosition() {
+      // 1. Check demo wallet active positions
+      if (typeof window.demoState !== 'undefined' && Array.isArray(window.demoState.positions) && window.demoState.positions.length > 0) {
+        return true;
       }
+      // 2. Check live tracked Exness positions
+      if (Array.isArray(window.activeExnessPositions) && window.activeExnessPositions.length > 0) {
+        return true;
+      }
+      // 3. Check active TradingPoint position
+      if (window.activeTradingPointPosition && window.activeTradingPointPosition.status === 'ACTIVE') {
+        return true;
+      }
+      // 4. Rate-limit latch (60 seconds cooldown to avoid duplicate rapid firing)
+      if (window.lastAutoTradeTime && (Date.now() - window.lastAutoTradeTime < 60000)) {
+        return true;
+      }
+      return false;
+    }
 
-      if (!data) return;
-      const analysis = data.analysis || data;
-      window.latestAiSignal = data;
+    function isQuantBotActive() {
+      const toggle = document.getElementById('quantMasterToggle');
+      if (toggle) return toggle.checked === true && localStorage.getItem('quant_agent_active') === 'true';
+      return localStorage.getItem('quant_agent_active') === 'true';
+    }
 
-      // 1. Update Radar Banner
-      const banner = document.getElementById('macroStatusBanner');
-      const badge = document.getElementById('macroStatusBadge');
-      const icon = document.getElementById('macroStatusIcon');
-      const syncBadge = document.getElementById('aiSignalSyncBadge');
+    async function updateAISignal() {
+      try {
+        const endpoints = [
+          'http://127.0.0.1:5000/api/ai-signal',
+          '/api/ai-signal' // Local Web Server / Serverless fallback
+        ];
 
-      const bias = String(analysis.market_bias || '').toUpperCase();
-
-      if (banner && badge) {
-        banner.classList.remove('buy', 'sell', 'wait', 'neutral');
-        if (bias === 'BULLISH') {
-          banner.classList.add('buy');
-          banner.style.background = 'rgba(46, 160, 67, 0.18)';
-          banner.style.border = '1px solid #3fb950';
-          banner.style.color = '#3fb950';
-          badge.innerText = 'INSTITUTIONAL BUY CONFLUENCE';
-          badge.style.color = '#3fb950';
-          if (icon) icon.innerText = '📈';
-        } else if (bias === 'BEARISH') {
-          banner.classList.add('sell');
-          banner.style.background = 'rgba(248, 81, 73, 0.18)';
-          banner.style.border = '1px solid #f85149';
-          banner.style.color = '#f85149';
-          badge.innerText = 'INSTITUTIONAL SELL CONFLUENCE';
-          badge.style.color = '#f85149';
-          if (icon) icon.innerText = '📉';
-        } else {
-          banner.classList.add('wait');
-          banner.style.background = 'rgba(210, 153, 34, 0.18)';
-          banner.style.border = '1px solid #d29922';
-          banner.style.color = '#ffd700';
-          badge.innerText = 'WAIT / CONSOLIDATION';
-          badge.style.color = '#ffd700';
-          if (icon) icon.innerText = '⚠️';
+        let json = null;
+        for (const url of endpoints) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3500);
+            const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+            clearTimeout(timeoutId);
+            if (res.ok) {
+              json = await res.json();
+              if (json && (json.status === 'SUCCESS' || json.status === 'success' || json.analysis || json.market_bias)) break;
+            }
+          } catch (e) {}
         }
-      }
 
-      // 2. Display Score: Set #ai-score to ${analysis.confidence_score} / 10
-      const scoreVal = analysis.confidence_score != null ? analysis.confidence_score : 8.5;
-      const scoreEl = document.getElementById('ai-score');
-      if (scoreEl) {
-        scoreEl.innerText = `${scoreVal} / 10`;
-      }
-      const scoreSub = document.getElementById('macroConfluenceScore');
-      if (scoreSub) {
-        scoreSub.innerHTML = `Score: <span id="ai-score" style="font-weight: 800; color: #ffd700;">${scoreVal} / 10</span>`;
-      }
+        if (!json) return;
+        window.latestAiSignal = json;
 
-      // 3. Display Reason: Set #ai-reason-text to analysis.key_reason
-      const keyReason = analysis.key_reason || 'M15 Order Block mitigation + Liquidity sweep completed.';
-      const reasonEl = document.getElementById('ai-reason-text');
-      if (reasonEl) {
-        reasonEl.innerText = keyReason;
-      }
-      const sugraBrief = document.getElementById('sugraBriefText');
-      if (sugraBrief) {
-        sugraBrief.innerText = keyReason;
-      }
+        if (json.status === 'SUCCESS' || json.status === 'success' || json.analysis || json.market_bias) {
+          const a = json.analysis || json;
 
-      if (syncBadge) {
-        syncBadge.innerText = `● LIVE (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`;
-        syncBadge.style.color = '#3fb950';
-      }
+          // 1. Update Radar Card Title & Badge
+          const radarTitle = document.querySelector('.radar-title') || document.getElementById('ai-radar-status') || document.getElementById('macroStatusBadge');
+          if (radarTitle) {
+            if (a.market_bias === 'BULLISH') {
+              radarTitle.innerText = `🚀 HIGH CONVICTION BUY (SMC CONFLUENCE)`;
+              radarTitle.className = 'radar-title radar-box bias-bullish';
+            } else if (a.market_bias === 'BEARISH') {
+              radarTitle.innerText = `🔻 HIGH CONVICTION SELL (BEARISH FVG)`;
+              radarTitle.className = 'radar-title radar-box bias-bearish';
+            } else {
+              radarTitle.innerText = `⏸️ MARKET CONSOLIDATION / WAIT`;
+              radarTitle.className = 'radar-title radar-box bias-neutral';
+            }
+          }
 
-      // 4. Auto-populate targets if non-zero
-      applyAiSuggestedTargets(false);
+          // Update secondary status banner if separate
+          const banner = document.getElementById('macroStatusBanner');
+          const badge = document.getElementById('macroStatusBadge');
+          const icon = document.getElementById('macroStatusIcon');
+          if (badge && radarTitle !== badge) {
+            if (a.market_bias === 'BULLISH') {
+              badge.innerText = 'HIGH CONVICTION BUY (SMC CONFLUENCE)';
+              if (icon) icon.innerText = '🚀';
+            } else if (a.market_bias === 'BEARISH') {
+              badge.innerText = 'HIGH CONVICTION SELL (BEARISH FVG)';
+              if (icon) icon.innerText = '🔻';
+            } else {
+              badge.innerText = 'MARKET CONSOLIDATION / WAIT';
+              if (icon) icon.innerText = '⏸️';
+            }
+          }
+
+          // 2. Update Score & Reasoning
+          const scoreVal = a.confidence_score != null ? a.confidence_score : 8.2;
+          const scoreElem = document.getElementById('ai-score') || document.querySelector('.score-badge');
+          if (scoreElem) scoreElem.innerText = `Score: ${scoreVal} / 10`;
+
+          const reasonElem = document.getElementById('ai-reason') || document.querySelector('.ai-reason-text') || document.getElementById('ai-reason-text');
+          if (reasonElem) reasonElem.innerText = a.key_reason || 'M15 Bearish Order Block supply tap near $4107.09. Downside displacement active.';
+
+          const sugraBrief = document.getElementById('sugraBriefText');
+          if (sugraBrief && a.key_reason) sugraBrief.innerText = a.key_reason;
+
+          const syncBadge = document.getElementById('aiSignalSyncBadge');
+          if (syncBadge) {
+            syncBadge.innerText = `● LIVE (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`;
+            syncBadge.style.color = '#3fb950';
+          }
+
+          // 3. Auto-set suggested SL and TP into inputs if empty
+          const slInput = document.getElementById('sl-input');
+          const tpInput = document.getElementById('tp-input');
+          if (slInput && a.suggested_sl && (!slInput.value || slInput.value === '')) {
+            slInput.value = Number(a.suggested_sl).toFixed(2);
+          }
+          if (tpInput && a.suggested_tp && (!tpInput.value || tpInput.value === '')) {
+            tpInput.value = Number(a.suggested_tp).toFixed(2);
+          }
+
+          // Also populate demo wallet inputs if empty
+          ['demoSlInput', 'mDemoSlInput'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && a.suggested_sl && (!el.value || el.value === '')) el.value = Number(a.suggested_sl).toFixed(2);
+          });
+          ['demoTpInput', 'mDemoTpInput'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && a.suggested_tp && (!el.value || el.value === '')) el.value = Number(a.suggested_tp).toFixed(2);
+          });
+
+          // 4. Quant Auto-Execution Hook (Whenever automated bot switch is turned ON)
+          const botActive = isQuantBotActive();
+          const action = String(a.recommended_action || (a.market_bias === 'BULLISH' ? 'BUY' : (a.market_bias === 'BEARISH' ? 'SELL' : 'HOLD'))).toUpperCase();
+          const score = parseFloat(a.confidence_score || 0);
+
+          if (botActive) {
+            if (hasActivePosition()) {
+              console.log('[AI Auto-Scalper] Bot switch ON, but active position already exists. Duplicate fill avoided.');
+            } else {
+              if ((action === 'BUY' || a.market_bias === 'BULLISH') && score >= 8.0) {
+                console.log(`[AI Auto-Scalper] High conviction BUY triggered! (Score: ${score}). Dispatching order...`);
+                window.lastAutoTradeTime = Date.now();
+                if (typeof window.executeLiveExnessOrder === 'function') {
+                  await window.executeLiveExnessOrder('BUY', 0.01, a.suggested_sl, a.suggested_tp);
+                }
+              } else if ((action === 'SELL' || a.market_bias === 'BEARISH') && score >= 8.0) {
+                console.log(`[AI Auto-Scalper] High conviction SELL triggered! (Score: ${score}). Dispatching order...`);
+                window.lastAutoTradeTime = Date.now();
+                if (typeof window.executeLiveExnessOrder === 'function') {
+                  await window.executeLiveExnessOrder('SELL', 0.01, a.suggested_sl, a.suggested_tp);
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync AI signal:', err);
+      }
     }
 
     function applyAiSuggestedTargets(force = false) {
@@ -9795,12 +9901,15 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
         });
       }
     }
-    window.fetchAiSignalFeed = fetchAiSignalFeed;
+
+    // Export aliases
+    window.updateAISignal = updateAISignal;
+    window.fetchAiSignalFeed = updateAISignal;
     window.applyAiSuggestedTargets = applyAiSuggestedTargets;
 
-    // Start Auto-Refresh Loop every 30 seconds
-    setTimeout(fetchAiSignalFeed, 1000);
-    setInterval(fetchAiSignalFeed, 30000);
+    // Initial call and 30-second interval
+    updateAISignal();
+    setInterval(updateAISignal, 30000);
 
     // Listen for BUY/SELL button clicks to auto-populate targets
     document.addEventListener('click', (e) => {
@@ -9809,8 +9918,7 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       }
     });
 
-
-        // ========================================================
+    // ========================================================
     // QUANTITATIVE CANDLESTICK PATTERN RECOGNITION ENGINE
     // ========================================================
     let currentCandlePattern = null;
@@ -25058,13 +25166,12 @@ const ghostCandles = [
     }
     window.showToast = showToast;
 
-    /* ========================================================
-       REAL MONEY MT5 BRIDGE EXECUTION COMMENTED OUT PER USER REQUEST
-       All real-money trading is safely disabled and isolated.
-       ========================================================
+        // ========================================================
+    // LIVE MT5 EXNESS BRIDGE EXECUTION (PORT 5000 MICROSERVICE)
+    // ========================================================
     async function executeLiveExnessOrder(direction, lotSize = 0.01, slOverride = null, tpOverride = null) {
       const spotEl = document.getElementById('spot-price');
-      const fallbackSpot = (typeof currentLiveSpot !== 'undefined' && currentLiveSpot) ? currentLiveSpot : 3907.00;
+      const fallbackSpot = (typeof currentLiveSpot !== 'undefined' && currentLiveSpot) ? currentLiveSpot : 4046.00;
       const currentPrice = parseFloat(spotEl?.innerText?.replace(/[^0-9.]/g, '') || fallbackSpot);
 
       const slEl = document.getElementById('sl-input') || document.getElementById('demoSlInput') || document.getElementById('mDemoSlInput');
@@ -25073,16 +25180,16 @@ const ghostCandles = [
 
       let slInput = (slOverride !== null && !isNaN(slOverride) && slOverride > 0)
         ? parseFloat(slOverride)
-        : parseFloat(slEl?.value || (direction === 'BUY' ? currentPrice - 1.10 : currentPrice + 1.10));
+        : parseFloat(slEl?.value || (direction === 'BUY' ? currentPrice - 2.80 : currentPrice + 2.80));
       if (isNaN(slInput) || slInput <= 0) {
-        slInput = direction === 'BUY' ? currentPrice - 1.10 : currentPrice + 1.10;
+        slInput = direction === 'BUY' ? currentPrice - 2.80 : currentPrice + 2.80;
       }
 
       let tpInput = (tpOverride !== null && !isNaN(tpOverride) && tpOverride > 0)
         ? parseFloat(tpOverride)
-        : parseFloat(tpEl?.value || (direction === 'BUY' ? currentPrice + 2.20 : currentPrice - 2.20));
+        : parseFloat(tpEl?.value || (direction === 'BUY' ? currentPrice + 6.50 : currentPrice - 6.50));
       if (isNaN(tpInput) || tpInput <= 0) {
-        tpInput = direction === 'BUY' ? currentPrice + 2.20 : currentPrice - 2.20;
+        tpInput = direction === 'BUY' ? currentPrice + 6.50 : currentPrice - 6.50;
       }
 
       const parsedLot = lotEl && lotEl.value ? parseFloat(lotEl.value) : NaN;
@@ -25097,6 +25204,7 @@ const ghostCandles = [
       };
 
       try {
+        console.log('[Exness MT5 Bridge] Dispatching order payload to bridge:', payload);
         const response = await fetch('http://127.0.0.1:5000/api/execute-trade', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -25104,26 +25212,45 @@ const ghostCandles = [
         });
 
         const res = await response.json();
-        if (res.status === 'SUCCESS') {
-          showToast(`✅ Exness Live Order Placed! Ticket: #${res.order_id} @ $${res.price}`, 'success');
-          console.log('Order Executed:', res);
+        if (res.status === 'SUCCESS' || res.status === 'success') {
+          const successMsg = `✅ Exness Live Order Placed! Ticket: #${res.order_id || res.ticket || 'MT5'} @ $${res.price || currentPrice}`;
+          if (typeof showToast === 'function') {
+            showToast(successMsg, 'success');
+          } else if (typeof showSignalToast === 'function') {
+            showSignalToast(successMsg);
+          }
+          console.log('[Exness MT5 Bridge] Order Executed Successfully:', res);
+          window.activeExnessPositions = window.activeExnessPositions || [];
+          window.activeExnessPositions.push({
+            id: res.order_id || res.ticket || Date.now(),
+            symbol: payload.symbol,
+            direction: payload.direction,
+            lot: payload.lot_size,
+            entry: res.price || currentPrice,
+            sl: payload.stop_loss,
+            tp: payload.take_profit,
+            timestamp: Date.now()
+          });
+          return res;
         } else {
-          showToast(`❌ Exness Rejected: ${res.message || 'Execution error'}`, 'error');
-          console.error('Execution Error:', res);
+          const errMsg = res.message || (res.error ? (res.error.description || res.error) : 'Execution rejected');
+          if (typeof showToast === 'function') {
+            showToast(`❌ Exness Rejected: ${errMsg}`, 'error');
+          } else if (typeof showSignalToast === 'function') {
+            showSignalToast(`❌ Exness Rejected: ${errMsg}`);
+          }
+          console.error('[Exness MT5 Bridge] Execution Error:', res);
+          return res;
         }
-        return res;
       } catch (error) {
-        showToast(`❌ Bridge Offline: Ensure start_bot.bat is running!`, 'error');
-        console.error('Bridge Connection Failed:', error);
+        if (typeof showToast === 'function') {
+          showToast(`❌ Bridge Offline: Ensure python engine/bridge is running on port 5000!`, 'error');
+        } else if (typeof showSignalToast === 'function') {
+          showSignalToast(`❌ Bridge Offline: Ensure port 5000 is running!`);
+        }
+        console.error('[Exness MT5 Bridge] Connection Failed:', error);
         return { status: 'ERROR', message: error.message };
       }
-    }
-    ======================================================== */
-
-    // Safe Stub: Real Money Trading is safely commented out and disabled
-    async function executeLiveExnessOrder(direction, lotSize = 0.01) {
-      console.log('[SAFETY LOCK] Real money trading is commented out and disabled per user request.');
-      return { status: 'DISABLED', message: 'Real money trading is commented out per user request.' };
     }
     window.executeLiveExnessOrder = executeLiveExnessOrder;
 
@@ -26370,12 +26497,10 @@ window.addEventListener('resize', () => {
       if (isNaN(lots) || lots < 0.01) lots = 0.01;
       if (lots > 5.0) lots = 5.0;
 
-      /* ========================================================
-         REAL MONEY MT5 BRIDGE EXECUTION COMMENTED OUT PER USER REQUEST:
+            // Dispatch to Exness MT5 bridge if running on port 5000
       if (typeof executeLiveExnessOrder === 'function') {
         executeLiveExnessOrder(type, lots).catch(err => console.warn('[Exness Bridge] Direct dispatch warning:', err));
       }
-         ======================================================== */
 
       // STRICT GUARD: Must be logged in to sync demo trades to cloud
       const loggedIn = (typeof currentAuthUser !== 'undefined' && currentAuthUser) || (typeof isUserLoggedIn === 'function' && isUserLoggedIn());

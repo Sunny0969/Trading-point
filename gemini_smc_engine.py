@@ -85,6 +85,7 @@ def evaluate_gemini_smc_analysis():
     # SMC Order Block & Momentum Confluence Logic
     if delta > 1.20:
         market_bias = "BULLISH"
+        recommended_action = "BUY"
         score = min(9.4, round(7.5 + (delta / range_total) * 2.0, 1))
         suggested_sl = round(price - 2.80, 2)
         suggested_tp = round(price + 6.50, 2)
@@ -94,6 +95,7 @@ def evaluate_gemini_smc_analysis():
         )
     elif delta < -1.20:
         market_bias = "BEARISH"
+        recommended_action = "SELL"
         score = min(9.2, round(7.4 + (abs(delta) / range_total) * 2.0, 1))
         suggested_sl = round(price + 2.80, 2)
         suggested_tp = round(price - 6.50, 2)
@@ -103,6 +105,7 @@ def evaluate_gemini_smc_analysis():
         )
     else:
         market_bias = "NEUTRAL"
+        recommended_action = "WAIT"
         score = 6.0
         suggested_sl = round(price - 2.20, 2)
         suggested_tp = round(price + 3.50, 2)
@@ -112,12 +115,14 @@ def evaluate_gemini_smc_analysis():
         )
 
     return {
-        "status": "success",
+        "status": "SUCCESS",
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "symbol": "XAUUSD",
+        "symbol": "XAUUSDm",
         "live_price": price,
+        "recommended_action": recommended_action,
         "analysis": {
             "market_bias": market_bias,
+            "recommended_action": recommended_action,
             "confidence_score": score,
             "key_reason": key_reason,
             "suggested_sl": suggested_sl,

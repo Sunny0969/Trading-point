@@ -316,8 +316,6 @@
 
     lastTelemetry.innerText = 'DISPATCHING SCALP...';
 
-    /* ========================================================
-       REAL MONEY MT5 BRIDGE EXECUTION COMMENTED OUT PER USER REQUEST
     try {
       if (typeof window.executeLiveExnessOrder === 'function') {
         window.executeLiveExnessOrder(payload.direction, parseFloat(signalData.lot || 0.01), payload.sl, payload.tp);
@@ -325,7 +323,6 @@
     } catch (bridgeErr) {
       console.warn('[QuantAgent] Live Exness MT5 bridge dispatch warning:', bridgeErr);
     }
-       ======================================================== */
 
     try {
       const response = await fetch('/api/quant-agent', {
@@ -394,15 +391,12 @@
       if (lastDispatchedHash !== sigKey) {
         lastDispatchedHash = sigKey;
         const dir = (pos.direction === 'SELL' || pos.type === 'SHORT') ? 'SELL' : 'BUY';
-        /* ========================================================
-           REAL MONEY MT5 BRIDGE EXECUTION COMMENTED OUT PER USER REQUEST
         const posEntry = parseFloat(pos.entry);
         const minimalSl = (dir === 'BUY') ? Math.max(parseFloat(pos.sl) || (posEntry - 1.10), posEntry - 1.10) : Math.min(parseFloat(pos.sl) || (posEntry + 1.10), posEntry + 1.10);
         const targetTp = (dir === 'BUY') ? (parseFloat(pos.tp) || (posEntry + 2.20)) : (parseFloat(pos.tp) || (posEntry - 2.20));
         if (typeof window.executeLiveExnessOrder === 'function') {
           window.executeLiveExnessOrder(dir, 0.01, minimalSl, targetTp).catch(e => console.warn('[QuantAgent] Direct MT5 bridge trigger warning:', e));
         }
-           ======================================================== */
         window.dispatchQuantSignalToServer({
           source: pos.source || 'INSTITUTIONAL_SMC',
           direction: (pos.direction === 'SELL' || pos.type === 'SHORT') ? 'SELL' : 'BUY',
