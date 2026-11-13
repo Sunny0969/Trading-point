@@ -12,3 +12,5 @@ scratch/
 run_bridge.py
 
 mt5_config.json
+
+trader/
