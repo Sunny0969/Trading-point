@@ -50542,7 +50542,7 @@ const ghostCandles = [
 
         if (res.status === 'SUCCESS' || res.status === 'success') {
 
-          const successMsg = `✅ Exness Live Order Placed! Ticket: #${res.order_id || res.ticket || 'MT5'} @ $${res.price || currentPrice}`;
+          const successMsg = `✅ MT5 Live Order Placed! Ticket: #${res.order_id || res.ticket || 'MT5'} @ $${res.price || currentPrice}`;
 
           if (typeof showToast === 'function') {
 
@@ -50586,11 +50586,18 @@ const ghostCandles = [
 
           if (typeof showToast === 'function') {
 
-            showToast(`❌ Exness Rejected: ${errMsg}`, 'error');
+            const isAutoTradingOff = String(errMsg).includes('10027') || String(errMsg).toLowerCase().includes('autotrading');
+          const displayMsg = isAutoTradingOff
+            ? `⚠️ MT5 Algo Trading OFF: MT5 me 'Algo Trading' button (Ctrl+E) ko GREEN karein!`
+            : `❌ MT5 Rejected: ${errMsg}`;
+
+          if (typeof showToast === 'function') {
+
+            showToast(displayMsg, isAutoTradingOff ? 'warning' : 'error');
 
           } else if (typeof showSignalToast === 'function') {
 
-            showSignalToast(`❌ Exness Rejected: ${errMsg}`);
+            showSignalToast(displayMsg);
 
           }
 
