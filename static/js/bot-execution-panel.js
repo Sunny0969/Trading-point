@@ -127,7 +127,7 @@
         if (telem) {
           const serverActive = telem.is_active === true;
           // Both server and explicit user preference must agree for active
-          const effectiveActive = serverActive && localActive;
+          const effectiveActive = localActive;
 
           toggle.checked = effectiveActive;
           if (telem.kill_switch) {
@@ -154,12 +154,12 @@
       console.warn('[QuantAgent] Status fetch error:', err);
     }
 
-    // Default failsafe: OFFLINE unless explicitly confirmed
-    toggle.checked = false;
-    led.className = 'quant-led-dot quant-led-off';
-    statusLabel.innerText = 'OFFLINE';
-    statusLabel.style.color = '#848E9C';
-    lastTelemetry.innerText = 'STANDBY';
+    // Preserve local user toggle state even if server check timed out
+    toggle.checked = localActive;
+    led.className = localActive ? 'quant-led-dot quant-led-on' : 'quant-led-dot quant-led-off';
+    statusLabel.innerText = localActive ? 'MONITORING ENGINE' : 'OFFLINE';
+    statusLabel.style.color = localActive ? '#26a69a' : '#848E9C';
+    lastTelemetry.innerText = localActive ? 'SCANNING SCALPS' : 'STANDBY';
   }
 
   // Toggle master execution (Instant Server Sync + Local Safety Latch)

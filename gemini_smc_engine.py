@@ -158,6 +158,78 @@ def evaluate_gemini_smc_analysis():
     }
 
 
+def execute_mt5_order(symbol, direction, lots, sl=None, tp=None):
+    try:
+        import MetaTrader5 as mt5
+        if not mt5.initialize():
+            return {"status": "FAILED", "message": f"MT5 init failed: {mt5.last_error()}"}
+        
+        # Check symbol
+        sym_info = mt5.symbol_info(symbol)
+        if sym_info is None:
+            for alt in [symbol, symbol + 'm', symbol + '.pro', 'XAUUSD', 'GOLD']:
+                sym_info = mt5.symbol_info(alt)
+                if sym_info is not None:
+                    symbol = alt
+                    break
+        if sym_info is None:
+            mt5.shutdown()
+            return {"status": "FAILED", "message": f"Symbol {symbol} not found in MT5"}
+        
+        if not sym_info.visible:
+            if not mt5.symbol_select(symbol, True):
+                mt5.shutdown()
+                return {"status": "FAILED", "message": f"Failed to select symbol {symbol}"}
+
+        tick = mt5.symbol_info_tick(symbol)
+        if not tick:
+            mt5.shutdown()
+            return {"status": "FAILED", "message": f"Failed to get price tick for {symbol}"}
+
+        is_buy = (direction.upper() == 'BUY')
+        order_type = mt5.ORDER_TYPE_BUY if is_buy else mt5.ORDER_TYPE_SELL
+        price = tick.ask if is_buy else tick.bid
+        
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": symbol,
+            "volume": float(lots),
+            "type": order_type,
+            "price": float(price),
+            "deviation": 20,
+            "magic": 234000,
+            "comment": "TradingPoint AutoBot",
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_IOC,
+        }
+        if sl and float(sl) > 0:
+            request["sl"] = float(sl)
+        if tp and float(tp) > 0:
+            request["tp"] = float(tp)
+
+        result = mt5.order_send(request)
+        mt5.shutdown()
+        
+        if result and result.retcode == mt5.TRADE_RETCODE_DONE:
+            return {
+                "status": "SUCCESS",
+                "order_id": result.order,
+                "ticket": result.order,
+                "price": result.price,
+                "direction": direction,
+                "lot_size": lots,
+                "stop_loss": sl,
+                "take_profit": tp,
+                "message": f"Live MT5 order executed: #{result.order} {direction} {lots}L {symbol} @ {result.price}"
+            }
+        else:
+            err_msg = result.comment if result else str(mt5.last_error())
+            retcode = result.retcode if result else 'UNKNOWN'
+            return {"status": "FAILED", "retcode": retcode, "message": f"MT5 order rejected: {err_msg} (code {retcode})"}
+    except Exception as e:
+        return {"status": "FAILED", "message": f"MT5 execution exception: {str(e)}"}
+
+
 class AISignalHandler(BaseHTTPRequestHandler):
     def _send_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -215,16 +287,8 @@ class AISignalHandler(BaseHTTPRequestHandler):
             tp = payload.get("take_profit")
             spot = get_live_gold_spot()["price"]
 
-            res = {
-                "status": "SUCCESS",
-                "order_id": int(time.time()),
-                "price": spot,
-                "direction": direction,
-                "lot_size": lots,
-                "stop_loss": sl,
-                "take_profit": tp,
-                "message": f"Virtual AI order acknowledged: {direction} {lots}L @ ${spot:.2f}"
-            }
+            symbol = payload.get("symbol", "XAUUSD")
+            res = execute_mt5_order(symbol, direction, lots, sl, tp)
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self._send_cors_headers()
