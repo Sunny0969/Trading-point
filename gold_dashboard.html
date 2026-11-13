@@ -19501,13 +19501,9 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
     function isQuantBotActive() {
-
       const toggle = document.getElementById('quantMasterToggle');
-
-      if (toggle) return toggle.checked === true && localStorage.getItem('quant_agent_active') === 'true';
-
-      return localStorage.getItem('quant_agent_active') === 'true';
-
+      if (toggle) return toggle.checked === true;
+      return localStorage.getItem('quant_agent_active') !== 'false';
     }
 
 
