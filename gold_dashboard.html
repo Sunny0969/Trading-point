@@ -16676,7 +16676,37 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
 
-            <!-- Indicator: Gold 15m Signals on Any TF + RR (Free) [Pine Script v5] -->
+                                    <!-- Indicator: LongshortPRo Model (Exclusive Multi-Timeframe Momentum Confluence) -->
+            <div class="tv-ind-row" onclick="clickModularToggle('longShortPro', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #38bdf8;">⚡ LongshortPRo Model</b>
+                  <span style="font-size: 9px; background: rgba(56,189,248,0.18); color: #38bdf8; padding: 1px 4px; border-radius: 4px; font-weight: 700;">EXCLUSIVE MODEL</span>
+                </div>
+                <small>Multi-Timeframe Momentum Alignment (7-TF Confluence · Overbought &gt;80 / Oversold &lt;20)</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-longShortPro" onchange="toggleModularIndicator('longShortPro')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+<!-- Indicator: AlextradersNQ Model (Exclusive Multi-Timeframe V-Shape IFVG Reversal) -->
+            <div class="tv-ind-row" onclick="clickModularToggle('alexTradesNQ', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #38bdf8;">⚡ AlextradersNQ Model</b>
+                  <span style="font-size: 9px; background: rgba(56,189,248,0.18); color: #38bdf8; padding: 1px 4px; border-radius: 4px; font-weight: 700;">EXCLUSIVE MODEL</span>
+                </div>
+                <small>Multi-Timeframe EQH/EQL + MTF FVGs + Fib 0.5 + IFVG Cascade (1:1 V-Shape Reversal)</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-alexTradesNQ" onchange="toggleModularIndicator('alexTradesNQ')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+<!-- Indicator: Gold 15m Signals on Any TF + RR (Free) [Pine Script v5] -->
 
             <div class="tv-ind-row" onclick="clickModularToggle('gold15mRR', event)">
 
@@ -17468,6 +17498,24 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 5h20M2 10h20M2 14h20M2 19h20"/></svg>
 
+        </button>
+
+                        <!-- LongshortPRo Model Shortcut -->
+        <button class="tv-tool-btn" id="tool-long-short-pro" title="LongshortPRo Model (Exclusive Multi-Timeframe Momentum Confluence)" onclick="toggleModularIndicator('longShortPro')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+            <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
+          </svg>
+        </button>
+
+        <!-- AlextradersNQ Model Shortcut -->
+        <button class="tv-tool-btn" id="tool-alex-trades-nq" title="AlextradersNQ Model (Exclusive Multi-Timeframe V-Shape IFVG Reversal)" onclick="toggleModularIndicator('alexTradesNQ')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+            <path d="M4 19L9 8l4 6 7-10"/>
+            <circle cx="9" cy="8" r="2" fill="#38bdf8"/>
+            <circle cx="13" cy="14" r="2" fill="#38bdf8"/>
+            <path d="M16 4h4v4"/>
+            <rect x="11" y="9" width="6" height="4" fill="rgba(56,189,248,0.25)" stroke="#38bdf8" stroke-width="1"/>
+          </svg>
         </button>
 
         <!-- Gold 15m Signals on Any TF + RR Shortcut -->
@@ -21748,6 +21796,20 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
     const DEFAULT_INDICATOR_CONFIG = {
 
+      longShortPro: (function() {
+        try {
+          const v = localStorage.getItem('indicator_long_short_pro_active');
+          return v !== null ? (v === 'true') : false;
+        } catch (e) { return false; }
+      })(), // Dedicated: LongshortPRo Model (Exclusive Multi-Timeframe Momentum Confluence) - Weight: 40
+
+      alexTradesNQ: (function() {
+        try {
+          const v = localStorage.getItem('indicator_alex_trades_nq_active');
+          return v !== null ? (v === 'true') : false;
+        } catch (e) { return false; }
+      })(), // Dedicated: AlextradersNQ Model (Exclusive Multi-Timeframe V-Shape IFVG Reversal) - Weight: 40
+
       gold15mRR: (function() {
 
         try {
@@ -21904,6 +21966,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
     const MODULE_WEIGHTS = {
 
+      longShortPro: 40,
+
+      alexTradesNQ: 40,
+
       gold15mRR: 35,
 
       chobosGolden: 30,
@@ -21971,6 +22037,15 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     })();
 
     window.indicatorSettings = indicatorSettings;
+
+    var longShortProEnabled = !!indicatorSettings.longShortPro;
+    window.longShortProEnabled = longShortProEnabled;
+    window.latestLongShortPro = null;
+
+    var alexTradesNQEnabled = !!indicatorSettings.alexTradesNQ;
+    window.alexTradesNQEnabled = alexTradesNQEnabled;
+    window.latestAlexTradesNQ = null;
+    window.activeAlexTradesNQPosition = null;
 
 
 
@@ -22772,7 +22847,79 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       indicatorSettings[moduleName] = newVal;
 
-      if (moduleName === 'gold15mRR') {
+      if (moduleName === 'longShortPro') {
+        try {
+          localStorage.setItem('indicator_long_short_pro_active', newVal ? 'true' : 'false');
+          window.longShortProEnabled = newVal;
+        } catch (e) {}
+        if (newVal === true) {
+          // EXCLUSIVE ISOLATION MODE: Automatically turn off all other indicators!
+          Object.keys(DEFAULT_INDICATOR_CONFIG).forEach(k => {
+            if (k !== 'longShortPro') {
+              indicatorSettings[k] = false;
+              try {
+                localStorage.setItem(`indicator_${k}_active`, 'false');
+              } catch (e) {}
+              ['ind-toggle-', 'modal-toggle-'].forEach(prefix => {
+                const el = document.getElementById(`${prefix}${k}`);
+                if (el) el.checked = false;
+              });
+              applyModularVisuals(k, false);
+            }
+          });
+          if (typeof toggleSMCZones === 'function' && smcEnabled) {
+            smcEnabled = false;
+            const btn = document.getElementById('btn-toggle-smc');
+            if (btn) btn.classList.remove('active');
+            const railBtn = document.getElementById('tool-smc');
+            if (railBtn) railBtn.classList.remove('active');
+          }
+        }
+      } else if (moduleName === 'longShortPro') {
+        longShortProEnabled = isChecked;
+        window.longShortProEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_long_short_pro_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+        const railLspBtn = document.getElementById('tool-long-short-pro');
+        if (railLspBtn) railLspBtn.classList.toggle('active', isChecked);
+      } else if (moduleName === 'alexTradesNQ') {
+        try {
+          localStorage.setItem('indicator_alex_trades_nq_active', newVal ? 'true' : 'false');
+          window.alexTradesNQEnabled = newVal;
+        } catch (e) {}
+        if (newVal === true) {
+          // EXCLUSIVE ISOLATION MODE: Automatically turn off all other indicators!
+          Object.keys(DEFAULT_INDICATOR_CONFIG).forEach(k => {
+            if (k !== 'alexTradesNQ') {
+              indicatorSettings[k] = false;
+              try {
+                localStorage.setItem(`indicator_${k}_active`, 'false');
+              } catch (e) {}
+              ['ind-toggle-', 'modal-toggle-'].forEach(prefix => {
+                const el = document.getElementById(`${prefix}${k}`);
+                if (el) el.checked = false;
+              });
+              applyModularVisuals(k, false);
+            }
+          });
+          if (typeof toggleSMCZones === 'function' && smcEnabled) {
+            smcEnabled = false;
+            const btn = document.getElementById('btn-toggle-smc');
+            if (btn) btn.classList.remove('active');
+            const railBtn = document.getElementById('tool-smc');
+            if (railBtn) railBtn.classList.remove('active');
+          }
+        }
+      } else if (moduleName === 'alexTradesNQ') {
+        alexTradesNQEnabled = isChecked;
+        window.alexTradesNQEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_alex_trades_nq_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+        const railAlexBtn = document.getElementById('tool-alex-trades-nq');
+        if (railAlexBtn) railAlexBtn.classList.toggle('active', isChecked);
+      } else if (moduleName === 'gold15mRR') {
 
         try {
 
@@ -22952,6 +23099,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       const tabMap = {
 
+        longShortPro: 'LONGSHORT_PRO',
+
+        alexTradesNQ: 'ALEX_NQ',
+
         gold15mRR: 'GOLD_15M_RR',
 
         chobosGolden: 'CHOBOS_GOLDEN',
@@ -23019,6 +23170,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
       const labels = {
+
+        longShortPro: 'LongshortPRo Model',
+
+        alexTradesNQ: 'AlextradersNQ Model',
 
         gold15mRR: 'Gold 15m Signals on Any TF + RR (Free)',
 
@@ -36706,6 +36861,44 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       // Dedicated: AMD FVG TRADE SETUP [LUXALGO] (EXCLUSIVE PO3 ENGINE)
 
+      // Dedicated: ALEXTRADERS NQ MODEL (EXCLUSIVE V-SHAPE IFVG STRATEGY)
+      // Dedicated: LONGSHORT PRO MODEL (EXCLUSIVE MULTI-TIMEFRAME MOMENTUM CONFLUENCE)
+      if (typeof evaluateLongShortProModel === 'function') {
+        const lspResult = evaluateLongShortProModel(candles, spot);
+        window.latestLongShortPro = lspResult;
+        if (lspResult && lspResult.active) {
+          modularEngineState.indicators.LONGSHORT_PRO = {
+            status: lspResult.action,
+            stateBadge: lspResult.action,
+            direction: lspResult.direction,
+            entry: (lspResult.entry && typeof lspResult.entry === 'number') ? '$' + lspResult.entry.toFixed(2) : lspResult.entry,
+            sl: (lspResult.sl && typeof lspResult.sl === 'number') ? '$' + lspResult.sl.toFixed(2) : lspResult.sl,
+            tp: (lspResult.tp && typeof lspResult.tp === 'number') ? '$' + lspResult.tp.toFixed(2) : lspResult.tp,
+            rr: lspResult.rr || '1 : 2.0',
+            reason: lspResult.reason
+          };
+        }
+      }
+
+      if (typeof evaluateAlexTradesNQModel === 'function') {
+        const actPools = (typeof currentLiquidityPools !== 'undefined' && currentLiquidityPools) ? currentLiquidityPools : (window.currentLiquidityPools || null);
+        const alexResult = evaluateAlexTradesNQModel(candles, actPools, spot);
+        window.latestAlexTradesNQ = alexResult;
+        if (alexResult && alexResult.active && alexResult.signal) {
+          const s = alexResult.signal;
+          modularEngineState.indicators.ALEX_NQ = {
+            status: s.action,
+            stateBadge: s.action,
+            direction: s.direction,
+            entry: (s.entry && typeof s.entry === 'number') ? '$' + s.entry.toFixed(2) : s.entry,
+            sl: (s.sl && typeof s.sl === 'number') ? '$' + s.sl.toFixed(2) : s.sl,
+            tp: (s.tp && typeof s.tp === 'number') ? '$' + s.tp.toFixed(2) : s.tp,
+            rr: s.rrRatio || '1:1.0',
+            reason: s.reason
+          };
+        }
+      }
+
       const amdResult = evaluateAMDFVGSetup(candles, spot);
 
       window.latestAMDFVG = amdResult;
@@ -37764,11 +37957,14 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       }
 
-      const tabs = ['GOLD_15M_RR', 'CHOBOS_GOLDEN', 'COND_STRUCT', 'WICK_RANGE_SWEEP', 'LIQ_MSS_FVG', 'BRK_BOUNCE', 'SMC_REV', 'AMD_FVG', 'LS_EXP', 'SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
+      const tabs = ['LONGSHORT_PRO', 'ALEX_NQ', 'GOLD_15M_RR', 'CHOBOS_GOLDEN', 'COND_STRUCT', 'WICK_RANGE_SWEEP', 'LIQ_MSS_FVG', 'BRK_BOUNCE', 'SMC_REV', 'AMD_FVG', 'LS_EXP', 'SMC', 'OB_FIBO', 'CHOCH_SUPPLY', 'LIQUIDITY', 'DLS', 'VWAP_FVG', 'FIBONACCI', 'BREAKOUT'];
 
 
 
       const TAB_TITLES = {
+        LONGSHORT_PRO: '⚡ LONGSHORT PRO MODEL [EXCLUSIVE CONFLUENCE]',
+
+        ALEX_NQ: '⚡ ALEXTRADERS NQ MODEL [EXCLUSIVE V-SHAPE]',
 
         GOLD_15M_RR: '⚡ GOLD 15M SIGNALS + RR [FREE]',
 
@@ -41212,6 +41408,14 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
         drawSMC_BearishReversalOverlay(drawingCtx, window.latestSMC_BearishReversal, candles);
 
+      }
+
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.longShortPro && typeof drawLongShortProOverlay === 'function') {
+        drawLongShortProOverlay(drawingCtx, window.latestLongShortPro, candles);
+      }
+
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.alexTradesNQ && typeof drawAlexTradesNQOverlay === 'function') {
+        drawAlexTradesNQOverlay(drawingCtx, window.latestAlexTradesNQ, candles);
       }
 
       if (typeof indicatorSettings !== 'undefined' && indicatorSettings.amdFvg && typeof drawAMD_FVG_Overlay === 'function') {
@@ -55191,7 +55395,35 @@ window.addEventListener('resize', () => {
 
 
 
-        <div class="indicator-row" onclick="clickModularToggle('lsExp', event)">
+                        <div class="indicator-row" onclick="clickModularToggle('longShortPro', event)">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #38bdf8;">⚡ LongshortPRo Model</b>
+              <span style="font-size: 9px; background: rgba(56,189,248,0.18); color: #38bdf8; padding: 1px 4px; border-radius: 4px; font-weight: 700;">EXCLUSIVE MODEL</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">Multi-Timeframe Momentum Alignment (7-TF Confluence · Overbought &gt;80 / Oversold &lt;20)</p>
+          </div>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="modal-toggle-longShortPro" onchange="toggleModularIndicator('longShortPro')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+<div class="indicator-row" onclick="clickModularToggle('alexTradesNQ', event)">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #38bdf8;">⚡ AlextradersNQ Model</b>
+              <span style="font-size: 9px; background: rgba(56,189,248,0.18); color: #38bdf8; padding: 1px 4px; border-radius: 4px; font-weight: 700;">EXCLUSIVE MODEL</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">Multi-Timeframe EQH/EQL + MTF FVGs + Fib 0.5 + IFVG Cascade (1:1 V-Shape Reversal)</p>
+          </div>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="modal-toggle-alexTradesNQ" onchange="toggleModularIndicator('alexTradesNQ')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+<div class="indicator-row" onclick="clickModularToggle('lsExp', event)">
 
           <div>
 
@@ -55881,6 +56113,8 @@ window.addEventListener('resize', () => {
 
 
 
+  <script src="static/js/longshort-pro-model.js" defer></script>
+  <script src="static/js/alextraders-nq-model.js" defer></script>
   <script src="static/js/bot-execution-panel.js" defer></script>
 
 </body>
