@@ -16676,7 +16676,22 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
 
-                                    <!-- Indicator: LongshortPRo Model (Exclusive Multi-Timeframe Momentum Confluence) -->
+                                    <!-- Indicator: DTC 1.3.6 Trading club (Exclusive 6-Layer EMA Ribbon & 7 Targets Ladder) -->
+            <div class="tv-ind-row" onclick="clickModularToggle('dtcTradingClub', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #10b981;">⚡ DTC 1.3.6 Trading club</b>
+                  <span style="font-size: 9px; background: rgba(16,185,129,0.18); color: #10b981; padding: 1px 4px; border-radius: 4px; font-weight: 700;">EXCLUSIVE MODEL</span>
+                </div>
+                <small>6-Layer EMA Ribbon (30-60) + Dynamic Cloud + 7-Target TP Ladder + MTF Dashboard</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-dtcTradingClub" onchange="toggleModularIndicator('dtcTradingClub')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- Indicator: LongshortPRo Model (Exclusive Multi-Timeframe Momentum Confluence) -->
             <div class="tv-ind-row" onclick="clickModularToggle('longShortPro', event)">
               <div class="tv-ind-info">
                 <div style="display: flex; align-items: center; gap: 6px;">
@@ -17500,7 +17515,16 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
         </button>
 
-                        <!-- LongshortPRo Model Shortcut -->
+                        <!-- DTC 1.3.6 Trading club Shortcut -->
+        <button class="tv-tool-btn" id="tool-dtc-trading-club" title="DTC 1.3.6 Trading club (Exclusive 6-Layer EMA Ribbon & 7 Targets)" onclick="toggleModularIndicator('dtcTradingClub')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+            <path d="M3 17l6-6 4 4 8-8"/>
+            <path d="M14 7h7v7"/>
+            <line x1="3" y1="21" x2="21" y2="21"/>
+          </svg>
+        </button>
+
+        <!-- LongshortPRo Model Shortcut -->
         <button class="tv-tool-btn" id="tool-long-short-pro" title="LongshortPRo Model (Exclusive Multi-Timeframe Momentum Confluence)" onclick="toggleModularIndicator('longShortPro')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
             <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>
@@ -21796,6 +21820,13 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
     const DEFAULT_INDICATOR_CONFIG = {
 
+      dtcTradingClub: (function() {
+        try {
+          const v = localStorage.getItem('indicator_dtc_trading_club_active');
+          return v !== null ? (v === 'true') : false;
+        } catch (e) { return false; }
+      })(), // Dedicated: DTC 1.3.6 Trading club (Exclusive 6-Layer EMA Ribbon & 7 Targets Ladder) - Weight: 40
+
       longShortPro: (function() {
         try {
           const v = localStorage.getItem('indicator_long_short_pro_active');
@@ -21966,6 +21997,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
     const MODULE_WEIGHTS = {
 
+      dtcTradingClub: 40,
+
       longShortPro: 40,
 
       alexTradesNQ: 40,
@@ -22037,6 +22070,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     })();
 
     window.indicatorSettings = indicatorSettings;
+
+    var dtcTradingClubEnabled = !!indicatorSettings.dtcTradingClub;
+    window.dtcTradingClubEnabled = dtcTradingClubEnabled;
+    window.latestDTCTradingClub = null;
 
     var longShortProEnabled = !!indicatorSettings.longShortPro;
     window.longShortProEnabled = longShortProEnabled;
@@ -22847,7 +22884,43 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       indicatorSettings[moduleName] = newVal;
 
-      if (moduleName === 'longShortPro') {
+      if (moduleName === 'dtcTradingClub') {
+        try {
+          localStorage.setItem('indicator_dtc_trading_club_active', newVal ? 'true' : 'false');
+          window.dtcTradingClubEnabled = newVal;
+        } catch (e) {}
+        if (newVal === true) {
+          // EXCLUSIVE ISOLATION MODE: Automatically turn off all other indicators!
+          Object.keys(DEFAULT_INDICATOR_CONFIG).forEach(k => {
+            if (k !== 'dtcTradingClub') {
+              indicatorSettings[k] = false;
+              try {
+                localStorage.setItem(`indicator_${k}_active`, 'false');
+              } catch (e) {}
+              ['ind-toggle-', 'modal-toggle-'].forEach(prefix => {
+                const el = document.getElementById(`${prefix}${k}`);
+                if (el) el.checked = false;
+              });
+              applyModularVisuals(k, false);
+            }
+          });
+          if (typeof toggleSMCZones === 'function' && smcEnabled) {
+            smcEnabled = false;
+            const btn = document.getElementById('btn-toggle-smc');
+            if (btn) btn.classList.remove('active');
+            const railBtn = document.getElementById('tool-smc');
+            if (railBtn) railBtn.classList.remove('active');
+          }
+        }
+      } else if (moduleName === 'dtcTradingClub') {
+        dtcTradingClubEnabled = isChecked;
+        window.dtcTradingClubEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_dtc_trading_club_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+        const railDtcBtn = document.getElementById('tool-dtc-trading-club');
+        if (railDtcBtn) railDtcBtn.classList.toggle('active', isChecked);
+      } else if (moduleName === 'longShortPro') {
         try {
           localStorage.setItem('indicator_long_short_pro_active', newVal ? 'true' : 'false');
           window.longShortProEnabled = newVal;
@@ -23099,6 +23172,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       const tabMap = {
 
+        dtcTradingClub: 'DTC_TRADING_CLUB',
+
         longShortPro: 'LONGSHORT_PRO',
 
         alexTradesNQ: 'ALEX_NQ',
@@ -23170,6 +23245,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
       const labels = {
+
+        dtcTradingClub: 'DTC 1.3.6 Trading club',
 
         longShortPro: 'LongshortPRo Model',
 
@@ -23343,7 +23420,31 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
     function applyModularVisuals(moduleName, isChecked) {
 
-      if (moduleName === 'gold15mRR') {
+      if (moduleName === 'dtcTradingClub') {
+        dtcTradingClubEnabled = isChecked;
+        window.dtcTradingClubEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_dtc_trading_club_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+        const railDtcBtn = document.getElementById('tool-dtc-trading-club');
+        if (railDtcBtn) railDtcBtn.classList.toggle('active', isChecked);
+      } else if (moduleName === 'longShortPro') {
+        longShortProEnabled = isChecked;
+        window.longShortProEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_long_short_pro_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+        const railLspBtn = document.getElementById('tool-long-short-pro');
+        if (railLspBtn) railLspBtn.classList.toggle('active', isChecked);
+      } else if (moduleName === 'alexTradesNQ') {
+        alexTradesNQEnabled = isChecked;
+        window.alexTradesNQEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_alex_trades_nq_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+        const railAlexBtn = document.getElementById('tool-alex-trades-nq');
+        if (railAlexBtn) railAlexBtn.classList.toggle('active', isChecked);
+      } else if (moduleName === 'gold15mRR') {
 
         gold15mRREnabled = isChecked;
 
@@ -36862,6 +36963,24 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       // Dedicated: AMD FVG TRADE SETUP [LUXALGO] (EXCLUSIVE PO3 ENGINE)
 
       // Dedicated: ALEXTRADERS NQ MODEL (EXCLUSIVE V-SHAPE IFVG STRATEGY)
+      // Dedicated: DTC 1.3.6 TRADING CLUB (EXCLUSIVE 6-LAYER EMA CLOUD & 7 TARGETS LADDER)
+      if (typeof evaluateDTCTradingClubModel === 'function') {
+        const dtcResult = evaluateDTCTradingClubModel(candles, spot);
+        window.latestDTCTradingClub = dtcResult;
+        if (dtcResult && dtcResult.active) {
+          modularEngineState.indicators.DTC_TRADING_CLUB = {
+            status: dtcResult.action,
+            stateBadge: dtcResult.action,
+            direction: dtcResult.direction,
+            entry: (dtcResult.entry && typeof dtcResult.entry === 'number') ? '$' + dtcResult.entry.toFixed(2) : dtcResult.entry,
+            sl: (dtcResult.sl && typeof dtcResult.sl === 'number') ? '$' + dtcResult.sl.toFixed(2) : dtcResult.sl,
+            tp: (dtcResult.primaryTarget && typeof dtcResult.primaryTarget.price === 'number') ? '$' + dtcResult.primaryTarget.price.toFixed(2) : (dtcResult.targets && dtcResult.targets[0] ? '$' + dtcResult.targets[0].price.toFixed(2) : '$0.00'),
+            rr: dtcResult.rr || '1 : 2.0 (Target 2)',
+            reason: dtcResult.reason
+          };
+        }
+      }
+
       // Dedicated: LONGSHORT PRO MODEL (EXCLUSIVE MULTI-TIMEFRAME MOMENTUM CONFLUENCE)
       if (typeof evaluateLongShortProModel === 'function') {
         const lspResult = evaluateLongShortProModel(candles, spot);
@@ -37962,6 +38081,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
       const TAB_TITLES = {
+        DTC_TRADING_CLUB: '⚡ DTC 1.3.6 TRADING CLUB [EXCLUSIVE]',
+
         LONGSHORT_PRO: '⚡ LONGSHORT PRO MODEL [EXCLUSIVE CONFLUENCE]',
 
         ALEX_NQ: '⚡ ALEXTRADERS NQ MODEL [EXCLUSIVE V-SHAPE]',
@@ -41408,6 +41529,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
         drawSMC_BearishReversalOverlay(drawingCtx, window.latestSMC_BearishReversal, candles);
 
+      }
+
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.dtcTradingClub && typeof drawDTCTradingClubOverlay === 'function') {
+        drawDTCTradingClubOverlay(drawingCtx, window.latestDTCTradingClub, candles);
       }
 
       if (typeof indicatorSettings !== 'undefined' && indicatorSettings.longShortPro && typeof drawLongShortProOverlay === 'function') {
@@ -55395,7 +55520,21 @@ window.addEventListener('resize', () => {
 
 
 
-                        <div class="indicator-row" onclick="clickModularToggle('longShortPro', event)">
+                        <div class="indicator-row" onclick="clickModularToggle('dtcTradingClub', event)">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #10b981;">⚡ DTC 1.3.6 Trading club</b>
+              <span style="font-size: 9px; background: rgba(16,185,129,0.18); color: #10b981; padding: 1px 4px; border-radius: 4px; font-weight: 700;">EXCLUSIVE MODEL</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">6-Layer EMA Ribbon (30-60) + Dynamic Cloud + 7-Target TP Ladder + MTF Dashboard</p>
+          </div>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="modal-toggle-dtcTradingClub" onchange="toggleModularIndicator('dtcTradingClub')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="indicator-row" onclick="clickModularToggle('longShortPro', event)">
           <div>
             <div style="display: flex; align-items: center; gap: 6px;">
               <b style="color: #38bdf8;">⚡ LongshortPRo Model</b>
@@ -56113,6 +56252,7 @@ window.addEventListener('resize', () => {
 
 
 
+  <script src="static/js/dtc-trading-club.js" defer></script>
   <script src="static/js/longshort-pro-model.js" defer></script>
   <script src="static/js/alextraders-nq-model.js" defer></script>
   <script src="static/js/bot-execution-panel.js" defer></script>
