@@ -23307,13 +23307,21 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
 
-      // Immediately re-evaluate signals & ghost candles
+      // Immediately evaluate and refresh model state
+      if (moduleName === 'ilpacModel' && typeof evaluateILPACModel === 'function' && rawCandleData && rawCandleData.length >= 20) {
+        window.latestILPACModel = evaluateILPACModel(rawCandleData, currentLiveSpot);
+      }
+      if (moduleName === 'dtcTradingClub' && typeof evaluateDTCTradingClubModel === 'function' && rawCandleData && rawCandleData.length >= 20) {
+        window.latestDTCTradingClub = evaluateDTCTradingClubModel(rawCandleData, currentLiveSpot);
+      }
 
       if (typeof evaluateSignals === 'function' && rawCandleData && rawCandleData.length) {
 
         evaluateSignals(rawCandleData, currentLiveSpot, false);
 
       }
+
+      if (typeof updateChartSetupHud === 'function') updateChartSetupHud();
 
       redrawDrawings();
 
@@ -37052,14 +37060,14 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       if (typeof evaluateILPACModel === 'function') {
         const ilpacResult = evaluateILPACModel(candles, spot);
         window.latestILPACModel = ilpacResult;
-        if (ilpacResult && ilpacResult.active) {
+        if (ilpacResult) {
           modularEngineState.indicators.ILPAC_MODEL = {
             status: ilpacResult.action,
-            stateBadge: ilpacResult.action,
-            direction: ilpacResult.direction,
-            entry: (ilpacResult.entry && typeof ilpacResult.entry === 'number') ? '$' + ilpacResult.entry.toFixed(2) : ilpacResult.entry,
-            sl: (ilpacResult.sl && typeof ilpacResult.sl === 'number') ? '$' + ilpacResult.sl.toFixed(2) : ilpacResult.sl,
-            tp: (ilpacResult.tp && typeof ilpacResult.tp === 'number') ? '$' + ilpacResult.tp.toFixed(2) : ilpacResult.tp,
+            stateBadge: ilpacResult.badge || '⚡ ILPAC ACTIVE',
+            direction: ilpacResult.direction || 'NEUTRAL',
+            entry: (ilpacResult.entry && typeof ilpacResult.entry === 'number') ? '$' + ilpacResult.entry.toFixed(2) : (ilpacResult.entry || '--'),
+            sl: (ilpacResult.sl && typeof ilpacResult.sl === 'number' && ilpacResult.sl > 0) ? '$' + ilpacResult.sl.toFixed(2) : '--',
+            tp: (ilpacResult.tp && typeof ilpacResult.tp === 'number' && ilpacResult.tp > 0) ? '$' + ilpacResult.tp.toFixed(2) : '--',
             rr: ilpacResult.rr || '1 : 2.5',
             reason: ilpacResult.reason
           };
@@ -41378,7 +41386,31 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
 
-      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.gold15mRR && window.latestGold15mRR) {
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.ilpacModel && window.latestILPACModel) {
+
+        setup = window.latestILPACModel;
+
+        zoneName = 'ILPAC Model [AlgoAlpha] · Institutional Liquidity';
+
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.dtcTradingClub && window.latestDTCTradingClub) {
+
+        setup = window.latestDTCTradingClub;
+
+        zoneName = 'DTC 1.3.6 Trading club · 6-Layer EMA Ribbon';
+
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.longShortPro && window.latestLongShortPro) {
+
+        setup = window.latestLongShortPro;
+
+        zoneName = 'LongshortPRo Model · MTF Momentum';
+
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.alexTradesNQ && window.latestAlexTradesNQ) {
+
+        setup = window.latestAlexTradesNQ;
+
+        zoneName = 'AlextradersNQ Model · 1:1 V-Shape';
+
+      } else if (typeof indicatorSettings !== 'undefined' && indicatorSettings.gold15mRR && window.latestGold15mRR) {
 
         setup = window.latestGold15mRR;
 
@@ -41430,7 +41462,9 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
 
-      if (!setup || (!showRROverlay && !smcEnabled)) {
+      const isExclusiveActive = typeof indicatorSettings !== 'undefined' && (indicatorSettings.ilpacModel || indicatorSettings.dtcTradingClub || indicatorSettings.longShortPro || indicatorSettings.alexTradesNQ);
+
+      if (!setup || (!showRROverlay && !smcEnabled && !isExclusiveActive)) {
 
         hud.style.display = 'none';
 
@@ -41466,7 +41500,23 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       if (title) {
 
-        if (setup && setup.indicatorName === "Gold 15m Signals on Any TF + RR") {
+        if (setup && (setup.name === "ILPAC Model" || indicatorSettings.ilpacModel)) {
+
+          title.innerText = isShort ? '⚡ ILPAC SHORT (LIQUIDITY TARGET)' : '⚡ ILPAC LONG (LIQUIDITY TARGET)';
+
+        } else if (setup && (setup.name === "DTC 1.3.6 Trading club" || indicatorSettings.dtcTradingClub)) {
+
+          title.innerText = isShort ? '⚡ DTC 1.3.6 SHORT (6-EMA CLOUD)' : '⚡ DTC 1.3.6 LONG (6-EMA CLOUD)';
+
+        } else if (setup && (setup.name === "LongshortPRo Model" || indicatorSettings.longShortPro)) {
+
+          title.innerText = isShort ? '⚡ LONGSHORT PRO SHORT' : '⚡ LONGSHORT PRO LONG';
+
+        } else if (setup && (setup.name === "AlextradersNQ Model" || indicatorSettings.alexTradesNQ)) {
+
+          title.innerText = isShort ? '⚡ ALEXTRADERS SHORT (IFVG)' : '⚡ ALEXTRADERS LONG (IFVG)';
+
+        } else if (setup && setup.indicatorName === "Gold 15m Signals on Any TF + RR") {
 
           title.innerText = isShort ? '⚡ GOLD 15M SHORT (1:2.0 RR)' : '⚡ GOLD 15M LONG (1:2.0 RR)';
 
