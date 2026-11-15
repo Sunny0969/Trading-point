@@ -16676,7 +16676,22 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
 
-                                    <!-- Indicator: DTC 1.3.6 Trading club (Exclusive 6-Layer EMA Ribbon & 7 Targets Ladder) -->
+                                    <!-- Indicator: ILPAC Model (Institutional Liquidity and Price Action Concepts) -->
+            <div class="tv-ind-row" onclick="clickModularToggle('ilpacModel', event)">
+              <div class="tv-ind-info">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <b style="color: #38bdf8;">⚡ ILPAC Model</b>
+                  <span style="font-size: 9px; background: rgba(56,189,248,0.18); color: #38bdf8; padding: 1px 4px; border-radius: 4px; font-weight: 700;">EXCLUSIVE MODEL</span>
+                </div>
+                <small>Market Structure (HH/HL/BOS/CHoCH) + 3D Liquidity Heatmap + Trendlines + FOMO Bubbles v2</small>
+              </div>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ind-toggle-ilpacModel" onchange="toggleModularIndicator('ilpacModel')">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- Indicator: DTC 1.3.6 Trading club (Exclusive 6-Layer EMA Ribbon & 7 Targets Ladder) -->
             <div class="tv-ind-row" onclick="clickModularToggle('dtcTradingClub', event)">
               <div class="tv-ind-info">
                 <div style="display: flex; align-items: center; gap: 6px;">
@@ -17515,7 +17530,16 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
         </button>
 
-                        <!-- DTC 1.3.6 Trading club Shortcut -->
+                        <!-- ILPAC Model Shortcut -->
+        <button class="tv-tool-btn" id="tool-ilpac-model" title="ILPAC Model (Institutional Liquidity &amp; Price Action Concepts)" onclick="toggleModularIndicator('ilpacModel')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+            <circle cx="12" cy="12" r="3" fill="#38bdf8"/>
+            <path d="M3 12h3m12 0h3M12 3v3m0 12v3"/>
+            <rect x="5" y="5" width="14" height="14" rx="2" stroke="#38bdf8" stroke-width="1.5"/>
+          </svg>
+        </button>
+
+        <!-- DTC 1.3.6 Trading club Shortcut -->
         <button class="tv-tool-btn" id="tool-dtc-trading-club" title="DTC 1.3.6 Trading club (Exclusive 6-Layer EMA Ribbon & 7 Targets)" onclick="toggleModularIndicator('dtcTradingClub')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
             <path d="M3 17l6-6 4 4 8-8"/>
@@ -21820,6 +21844,13 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
     const DEFAULT_INDICATOR_CONFIG = {
 
+      ilpacModel: (function() {
+        try {
+          const v = localStorage.getItem('indicator_ilpac_model_active');
+          return v !== null ? (v === 'true') : false;
+        } catch (e) { return false; }
+      })(), // Dedicated: ILPAC Model (Institutional Liquidity & Price Action Concepts) - Weight: 40
+
       dtcTradingClub: (function() {
         try {
           const v = localStorage.getItem('indicator_dtc_trading_club_active');
@@ -21997,6 +22028,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
     const MODULE_WEIGHTS = {
 
+      ilpacModel: 40,
+
       dtcTradingClub: 40,
 
       longShortPro: 40,
@@ -22070,6 +22103,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
     })();
 
     window.indicatorSettings = indicatorSettings;
+
+    var ilpacModelEnabled = !!indicatorSettings.ilpacModel;
+    window.ilpacModelEnabled = ilpacModelEnabled;
+    window.latestILPACModel = null;
 
     var dtcTradingClubEnabled = !!indicatorSettings.dtcTradingClub;
     window.dtcTradingClubEnabled = dtcTradingClubEnabled;
@@ -22884,7 +22921,43 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       indicatorSettings[moduleName] = newVal;
 
-      if (moduleName === 'dtcTradingClub') {
+      if (moduleName === 'ilpacModel') {
+        try {
+          localStorage.setItem('indicator_ilpac_model_active', newVal ? 'true' : 'false');
+          window.ilpacModelEnabled = newVal;
+        } catch (e) {}
+        if (newVal === true) {
+          // EXCLUSIVE ISOLATION MODE: Automatically turn off all other indicators!
+          Object.keys(DEFAULT_INDICATOR_CONFIG).forEach(k => {
+            if (k !== 'ilpacModel') {
+              indicatorSettings[k] = false;
+              try {
+                localStorage.setItem(`indicator_${k}_active`, 'false');
+              } catch (e) {}
+              ['ind-toggle-', 'modal-toggle-'].forEach(prefix => {
+                const el = document.getElementById(`${prefix}${k}`);
+                if (el) el.checked = false;
+              });
+              applyModularVisuals(k, false);
+            }
+          });
+          if (typeof toggleSMCZones === 'function' && smcEnabled) {
+            smcEnabled = false;
+            const btn = document.getElementById('btn-toggle-smc');
+            if (btn) btn.classList.remove('active');
+            const railBtn = document.getElementById('tool-smc');
+            if (railBtn) railBtn.classList.remove('active');
+          }
+        }
+      } else if (moduleName === 'ilpacModel') {
+        ilpacModelEnabled = isChecked;
+        window.ilpacModelEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_ilpac_model_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+        const railIlpacBtn = document.getElementById('tool-ilpac-model');
+        if (railIlpacBtn) railIlpacBtn.classList.toggle('active', isChecked);
+      } else if (moduleName === 'dtcTradingClub') {
         try {
           localStorage.setItem('indicator_dtc_trading_club_active', newVal ? 'true' : 'false');
           window.dtcTradingClubEnabled = newVal;
@@ -23172,6 +23245,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
       const tabMap = {
 
+        ilpacModel: 'ILPAC_MODEL',
+
         dtcTradingClub: 'DTC_TRADING_CLUB',
 
         longShortPro: 'LONGSHORT_PRO',
@@ -23245,6 +23320,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
       const labels = {
+
+        ilpacModel: 'ILPAC Model',
 
         dtcTradingClub: 'DTC 1.3.6 Trading club',
 
@@ -23420,7 +23497,15 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
     function applyModularVisuals(moduleName, isChecked) {
 
-      if (moduleName === 'dtcTradingClub') {
+      if (moduleName === 'ilpacModel') {
+        ilpacModelEnabled = isChecked;
+        window.ilpacModelEnabled = isChecked;
+        try {
+          localStorage.setItem('indicator_ilpac_model_active', isChecked ? 'true' : 'false');
+        } catch (e) {}
+        const railIlpacBtn = document.getElementById('tool-ilpac-model');
+        if (railIlpacBtn) railIlpacBtn.classList.toggle('active', isChecked);
+      } else if (moduleName === 'dtcTradingClub') {
         dtcTradingClubEnabled = isChecked;
         window.dtcTradingClubEnabled = isChecked;
         try {
@@ -36963,6 +37048,24 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
       // Dedicated: AMD FVG TRADE SETUP [LUXALGO] (EXCLUSIVE PO3 ENGINE)
 
       // Dedicated: ALEXTRADERS NQ MODEL (EXCLUSIVE V-SHAPE IFVG STRATEGY)
+      // Dedicated: ILPAC MODEL (INSTITUTIONAL LIQUIDITY AND PRICE ACTION CONCEPTS)
+      if (typeof evaluateILPACModel === 'function') {
+        const ilpacResult = evaluateILPACModel(candles, spot);
+        window.latestILPACModel = ilpacResult;
+        if (ilpacResult && ilpacResult.active) {
+          modularEngineState.indicators.ILPAC_MODEL = {
+            status: ilpacResult.action,
+            stateBadge: ilpacResult.action,
+            direction: ilpacResult.direction,
+            entry: (ilpacResult.entry && typeof ilpacResult.entry === 'number') ? '$' + ilpacResult.entry.toFixed(2) : ilpacResult.entry,
+            sl: (ilpacResult.sl && typeof ilpacResult.sl === 'number') ? '$' + ilpacResult.sl.toFixed(2) : ilpacResult.sl,
+            tp: (ilpacResult.tp && typeof ilpacResult.tp === 'number') ? '$' + ilpacResult.tp.toFixed(2) : ilpacResult.tp,
+            rr: ilpacResult.rr || '1 : 2.5',
+            reason: ilpacResult.reason
+          };
+        }
+      }
+
       // Dedicated: DTC 1.3.6 TRADING CLUB (EXCLUSIVE 6-LAYER EMA CLOUD & 7 TARGETS LADDER)
       if (typeof evaluateDTCTradingClubModel === 'function') {
         const dtcResult = evaluateDTCTradingClubModel(candles, spot);
@@ -38081,6 +38184,8 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
 
       const TAB_TITLES = {
+        ILPAC_MODEL: '⚡ ILPAC MODEL [INSTITUTIONAL LIQUIDITY & PRICE ACTION]',
+
         DTC_TRADING_CLUB: '⚡ DTC 1.3.6 TRADING CLUB [EXCLUSIVE]',
 
         LONGSHORT_PRO: '⚡ LONGSHORT PRO MODEL [EXCLUSIVE CONFLUENCE]',
@@ -41529,6 +41634,10 @@ Close 80% of Lot Volume at TP1 -> Move Stop Loss to Entry (Break-Even) -> Leave 
 
         drawSMC_BearishReversalOverlay(drawingCtx, window.latestSMC_BearishReversal, candles);
 
+      }
+
+      if (typeof indicatorSettings !== 'undefined' && indicatorSettings.ilpacModel && typeof drawILPACOverlay === 'function') {
+        drawILPACOverlay(drawingCtx, window.latestILPACModel, candles);
       }
 
       if (typeof indicatorSettings !== 'undefined' && indicatorSettings.dtcTradingClub && typeof drawDTCTradingClubOverlay === 'function') {
@@ -55518,7 +55627,21 @@ window.addEventListener('resize', () => {
 
 
 
-                        <div class="indicator-row" onclick="clickModularToggle('dtcTradingClub', event)">
+                        <div class="indicator-row" onclick="clickModularToggle('ilpacModel', event)">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <b style="color: #38bdf8;">⚡ ILPAC Model</b>
+              <span style="font-size: 9px; background: rgba(56,189,248,0.18); color: #38bdf8; padding: 1px 4px; border-radius: 4px; font-weight: 700;">EXCLUSIVE MODEL</span>
+            </div>
+            <p style="font-size: 11px; color: #8b949e; margin: 2px 0 0;">Market Structure (HH/HL/BOS/CHoCH) + 3D Liquidity Heatmap + Trendlines + FOMO Bubbles v2</p>
+          </div>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="modal-toggle-ilpacModel" onchange="toggleModularIndicator('ilpacModel')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="indicator-row" onclick="clickModularToggle('dtcTradingClub', event)">
           <div>
             <div style="display: flex; align-items: center; gap: 6px;">
               <b style="color: #10b981;">⚡ DTC 1.3.6 Trading club</b>
@@ -56250,6 +56373,7 @@ window.addEventListener('resize', () => {
 
 
 
+  <script src="static/js/ilpac-model.js" defer></script>
   <script src="static/js/dtc-trading-club.js" defer></script>
   <script src="static/js/longshort-pro-model.js" defer></script>
   <script src="static/js/alextraders-nq-model.js" defer></script>
