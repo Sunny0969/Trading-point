@@ -267,7 +267,8 @@
   // CANVAS OVERLAY: STATUS TABLE, PERFORMANCE HUD, TRADE BRACKETS & MARKERS
   // ==========================================================================
   function drawLongShortProOverlay(ctx, lspData, candles) {
-    if (!ctx || !window.candleSeries || !window.chart) return;
+    const candleSeries = window.candleSeries || window.mainCandleSeries || (typeof window.candleSeries !== 'undefined' ? window.candleSeries : null);
+    if (!ctx || !candleSeries || !window.chart) return;
     if (typeof window.indicatorSettings !== 'undefined' && !window.indicatorSettings.longShortPro) return;
 
     const data = lspData || window.latestLongShortPro;

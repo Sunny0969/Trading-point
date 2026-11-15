@@ -748,7 +748,8 @@
   // FEATURE 5: DEDICATED CANVAS OVERLAY & DRAWINGS
   // ==========================================================================
   function drawAlexTradesNQOverlay(ctx, alexData, candles) {
-    if (!ctx || !window.candleSeries || !window.chart) return;
+    const candleSeries = window.candleSeries || window.mainCandleSeries || (typeof window.candleSeries !== 'undefined' ? window.candleSeries : null);
+    if (!ctx || !candleSeries || !window.chart) return;
     if (typeof window.indicatorSettings !== 'undefined' && !window.indicatorSettings.alexTradesNQ) return;
 
     const data = alexData || window.latestAlexTradesNQ;

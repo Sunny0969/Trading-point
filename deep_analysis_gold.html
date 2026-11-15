@@ -50913,9 +50913,7 @@ const ghostCandles = [
 
           const errMsg = res.message || (res.error ? (res.error.description || res.error) : 'Execution rejected');
 
-          if (typeof showToast === 'function') {
-
-            const isAutoTradingOff = String(errMsg).includes('10027') || String(errMsg).toLowerCase().includes('autotrading');
+          const isAutoTradingOff = String(errMsg).includes('10027') || String(errMsg).toLowerCase().includes('autotrading');
           const displayMsg = isAutoTradingOff
             ? `⚠️ MT5 Algo Trading OFF: MT5 me 'Algo Trading' button (Ctrl+E) ko GREEN karein!`
             : `❌ MT5 Rejected: ${errMsg}`;

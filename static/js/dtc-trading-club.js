@@ -303,7 +303,8 @@
   // CANVAS OVERLAY: EMA CLOUD, 7 TARGETS LADDER, SL/ENTRY & ON-CHART DASHBOARD
   // ==========================================================================
   function drawDTCTradingClubOverlay(ctx, dtcData, candles) {
-    if (!ctx || !window.candleSeries || !window.chart) return;
+    const cSeries = window.candleSeries || window.mainCandleSeries || (typeof candleSeries !== 'undefined' ? candleSeries : null);
+    if (!ctx || !cSeries || !window.chart) return;
     if (typeof window.indicatorSettings !== 'undefined' && !window.indicatorSettings.dtcTradingClub) return;
 
     const data = dtcData || window.latestDTCTradingClub;
@@ -327,7 +328,7 @@
       let first = true;
       for (let i = startIdx; i < candles.length; i++) {
         const x = (cssWidth - 160) - ((candles.length - 1 - i) * 8);
-        const y30 = candleSeries.priceToCoordinate(e30Series[i]);
+        const y30 = cSeries.priceToCoordinate(e30Series[i]);
         if (y30 !== null) {
           if (first) { ctx.moveTo(x, y30); first = false; }
           else { ctx.lineTo(x, y30); }
@@ -335,7 +336,7 @@
       }
       for (let i = candles.length - 1; i >= startIdx; i--) {
         const x = (cssWidth - 160) - ((candles.length - 1 - i) * 8);
-        const y60 = candleSeries.priceToCoordinate(e60Series[i]);
+        const y60 = cSeries.priceToCoordinate(e60Series[i]);
         if (y60 !== null) {
           ctx.lineTo(x, y60);
         }
@@ -346,8 +347,9 @@
       ctx.fill();
 
       // Draw Top & Bottom EMA lines
-      const yTop = candleSeries.priceToCoordinate(data.cloud ? data.cloud.ema30 : closes[len]);
-      const yBot = candleSeries.priceToCoordinate(data.cloud ? data.cloud.ema60 : closes[len]);
+      const lastClose = closes[closes.length - 1];
+      const yTop = cSeries.priceToCoordinate(data.cloud ? data.cloud.ema30 : lastClose);
+      const yBot = cSeries.priceToCoordinate(data.cloud ? data.cloud.ema60 : lastClose);
       if (yTop !== null && yBot !== null) {
         ctx.strokeStyle = isBullCloud ? '#10b981' : '#ef4444';
         ctx.lineWidth = 1.5;
@@ -431,8 +433,8 @@
 
     // 3. Draw Entry, Stop-Loss & 7 Take-Profit Ladder Targets
     if (data.active && data.targets && data.targets.length > 0) {
-      const yEntry = candleSeries.priceToCoordinate(data.entry);
-      const ySL = candleSeries.priceToCoordinate(data.sl);
+      const yEntry = cSeries.priceToCoordinate(data.entry);
+      const ySL = cSeries.priceToCoordinate(data.sl);
 
       if (yEntry !== null && ySL !== null) {
         const isBuy = data.direction === 'BUY';
@@ -471,7 +473,7 @@
 
         // 7 Take-Profit Targets
         data.targets.forEach((tgt, idx) => {
-          const yTgt = candleSeries.priceToCoordinate(tgt.price);
+          const yTgt = cSeries.priceToCoordinate(tgt.price);
           if (yTgt !== null && yTgt >= 10 && yTgt <= cssHeight - 15) {
             ctx.strokeStyle = '#10b981';
             ctx.lineWidth = idx === 0 || idx === 1 ? 1.4 : 1.0;
